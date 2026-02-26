@@ -62,7 +62,7 @@
     "lerna": "^8.1.9",
     "lint-staged": "^15.2.10",
     "method-override": "^3.0.0",
-    "mocha": "^10.7.3",
+    "mocha": "^11.7.5",
     "multer": "^2.0.2",
     "prettier": "^3.4.2",
     "reflect-metadata": "^0.2.2",
