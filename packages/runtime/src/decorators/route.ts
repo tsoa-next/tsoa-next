@@ -1,7 +1,7 @@
 export function Route(name?: string): ClassDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -9,6 +9,6 @@ export function Route(name?: string): ClassDecorator {
  */
 export function Hidden(): ClassDecorator & MethodDecorator & ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }

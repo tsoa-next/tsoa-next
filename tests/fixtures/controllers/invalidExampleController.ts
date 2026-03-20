@@ -1,4 +1,4 @@
-import { Route, Controller, Post, Body } from '@tsoa/runtime';
+import { Route, Controller, Post, Body } from '@tsoa/runtime'
 
 @Route('ExampleTest')
 export class InvalidExampleController extends Controller {
@@ -10,6 +10,6 @@ export class InvalidExampleController extends Controller {
    */
   @Post('WrongJSON-Format')
   public async WrongJSONFormat(@Body() body: { name: string; index: number }): Promise<void> {
-    return;
+    return
   }
 }

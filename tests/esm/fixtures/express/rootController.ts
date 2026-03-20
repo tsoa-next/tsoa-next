@@ -1,5 +1,5 @@
-import { Controller, Get, Route } from '@tsoa/runtime';
-import type { TestModel } from '../testModel.js';
+import { Controller, Get, Route } from '@tsoa/runtime'
+import type { TestModel } from '../testModel.js'
 
 @Route()
 export class RootController extends Controller {
@@ -7,6 +7,6 @@ export class RootController extends Controller {
   public async rootHandler(): Promise<TestModel> {
     return {
       str: 'str',
-    };
+    }
   }
 }

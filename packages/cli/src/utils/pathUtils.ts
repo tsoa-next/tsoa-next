@@ -6,29 +6,29 @@
  */
 export function normalisePath(path: string, withPrefix?: string, withSuffix?: string, skipPrefixAndSuffixIfEmpty = true) {
   if ((!path || path === '/') && skipPrefixAndSuffixIfEmpty) {
-    return '';
+    return ''
   }
   if (!path || typeof path !== 'string') {
-    path = '' + path;
+    path = '' + path
   }
   // normalise beginning and end of the path
-  let normalised = path.replace(/^[/\\\s]+|[/\\\s]+$/g, '');
-  normalised = withPrefix ? withPrefix + normalised : normalised;
-  normalised = withSuffix ? normalised + withSuffix : normalised;
+  let normalised = path.replace(/^[/\\\s]+|[/\\\s]+$/g, '')
+  normalised = withPrefix ? withPrefix + normalised : normalised
+  normalised = withSuffix ? normalised + withSuffix : normalised
   // normalise / signs amount in all path
-  normalised = normalised.replace(/[/\\\s]+/g, '/');
-  return normalised;
+  normalised = normalised.replace(/[/\\\s]+/g, '/')
+  return normalised
 }
 
 export function convertColonPathParams(path: string) {
   if (!path || typeof path !== 'string') {
-    return path;
+    return path
   }
 
-  const normalised = path.replace(/:([^/]+)/g, '{$1}');
-  return normalised;
+  const normalised = path.replace(/:([^/]+)/g, '{$1}')
+  return normalised
 }
 
 export function convertBracesPathParams(path: string) {
-  return path.replace(/{(\w*)}/g, ':$1');
+  return path.replace(/{(\w*)}/g, ':$1')
 }

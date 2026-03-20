@@ -1,10 +1,10 @@
-import { Swagger, Tsoa } from '@tsoa/runtime';
-import { merge as mergeAnything } from 'merge-anything';
-import { merge as deepMerge } from 'ts-deepmerge';
+import { Swagger, Tsoa } from '@tsoa/runtime'
+import { merge as mergeAnything } from 'merge-anything'
+import { merge as deepMerge } from 'ts-deepmerge'
 
-import { ExtendedSpecConfig } from '../cli';
-import { UnspecifiedObject } from '../utils/unspecifiedObject';
-import { SpecGenerator3 } from './specGenerator3';
+import { ExtendedSpecConfig } from '../cli'
+import { UnspecifiedObject } from '../utils/unspecifiedObject'
+import { SpecGenerator3 } from './specGenerator3'
 
 /**
  * OpenAPI 3.1 Spec Generator
@@ -21,7 +21,7 @@ export class SpecGenerator31 extends SpecGenerator3 {
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
   ) {
-    super(metadata, config);
+    super(metadata, config)
   }
 
   // Override with OpenAPI 3.1 specific return type
@@ -34,20 +34,20 @@ export class SpecGenerator31 extends SpecGenerator3 {
       paths: this.buildPaths() as { [name: string]: Swagger.Path31 },
       servers: this.buildServers(),
       tags: this.config.tags,
-    };
+    }
 
     if (this.config.spec) {
-      this.config.specMerging = this.config.specMerging || 'immediate';
+      this.config.specMerging = this.config.specMerging || 'immediate'
       const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
         immediate: Object.assign,
         recursive: mergeAnything,
         deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
-      };
+      }
 
-      spec = mergeFuncs[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as Swagger.Spec31;
+      spec = mergeFuncs[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as Swagger.Spec31
     }
 
-    return spec;
+    return spec
   }
 
   /**
@@ -55,7 +55,7 @@ export class SpecGenerator31 extends SpecGenerator3 {
    */
   protected getSwaggerType(type: Tsoa.Type, title?: string): Swagger.BaseSchema {
     if (this.isTupleType(type)) {
-      const prefixItems: Swagger.Schema31[] = type.types.map((t: Tsoa.Type) => this.getSwaggerType(t) as Swagger.Schema31);
+      const prefixItems: Swagger.Schema31[] = type.types.map((t: Tsoa.Type) => this.getSwaggerType(t) as Swagger.Schema31)
 
       const schema: Swagger.Schema31 = {
         type: 'array',
@@ -69,15 +69,15 @@ export class SpecGenerator31 extends SpecGenerator3 {
               maxItems: prefixItems.length,
               items: false,
             }),
-      };
+      }
 
-      return schema as unknown as Swagger.BaseSchema;
+      return schema as unknown as Swagger.BaseSchema
     }
 
-    return super.getSwaggerType(type, title);
+    return super.getSwaggerType(type, title)
   }
 
   private isTupleType(type: Tsoa.Type): type is Tsoa.TupleType {
-    return type.dataType === 'tuple';
+    return type.dataType === 'tuple'
   }
 }

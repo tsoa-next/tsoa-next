@@ -1,1 +1,1 @@
-export type UnspecifiedObject = { [key: string]: unknown };
+export type UnspecifiedObject = { [key: string]: unknown }

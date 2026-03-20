@@ -40,6 +40,7 @@ module.exports = {
         argsIgnorePattern: '^_',
       },
     ],
+    semi: ['error', 'never'],
     '@typescript-eslint/triple-slash-reference': [
       'error',
       {
@@ -69,4 +70,4 @@ module.exports = {
       },
     },
   ],
-};
+}

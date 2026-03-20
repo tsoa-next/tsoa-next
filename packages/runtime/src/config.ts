@@ -1,36 +1,36 @@
-import { Swagger } from './swagger/swagger';
-import { Options as MulterOpts } from 'multer';
+import { Swagger } from './swagger/swagger'
+import { Options as MulterOpts } from 'multer'
 
 export interface Config {
   /**
    * Swagger generation configuration object
    */
-  spec: SpecConfig;
+  spec: SpecConfig
 
   /**
    * Route generation configuration object
    */
-  routes: RoutesConfig;
+  routes: RoutesConfig
 
   /**
    * Directories to ignore during TypeScript metadata scan
    */
-  ignore?: string[];
+  ignore?: string[]
 
   /**
    * The entry point to your API
    */
-  entryFile: string;
+  entryFile: string
 
   /**
    * An array of path globs that point to your route controllers that you would like to have tsoa include.
    */
-  controllerPathGlobs?: string[];
+  controllerPathGlobs?: string[]
 
   /**
    * Modes that allow you to prevent input data from entering into your API. This will document your decision in the swagger.yaml and it will turn on excess-property validation (at runtime) in your routes.
    */
-  noImplicitAdditionalProperties?: 'throw-on-extras' | 'silently-remove-extras' | 'ignore';
+  noImplicitAdditionalProperties?: 'throw-on-extras' | 'silently-remove-extras' | 'ignore'
 
   /**
    * Typescript CompilerOptions to be used during generation
@@ -38,7 +38,7 @@ export interface Config {
    * @type {Record<string, unknown>}
    * @memberof RoutesConfig
    */
-  compilerOptions?: Record<string, unknown>;
+  compilerOptions?: Record<string, unknown>
 
   /**
    * Multer's options to generate multer's middleware.
@@ -53,50 +53,50 @@ export interface Config {
    *  (https://github.com/lukeautry/tsoa/issues/1587#issuecomment-2391291433)
    *  (https://github.com/lukeautry/tsoa/pull/1638)
    */
-  multerOpts?: MulterOpts;
+  multerOpts?: MulterOpts
 
   /*
    * OpenAPI number type to be used for TypeScript's 'number', when there isn't a type annotation
    * @default double
    */
-  defaultNumberType?: 'double' | 'float' | 'integer' | 'long';
+  defaultNumberType?: 'double' | 'float' | 'integer' | 'long'
 }
 
 /**
  * these options will be removed in a future version since we would prefer consumers to explicitly state their preference that the tsoa validation throws or removes additional properties
  */
-export type DeprecatedOptionForAdditionalPropertiesHandling = true | false;
+export type DeprecatedOptionForAdditionalPropertiesHandling = true | false
 
 export interface SpecConfig {
   /**
    * Generated SwaggerConfig.json will output here
    */
-  outputDirectory: string;
+  outputDirectory: string
 
   /**
    * API host, expressTemplate.g. localhost:3000 or myapi.com
    */
-  host?: string;
+  host?: string
 
   /**
    * API servers, expressTemplate.g. [production.api.com, staging.api.com]
    *
    * Only available with the specVersion 3
    */
-  servers?: string[];
+  servers?: string[]
 
   /**
    * Base-name of swagger.json or swagger.yaml.
    *
    * @default: "swagger"
    */
-  specFileBaseName?: string;
+  specFileBaseName?: string
 
   /**
 
    * API version number; defaults to npm package version
    */
-  version?: string;
+  version?: string
 
   /**
    * Major OpenAPI version to generate; defaults to version 2 when not specified
@@ -105,23 +105,23 @@ export interface SpecConfig {
    *  - 3: generates OpenAPI version 3.
    *  - 3.1: generates OpenAPI version 3.1.
    */
-  specVersion?: Swagger.SupportedSpecMajorVersion;
+  specVersion?: Swagger.SupportedSpecMajorVersion
 
   /**
    * API name; defaults to npm package name
    */
-  name?: string;
+  name?: string
 
   /**
    * API description; defaults to npm package description
    */
-  description?: string;
+  description?: string
 
   /**
    * Link to the page that describes the terms of service.
    * Must be in the URL format.
    */
-  termsOfService?: string;
+  termsOfService?: string
 
   /**
    * Contact Information
@@ -131,31 +131,31 @@ export interface SpecConfig {
      * The identifying name of the contact person/organization.
      * @default npm package author
      */
-    name?: string;
+    name?: string
 
     /**
      * The email address of the contact person/organization.
      * @default npm package author email
      */
-    email?: string;
+    email?: string
 
     /**
      * API Info url
      * The URL pointing to the contact information.
      * @default npm package author url
      */
-    url?: string;
-  };
+    url?: string
+  }
 
   /**
    * API license; defaults to npm package license
    */
-  license?: string;
+  license?: string
 
   /**
    * Base API path; e.g. the 'v1' in https://myapi.com/v1
    */
-  basePath?: string;
+  basePath?: string
 
   /**
    * Base API prefix slash toggle
@@ -164,13 +164,13 @@ export interface SpecConfig {
    *
    * Only available with the specVersion 3
    */
-  disableBasePathPrefixSlash?: boolean;
+  disableBasePathPrefixSlash?: boolean
 
   /**
    * Extend generated swagger spec with this object
    * Note that generated properties will always take precedence over what get specified here
    */
-  spec?: unknown;
+  spec?: unknown
 
   /**
    * Alter how the spec is merged to generated swagger spec.
@@ -181,7 +181,7 @@ export interface SpecConfig {
    * The default is set to immediate so it is not breaking previous versions.
    * @default 'immediate'
    */
-  specMerging?: 'immediate' | 'recursive' | 'deepmerge';
+  specMerging?: 'immediate' | 'recursive' | 'deepmerge'
 
   /**
    * Template string for generating operation ids.
@@ -192,7 +192,7 @@ export interface SpecConfig {
    *
    * @default '{{titleCase method.name}}'
    */
-  operationIdTemplate?: string;
+  operationIdTemplate?: string
 
   /**
    * Security Definitions Object
@@ -201,95 +201,95 @@ export interface SpecConfig {
    * and only serves to provide the relevant details for each scheme.
    */
   securityDefinitions?: {
-    [name: string]: Swagger.SecuritySchemes;
-  };
+    [name: string]: Swagger.SecuritySchemes
+  }
 
   /**
    * Swagger Tags Information for your API
    */
-  tags?: Swagger.Tag[];
+  tags?: Swagger.Tag[]
 
-  yaml?: boolean;
+  yaml?: boolean
 
-  schemes?: Swagger.Protocol[];
+  schemes?: Swagger.Protocol[]
 
   /**
    * Enable x-enum-varnames support
    * @default false
    */
-  xEnumVarnames?: boolean;
+  xEnumVarnames?: boolean
 
   /**
    * Sets a title for inline objects for responses and requestBodies
    * This helps to generate more consistent clients
    */
-  useTitleTagsForInlineObjects?: boolean;
+  useTitleTagsForInlineObjects?: boolean
 
   /**
    * Applies a default security to the entire API.
    * Can be overridden with @Security or @NoSecurity decorators on controllers or methods
    */
-  rootSecurity?: Swagger.Security[];
+  rootSecurity?: Swagger.Security[]
 }
 
 export interface RoutesConfig {
   /**
    * Routes directory; generated routes.ts (which contains the generated code wiring up routes using middleware of choice) will be dropped here
    */
-  routesDir: string;
+  routesDir: string
 
   /**
    * Routes filename; the filename of the generated route file ('routes.ts' by default)
    */
-  routesFileName?: string;
+  routesFileName?: string
 
   /**
    * Avoid writing the generated route file if the existing file is identical (useful to optimize watch processes); false by default
    */
-  noWriteIfUnchanged?: boolean;
+  noWriteIfUnchanged?: boolean
 
   /**
    * Base API path; e.g. the '/v1' in https://myapi.com/v1
    */
-  basePath?: string;
+  basePath?: string
 
   /**
    * Middleware provider.
    */
-  middleware?: 'express' | 'hapi' | 'koa';
+  middleware?: 'express' | 'hapi' | 'koa'
 
   /**
    * Override the Middleware template
    */
-  middlewareTemplate?: string;
+  middlewareTemplate?: string
 
   /**
    * IOC module; e.g. './inversify/ioc' where IOC container named `iocContainer` is defined (https://github.com/inversify/InversifyJS)
    */
-  iocModule?: string;
+  iocModule?: string
 
   /**
    * Authentication Module for express, hapi and koa
    */
-  authenticationModule?: string;
+  authenticationModule?: string
 
   /**
    * When enabled, the imports in the routes files will have a `.js` extention to support esm.
    *
    * @default false
    */
-  esm?: boolean;
+  esm?: boolean
 
   /*
    * Whether to implicitly coerce body parameters into an accepted type.
    *
    * @default true
    */
-  bodyCoercion?: boolean;
+  bodyCoercion?: boolean
 
   /**
    * When enabled, the imports in the routes files will keep having a `.ts` extention to support the TypeScript 5.7 feature rewriteRelativeImportExtensions.
    * @default false
    */
-  rewriteRelativeImportExtensions?: boolean;
+  rewriteRelativeImportExtensions?: boolean
 }

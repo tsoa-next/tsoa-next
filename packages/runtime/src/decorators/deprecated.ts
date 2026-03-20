@@ -3,6 +3,6 @@
  */
 export function Deprecated(): PropertyDecorator & ClassDecorator & ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }

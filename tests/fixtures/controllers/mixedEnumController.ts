@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Route } from '@tsoa/runtime';
+import { Body, Controller, Post, Route } from '@tsoa/runtime'
 
 export enum MixedStringAndNumberEnum {
   one = 1,
@@ -8,13 +8,13 @@ export enum MixedStringAndNumberEnum {
 }
 
 export interface BodyWithMixedEnum {
-  anEnumValue: MixedStringAndNumberEnum;
+  anEnumValue: MixedStringAndNumberEnum
 }
 
 @Route('MixedEnumTest')
 export class MixedEnumController extends Controller {
   @Post()
   public async saveEnumValue(@Body() body: BodyWithMixedEnum): Promise<BodyWithMixedEnum> {
-    return body;
+    return body
   }
 }

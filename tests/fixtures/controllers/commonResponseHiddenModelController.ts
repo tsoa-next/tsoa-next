@@ -1,7 +1,7 @@
-import { Controller, Get, Route, Response, Hidden } from '@tsoa/runtime';
+import { Controller, Get, Route, Response, Hidden } from '@tsoa/runtime'
 
 interface ToHideModel {
-  something: string;
+  something: string
 }
 
 @Hidden()
@@ -10,11 +10,11 @@ interface ToHideModel {
 export class CommonResponseHiddenModelController extends Controller {
   @Get('Response1')
   public async handler(): Promise<void> {
-    return;
+    return
   }
 
   @Get('Response2')
   public async handler2(): Promise<void> {
-    return;
+    return
   }
 }

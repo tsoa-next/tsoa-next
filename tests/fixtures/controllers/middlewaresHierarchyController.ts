@@ -1,22 +1,22 @@
-import { Controller, Middlewares as GenericMiddlewares, Get, Route } from '@tsoa/runtime';
+import { Controller, Middlewares as GenericMiddlewares, Get, Route } from '@tsoa/runtime'
 
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express'
 
 function Middlewares(...mws: Array<RequestHandler | (() => Promise<RequestHandler>)>) {
-  return GenericMiddlewares(...mws);
+  return GenericMiddlewares(...mws)
 }
 
-const middlewaresState: string[] = [];
+const middlewaresState: string[] = []
 
 export function state(): string[] {
-  return middlewaresState;
+  return middlewaresState
 }
 
 function testMiddleware(key: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    middlewaresState.push(key);
-    next();
-  };
+    middlewaresState.push(key)
+    next()
+  }
 }
 
 // base class with some middleware
@@ -36,6 +36,6 @@ export class MiddlewareHierarchyTestExpress extends NoopController {
   @Middlewares(testMiddleware('test1'), testMiddleware('test2'))
   @Get('/test1')
   public async test1(): Promise<void> {
-    return;
+    return
   }
 }

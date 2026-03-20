@@ -1,5 +1,5 @@
-import { Body, BodyProp, Get, Header, Path, Post, Query, Request, Route, Res, TsoaResponse, Deprecated, Queries, RequestProp, FormField } from '@tsoa/runtime';
-import { EnumNumberValue, FormTestModel, Gender, ParameterTestModel } from '../testModel';
+import { Body, BodyProp, Get, Header, Path, Post, Query, Request, Route, Res, TsoaResponse, Deprecated, Queries, RequestProp, FormField } from '@tsoa/runtime'
+import { EnumNumberValue, FormTestModel, Gender, ParameterTestModel } from '../testModel'
 
 @Route('ParameterTest')
 export class ParameterController {
@@ -26,7 +26,7 @@ export class ParameterController {
    */
   @Post('Example/{firstname}')
   public async example(@Path() firstname: string, @Query() lastname: string, @Body() gender: Gender, @Query() nicknames: string[]): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -64,7 +64,7 @@ export class ParameterController {
       lastname,
       nicknames,
       weight,
-    });
+    })
   }
 
   /**
@@ -93,7 +93,7 @@ export class ParameterController {
       lastname: queryParams.lastname,
       nicknames: queryParams.nicknames,
       weight: queryParams.weight,
-    });
+    })
   }
 
   /**
@@ -128,7 +128,7 @@ export class ParameterController {
       human,
       lastname,
       weight,
-    });
+    })
   }
 
   /**
@@ -160,7 +160,7 @@ export class ParameterController {
       human,
       lastname,
       weight,
-    });
+    })
   }
 
   /**
@@ -170,7 +170,7 @@ export class ParameterController {
    */
   @Get(`PathTemplateLiteral/{id}`)
   public async getPathTemplateLiteral(@Path() id: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -205,7 +205,7 @@ export class ParameterController {
       human,
       lastname,
       weight,
-    });
+    })
   }
 
   /**
@@ -222,17 +222,17 @@ export class ParameterController {
       human: Boolean(request.query.age),
       lastname: request.query.lastname,
       weight: Number(request.query.weight),
-    });
+    })
   }
 
   @Post('RequestProps')
   public async getRequestProp(@RequestProp('body') body: ParameterTestModel): Promise<ParameterTestModel> {
-    return Promise.resolve<ParameterTestModel>(body);
+    return Promise.resolve<ParameterTestModel>(body)
   }
 
   @Post('HapiRequestProps')
   public async getHapiRequestProp(@RequestProp('payload') payload: ParameterTestModel): Promise<ParameterTestModel> {
-    return Promise.resolve<ParameterTestModel>(payload);
+    return Promise.resolve<ParameterTestModel>(payload)
   }
 
   /**
@@ -260,7 +260,7 @@ export class ParameterController {
       human: body.human,
       lastname: body.lastname,
       weight: body.weight,
-    });
+    })
   }
 
   /**
@@ -270,9 +270,9 @@ export class ParameterController {
    */
   @Post('Bodies')
   public async getBodies(@Body() body: ParameterTestModel[]): Promise<ParameterTestModel[]> {
-    const bodies = [...[body].flat()];
+    const bodies = [...[body].flat()]
 
-    return Promise.resolve<ParameterTestModel[]>(bodies);
+    return Promise.resolve<ParameterTestModel[]>(bodies)
   }
 
   /**
@@ -305,7 +305,7 @@ export class ParameterController {
       human,
       lastname,
       weight,
-    });
+    })
   }
 
   @Get('FormData')
@@ -314,7 +314,7 @@ export class ParameterController {
       data,
       indexes,
       gender,
-    });
+    })
   }
 
   @Get('ParameterHeaderStringType')
@@ -390,7 +390,7 @@ export class ParameterController {
    */
   @Get('Res')
   public async getRes(@Res() res: TsoaResponse<400, { name: string }>): Promise<void> {
-    res?.(400, { name: 'alternate response' });
+    res?.(400, { name: 'alternate response' })
   }
 
   @Post('ParameterDeprecated')
@@ -404,6 +404,6 @@ export class ParameterController {
 
   @Post('Inline1')
   public async inline1(@Body() body: { requestString: string; requestNumber: number }): Promise<{ resultString: string; responseNumber: number }> {
-    return { resultString: 'a', responseNumber: 1 };
+    return { resultString: 'a', responseNumber: 1 }
   }
 }

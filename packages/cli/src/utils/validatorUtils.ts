@@ -1,56 +1,56 @@
-import { Tsoa } from '@tsoa/runtime';
-import * as ts from 'typescript';
-import validator from 'validator';
-import { GenerateMetadataError } from './../metadataGeneration/exceptions';
-import { commentToString, getJSDocTags } from './jsDocUtils';
+import { Tsoa } from '@tsoa/runtime'
+import * as ts from 'typescript'
+import validator from 'validator'
+import { GenerateMetadataError } from './../metadataGeneration/exceptions'
+import { commentToString, getJSDocTags } from './jsDocUtils'
 
 export function getParameterValidators(parameter: ts.ParameterDeclaration, parameterName: string): Tsoa.Validators {
   if (!parameter.parent) {
-    return {};
+    return {}
   }
 
-  const getCommentValue = (comment?: string) => comment && comment.split(' ')[0];
+  const getCommentValue = (comment?: string) => comment && comment.split(' ')[0]
 
   const tags = getJSDocTags(parameter.parent, tag => {
-    const { comment } = tag;
-    return getParameterTagSupport().some(value => !!commentToString(comment) && value === tag.tagName.text && getCommentValue(commentToString(comment)) === parameterName);
-  });
+    const { comment } = tag
+    return getParameterTagSupport().some(value => !!commentToString(comment) && value === tag.tagName.text && getCommentValue(commentToString(comment)) === parameterName)
+  })
 
   function getErrorMsg(comment?: string, isValue = true) {
     if (!comment) {
-      return;
+      return
     }
     if (isValue) {
-      const indexOf = comment.indexOf(' ');
+      const indexOf = comment.indexOf(' ')
       if (indexOf > 0) {
-        return comment.substr(indexOf + 1);
+        return comment.substr(indexOf + 1)
       } else {
-        return undefined;
+        return undefined
       }
     } else {
-      return comment;
+      return comment
     }
   }
 
   return tags.reduce(
     (validateObj, tag) => {
       if (!tag.comment) {
-        return validateObj;
+        return validateObj
       }
 
-      const name = tag.tagName.text;
+      const name = tag.tagName.text
       const comment = commentToString(tag.comment)
         ?.substring((commentToString(tag.comment)?.indexOf(' ') || -1) + 1)
-        .trim();
-      const value = getCommentValue(comment);
+        .trim()
+      const value = getCommentValue(comment)
 
       switch (name) {
         case 'uniqueItems':
           validateObj[name] = {
             errorMsg: getErrorMsg(comment, false),
             value: undefined,
-          };
-          break;
+          }
+          break
         case 'minimum':
         case 'maximum':
         case 'minItems':
@@ -58,98 +58,98 @@ export function getParameterValidators(parameter: ts.ParameterDeclaration, param
         case 'minLength':
         case 'maxLength':
           if (isNaN(value as any)) {
-            throw new GenerateMetadataError(`${name} parameter use number.`);
+            throw new GenerateMetadataError(`${name} parameter use number.`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(comment),
             value: Number(value),
-          };
-          break;
+          }
+          break
         case 'minDate':
         case 'maxDate':
           if (!validator.isISO8601(String(value), { strict: true })) {
-            throw new GenerateMetadataError(`${name} parameter use date format ISO 8601 ex. 2017-05-14, 2017-05-14T05:18Z`);
+            throw new GenerateMetadataError(`${name} parameter use date format ISO 8601 ex. 2017-05-14, 2017-05-14T05:18Z`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(comment),
             value,
-          };
-          break;
+          }
+          break
         case 'pattern':
           if (typeof value !== 'string') {
-            throw new GenerateMetadataError(`${name} parameter use string.`);
+            throw new GenerateMetadataError(`${name} parameter use string.`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(comment),
             value: removeSurroundingQuotes(value),
-          };
-          break;
+          }
+          break
         default:
           if (name.startsWith('is')) {
-            const errorMsg = getErrorMsg(comment, false);
+            const errorMsg = getErrorMsg(comment, false)
             if (errorMsg) {
               validateObj[name] = {
                 errorMsg,
                 value: undefined,
-              };
+              }
             }
           }
-          break;
+          break
       }
-      return validateObj;
+      return validateObj
     },
     {} as Tsoa.Validators & { [unknown: string]: { errorMsg: string; value: undefined } },
-  );
+  )
 }
 
 export function getPropertyValidators(property: ts.Node): Tsoa.Validators | undefined {
   const tags = getJSDocTags(property, tag => {
-    return getParameterTagSupport().some(value => value === tag.tagName.text);
-  });
+    return getParameterTagSupport().some(value => value === tag.tagName.text)
+  })
   function getValue(comment?: string) {
     if (!comment) {
-      return;
+      return
     }
-    return comment.split(' ')[0];
+    return comment.split(' ')[0]
   }
   function getFullValue(comment?: string) {
     if (!comment) {
-      return;
+      return
     }
     if (comment.includes('\n')) {
-      return comment.split('\n')[0];
+      return comment.split('\n')[0]
     }
-    return comment;
+    return comment
   }
   function getErrorMsg(comment?: string, isValue = true) {
     if (!comment) {
-      return;
+      return
     }
     if (isValue) {
-      const indexOf = comment.indexOf(' ');
+      const indexOf = comment.indexOf(' ')
       if (indexOf > 0) {
-        return comment.substr(indexOf + 1);
+        return comment.substr(indexOf + 1)
       } else {
-        return undefined;
+        return undefined
       }
     } else {
-      return comment;
+      return comment
     }
   }
 
   return tags.reduce(
     (validateObj, tag) => {
-      const name = tag.tagName.text;
-      const comment = tag.comment;
-      const value = getValue(commentToString(comment));
+      const name = tag.tagName.text
+      const comment = tag.comment
+      const value = getValue(commentToString(comment))
 
       switch (name) {
         case 'uniqueItems':
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment), false),
             value: undefined,
-          };
-          break;
+          }
+          break
         case 'minimum':
         case 'maximum':
         case 'minItems':
@@ -157,57 +157,57 @@ export function getPropertyValidators(property: ts.Node): Tsoa.Validators | unde
         case 'minLength':
         case 'maxLength':
           if (isNaN(value as any)) {
-            throw new GenerateMetadataError(`${name} parameter use number.`);
+            throw new GenerateMetadataError(`${name} parameter use number.`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment)),
             value: Number(value),
-          };
-          break;
+          }
+          break
         case 'minDate':
         case 'maxDate':
           if (!validator.isISO8601(String(value), { strict: true })) {
-            throw new GenerateMetadataError(`${name} parameter use date format ISO 8601 ex. 2017-05-14, 2017-05-14T05:18Z`);
+            throw new GenerateMetadataError(`${name} parameter use date format ISO 8601 ex. 2017-05-14, 2017-05-14T05:18Z`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment)),
             value,
-          };
-          break;
+          }
+          break
         case 'pattern':
           if (typeof value !== 'string') {
-            throw new GenerateMetadataError(`${name} parameter use string.`);
+            throw new GenerateMetadataError(`${name} parameter use string.`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment)),
             value: removeSurroundingQuotes(value),
-          };
-          break;
+          }
+          break
         case 'title':
           if (typeof value !== 'string') {
-            throw new GenerateMetadataError(`${name} parameter use string.`);
+            throw new GenerateMetadataError(`${name} parameter use string.`)
           }
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment)),
             value: getFullValue(commentToString(comment)),
-          };
-          break;
+          }
+          break
         default:
           if (name.startsWith('is')) {
-            const errorMsg = getErrorMsg(commentToString(comment), false);
+            const errorMsg = getErrorMsg(commentToString(comment), false)
             if (errorMsg) {
               validateObj[name] = {
                 errorMsg,
                 value: undefined,
-              };
+              }
             }
           }
-          break;
+          break
       }
-      return validateObj;
+      return validateObj
     },
     {} as Tsoa.Validators & { [unknown: string]: { errorMsg: string; value: undefined } },
-  );
+  )
 }
 
 function getParameterTagSupport() {
@@ -231,19 +231,19 @@ function getParameterTagSupport() {
     'minDate',
     'maxDate',
     'title',
-  ];
+  ]
 }
 
 function removeSurroundingQuotes(str: string) {
   if (str.startsWith('`') && str.endsWith('`')) {
-    return str.substring(1, str.length - 1);
+    return str.substring(1, str.length - 1)
   }
   if (str.startsWith('```') && str.endsWith('```')) {
-    return str.substring(3, str.length - 3);
+    return str.substring(3, str.length - 3)
   }
-  return str;
+  return str
 }
 
 export function shouldIncludeValidatorInSchema(key: string): key is Tsoa.SchemaValidatorKey {
-  return !key.startsWith('is') && key !== 'minDate' && key !== 'maxDate';
+  return !key.startsWith('is') && key !== 'minDate' && key !== 'maxDate'
 }

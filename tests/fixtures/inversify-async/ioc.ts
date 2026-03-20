@@ -1,22 +1,22 @@
-import { Container, interfaces } from 'inversify';
-import { AsyncController } from './asyncController';
-import { AsyncService } from './asyncService';
-import { AsyncErrorController } from './asyncErrorController';
+import { Container, interfaces } from 'inversify'
+import { AsyncController } from './asyncController'
+import { AsyncService } from './asyncService'
+import { AsyncErrorController } from './asyncErrorController'
 
-const container = new Container();
-container.bind<AsyncService>(AsyncService).to(AsyncService).inSingletonScope();
-container.bind<AsyncController>(AsyncController).to(AsyncController).inSingletonScope();
+const container = new Container()
+container.bind<AsyncService>(AsyncService).to(AsyncService).inSingletonScope()
+container.bind<AsyncController>(AsyncController).to(AsyncController).inSingletonScope()
 container.bind('error').toFactory(() => {
-  throw new Error('DI Error');
+  throw new Error('DI Error')
   return () => {
-    return '';
-  };
-});
-container.bind<AsyncErrorController>(AsyncErrorController).to(AsyncErrorController).inSingletonScope();
+    return ''
+  }
+})
+container.bind<AsyncErrorController>(AsyncErrorController).to(AsyncErrorController).inSingletonScope()
 
 const iocContainer = {
   async get<T>(controller: interfaces.ServiceIdentifier<T>): Promise<T> {
-    return container.get(controller);
+    return container.get(controller)
   },
-};
-export { iocContainer };
+}
+export { iocContainer }

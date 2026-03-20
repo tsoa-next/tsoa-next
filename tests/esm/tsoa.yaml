@@ -1,10 +1,10 @@
 ---
-entryFile: "./fixtures/express/server.ts"
+entryFile: './fixtures/express/server.ts'
 noImplicitAdditionalProperties: silently-remove-extras
 spec:
-  outputDirectory: "./dist"
+  outputDirectory: './dist'
   host: localhost:3000
-  basePath: "/v1"
+  basePath: '/v1'
   securityDefinitions:
     api_key:
       type: apiKey
@@ -20,8 +20,8 @@ spec:
   yaml: true
   specVersion: 2
 routes:
-  basePath: "/v1"
-  routesDir: "./fixtures/express"
+  basePath: '/v1'
+  routesDir: './fixtures/express'
   middleware: express
-  authenticationModule: "./fixtures/express/authentication.ts"
+  authenticationModule: './fixtures/express/authentication.ts'
   esm: true

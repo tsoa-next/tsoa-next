@@ -1,8 +1,8 @@
-import { inject } from 'inversify';
-import { Get, Route, Security } from '@tsoa/runtime';
-import { TestModel } from '../testModel';
-import { ManagedService } from './managedService';
-import { provideSingleton } from './provideSingleton';
+import { inject } from 'inversify'
+import { Get, Route, Security } from '@tsoa/runtime'
+import { TestModel } from '../testModel'
+import { ManagedService } from './managedService'
+import { provideSingleton } from './provideSingleton'
 
 @provideSingleton(ManagedController)
 @Route('ManagedTest')
@@ -12,11 +12,11 @@ export class ManagedController {
 
   @Get()
   public async getModel(): Promise<TestModel> {
-    return this.managedService.getModel();
+    return this.managedService.getModel()
   }
 
   @Get('ThrowsError')
   public getThrowsError(): void {
-    throw new Error('error thrown');
+    throw new Error('error thrown')
   }
 }

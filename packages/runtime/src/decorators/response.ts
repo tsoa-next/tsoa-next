@@ -1,10 +1,10 @@
-import { IsValidHeader } from '../utils/isHeaderType';
-import { HttpStatusCodeLiteral, HttpStatusCodeStringLiteral, OtherValidOpenApiHttpStatusCode } from '../interfaces/response';
+import { IsValidHeader } from '../utils/isHeaderType'
+import { HttpStatusCodeLiteral, HttpStatusCodeStringLiteral, OtherValidOpenApiHttpStatusCode } from '../interfaces/response'
 
 export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(name: string | number, description?: string, produces?: string | string[]): MethodDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderType> = object>(
@@ -14,8 +14,8 @@ export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderTyp
   produces?: string | string[],
 ): MethodDecorator & ClassDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -25,8 +25,8 @@ export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderTyp
  */
 export function Res(): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -37,6 +37,6 @@ export function Res(): ParameterDecorator {
  */
 export function Produces(value: string): MethodDecorator & ClassDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }

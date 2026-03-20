@@ -1,26 +1,26 @@
-import { Body, BodyProp, Get, Post, Query, Route } from '@tsoa/runtime';
-import { ValidateMapStringToAny, ValidateMapStringToNumber, ValidateModel } from './../testModel';
+import { Body, BodyProp, Get, Post, Query, Route } from '@tsoa/runtime'
+import { ValidateMapStringToAny, ValidateMapStringToNumber, ValidateModel } from './../testModel'
 
 export interface ValidateDateResponse {
-  minDateValue: Date;
-  maxDateValue: Date;
+  minDateValue: Date
+  maxDateValue: Date
 }
 export interface ValidateNumberResponse {
-  minValue: number;
-  maxValue: number;
+  minValue: number
+  maxValue: number
 }
 export interface ValidateBooleanResponse {
-  boolValue: boolean;
+  boolValue: boolean
 }
 export interface ValidateStringResponse {
-  minLength: string;
-  maxLength: string;
-  patternValue: string;
-  quotedPatternValue: string;
+  minLength: string
+  maxLength: string
+  patternValue: string
+  quotedPatternValue: string
 }
 
 export interface ValidateBodyPropResponse {
-  name: string;
+  name: string
 }
 
 @Route('Validate')
@@ -39,7 +39,7 @@ export class ValidateController {
     return Promise.resolve({
       maxDateValue,
       minDateValue,
-    });
+    })
   }
   /**
    *
@@ -55,7 +55,7 @@ export class ValidateController {
     return Promise.resolve({
       maxDateValue,
       minDateValue,
-    });
+    })
   }
   /**
    * @param {number} value
@@ -70,7 +70,7 @@ export class ValidateController {
     return Promise.resolve({
       minValue: value,
       maxValue: value_max,
-    });
+    })
   }
   /**
    * @param {number} minValue
@@ -85,7 +85,7 @@ export class ValidateController {
     return Promise.resolve({
       maxValue,
       minValue,
-    });
+    })
   }
   /**
    * @param {boolean} boolValue
@@ -95,7 +95,7 @@ export class ValidateController {
   public booleanValidate(@Query() boolValue: boolean): Promise<ValidateBooleanResponse> {
     return Promise.resolve({
       boolValue,
-    });
+    })
   }
   /**
    * @param {string} minLength
@@ -114,7 +114,7 @@ export class ValidateController {
       minLength,
       patternValue,
       quotedPatternValue,
-    });
+    })
   }
   /**
    * @param {number} longValue
@@ -122,7 +122,7 @@ export class ValidateController {
    */
   @Get('parameter/customRequiredErrorMsg')
   public customRequiredErrorMsg(@Query() longValue: number): Promise<void> {
-    return Promise.resolve();
+    return Promise.resolve()
   }
   /**
    * @param {number} longValue
@@ -130,26 +130,26 @@ export class ValidateController {
    */
   @Get('parameter/customInvalidErrorMsg')
   public customInvalidErrorMsg(@Query() longValue: number): Promise<void> {
-    return Promise.resolve();
+    return Promise.resolve()
   }
 
   @Post('body')
   public bodyValidate(@Body() body: ValidateModel): Promise<ValidateModel> {
-    return Promise.resolve(body);
+    return Promise.resolve(body)
   }
 
   @Post('body-prop')
   public bodyPropValidate(@BodyProp('name') name: string): Promise<ValidateBodyPropResponse> {
-    return Promise.resolve({ name: `${name}-validated` });
+    return Promise.resolve({ name: `${name}-validated` })
   }
 
   @Post('map')
   public async getNumberBodyRequest(@Body() map: ValidateMapStringToNumber): Promise<number[]> {
-    return Object.keys(map).map(key => map[key]);
+    return Object.keys(map).map(key => map[key])
   }
 
   @Post('mapAny')
   public async getDictionaryRequest(@Body() map: ValidateMapStringToAny): Promise<any[]> {
-    return Object.keys(map).map(key => map[key]);
+    return Object.keys(map).map(key => map[key])
   }
 }

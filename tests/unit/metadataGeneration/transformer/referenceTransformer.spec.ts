@@ -1,8 +1,8 @@
-import { expect } from 'chai';
-import 'mocha';
-import { ReferenceTransformer } from '@tsoa/cli/metadataGeneration/transformer/referenceTransformer';
-import { GenerateMetadataError } from '@tsoa/cli/metadataGeneration/exceptions';
-import { Tsoa } from '@tsoa/runtime';
+import { expect } from 'chai'
+import 'mocha'
+import { ReferenceTransformer } from '@tsoa/cli/metadataGeneration/transformer/referenceTransformer'
+import { GenerateMetadataError } from '@tsoa/cli/metadataGeneration/exceptions'
+import { Tsoa } from '@tsoa/runtime'
 
 // Helper function to create Property objects with minimal required fields
 function createProperty(name: string, type: Tsoa.Type, required: boolean = true): any {
@@ -10,16 +10,16 @@ function createProperty(name: string, type: Tsoa.Type, required: boolean = true)
     name,
     type,
     required,
-  };
+  }
 }
 
 describe('ReferenceTransformer - Empty Array Handling', () => {
   describe('merge method', () => {
     it('should throw error when merging empty array', () => {
       expect(() => {
-        ReferenceTransformer.merge([]);
-      }).to.throw(GenerateMetadataError, 'Cannot merge empty reference types array');
-    });
+        ReferenceTransformer.merge([])
+      }).to.throw(GenerateMetadataError, 'Cannot merge empty reference types array')
+    })
 
     it('should return single reference type when array has one element', () => {
       const singleRef: Tsoa.ReferenceType = {
@@ -29,12 +29,12 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         additionalProperties: false as any,
         description: 'Test object',
         deprecated: false,
-      };
+      }
 
-      const result = ReferenceTransformer.merge([singleRef]);
+      const result = ReferenceTransformer.merge([singleRef])
 
-      expect(result).to.deep.equal(singleRef);
-    });
+      expect(result).to.deep.equal(singleRef)
+    })
 
     it('should merge multiple refEnum types correctly', () => {
       const refEnums: Tsoa.RefEnumType[] = [
@@ -54,9 +54,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Second enum',
           deprecated: false,
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.merge(refEnums);
+      const result = ReferenceTransformer.merge(refEnums)
 
       expect(result).to.deep.equal({
         dataType: 'refEnum',
@@ -66,8 +66,8 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First enum\nSecond enum',
         deprecated: false,
         example: undefined,
-      });
-    });
+      })
+    })
 
     it('should merge multiple refObject types correctly', () => {
       const refObjects: Tsoa.RefObjectType[] = [
@@ -87,9 +87,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Second object',
           deprecated: false,
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.merge(refObjects);
+      const result = ReferenceTransformer.merge(refObjects)
 
       expect(result).to.deep.equal({
         dataType: 'refObject',
@@ -99,8 +99,8 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First object\nSecond object',
         deprecated: false,
         example: undefined,
-      });
-    });
+      })
+    })
 
     it('should throw error for mixed reference types', () => {
       const mixedRefs: Tsoa.ReferenceType[] = [
@@ -120,12 +120,12 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Test object',
           deprecated: false,
         },
-      ];
+      ]
 
       expect(() => {
-        ReferenceTransformer.merge(mixedRefs);
-      }).to.throw(GenerateMetadataError, 'These resolved type merge rules are not defined');
-    });
+        ReferenceTransformer.merge(mixedRefs)
+      }).to.throw(GenerateMetadataError, 'These resolved type merge rules are not defined')
+    })
 
     it('should handle refObject with additionalProperties', () => {
       const refObjects: Tsoa.RefObjectType[] = [
@@ -145,9 +145,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Second object',
           deprecated: false,
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.merge(refObjects);
+      const result = ReferenceTransformer.merge(refObjects)
 
       expect(result).to.deep.equal({
         dataType: 'refObject',
@@ -160,8 +160,8 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First object\nSecond object',
         deprecated: false,
         example: undefined,
-      });
-    });
+      })
+    })
 
     it('should handle refObject with example property', () => {
       const refObjects: Tsoa.RefObjectType[] = [
@@ -183,9 +183,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           deprecated: false,
           example: 'example2',
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.merge(refObjects);
+      const result = ReferenceTransformer.merge(refObjects)
 
       expect(result).to.deep.equal({
         dataType: 'refObject',
@@ -206,8 +206,8 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First object\nSecond object',
         deprecated: false,
         example: 'example1', // First example should be used
-      });
-    });
+      })
+    })
 
     it('should handle refObject with deprecated property', () => {
       const refObjects: Tsoa.RefObjectType[] = [
@@ -227,9 +227,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Second object',
           deprecated: true,
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.merge(refObjects);
+      const result = ReferenceTransformer.merge(refObjects)
 
       expect(result).to.deep.equal({
         dataType: 'refObject',
@@ -250,9 +250,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First object\nSecond object',
         deprecated: true, // Should be true if any is deprecated
         example: undefined,
-      });
-    });
-  });
+      })
+    })
+  })
 
   describe('mergeManyRefObj method', () => {
     it('should merge title field from refObjects', () => {
@@ -275,23 +275,23 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           deprecated: false,
           title: 'SecondTitle',
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.mergeManyRefObj(refObjects);
+      const result = ReferenceTransformer.mergeManyRefObj(refObjects)
 
-      expect(result.title).to.equal('FirstTitle');
+      expect(result.title).to.equal('FirstTitle')
       expect(result).to.include({
         dataType: 'refObject',
         refName: 'TestObject',
         description: 'First object\nSecond object',
         deprecated: false,
         example: undefined,
-      });
+      })
       expect(result.properties).to.deep.include.members([
         { name: 'id', type: { dataType: 'string' }, required: true },
         { name: 'name', type: { dataType: 'string' }, required: true },
-      ]);
-    });
+      ])
+    })
     it('should handle single refObject', () => {
       const refObject: Tsoa.RefObjectType = {
         dataType: 'refObject',
@@ -300,17 +300,17 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         additionalProperties: false as any,
         description: 'Test object',
         deprecated: false,
-      };
+      }
 
       // mergeManyRefObj requires at least 2 elements, so we'll test with 2 identical objects
-      const result = ReferenceTransformer.mergeManyRefObj([refObject, refObject]);
+      const result = ReferenceTransformer.mergeManyRefObj([refObject, refObject])
 
       expect(result).to.deep.equal({
         ...refObject,
         description: 'Test object\nTest object',
         example: undefined,
-      });
-    });
+      })
+    })
 
     it('should merge multiple refObjects correctly', () => {
       const refObjects: Tsoa.RefObjectType[] = [
@@ -338,9 +338,9 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
           description: 'Third object',
           deprecated: true,
         },
-      ];
+      ]
 
-      const result = ReferenceTransformer.mergeManyRefObj(refObjects);
+      const result = ReferenceTransformer.mergeManyRefObj(refObjects)
 
       expect(result).to.deep.equal({
         dataType: 'refObject',
@@ -366,7 +366,7 @@ describe('ReferenceTransformer - Empty Array Handling', () => {
         description: 'First object\nSecond object\nThird object',
         deprecated: true,
         example: undefined,
-      });
-    });
-  });
-});
+      })
+    })
+  })
+})

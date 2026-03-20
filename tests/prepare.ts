@@ -1,28 +1,28 @@
 /* eslint-disable no-console */
-import { dim, green } from 'chalk';
-import { generateSpecAndRoutes, generateRoutes } from '@tsoa/cli';
-import { Timer } from './utils/timer';
-import { tmpdir } from 'node:os';
+import { dim, green } from 'chalk'
+import { generateSpecAndRoutes, generateRoutes } from '@tsoa/cli'
+import { Timer } from './utils/timer'
+import { tmpdir } from 'node:os'
 
 const spec = async () => {
   const result = await generateSpecAndRoutes({
     configuration: 'tsoa.json',
-  });
-  return result;
-};
+  })
+  return result
+}
 
 const log = async <T>(label: string, fn: () => Promise<T>) => {
-  console.log(dim(green(`↻ Starting ${label}...`)));
-  const timer = new Timer();
+  console.log(dim(green(`↻ Starting ${label}...`)))
+  const timer = new Timer()
 
-  const result = await fn();
-  console.log(green(`✓ Finished ${label} in ${timer.elapsed()}ms`));
+  const result = await fn()
+  console.log(green(`✓ Finished ${label} in ${timer.elapsed()}ms`))
 
-  return result;
-};
+  return result
+}
 
-(async () => {
-  const metadata = await log('Swagger Spec Generation', spec);
+;(async () => {
+  const metadata = await log('Swagger Spec Generation', spec)
 
   await Promise.all([
     log('Express Route Generation', () =>
@@ -243,5 +243,5 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
         stackTemplate: './fixtures/custom/custom-route-generator/templates/api-stack.hbs',
       }),
     ),
-  ]);
-})();
+  ])
+})()

@@ -1,5 +1,5 @@
-import { ExtendedSpecConfig } from '@tsoa/cli/cli';
-import { Config } from '@tsoa/runtime';
+import { ExtendedSpecConfig } from '@tsoa/cli/cli'
+import { Config } from '@tsoa/runtime'
 export function getDefaultOptions(outputDirectory = '', entryFile = ''): Config {
   return {
     entryFile,
@@ -66,15 +66,15 @@ export function getDefaultOptions(outputDirectory = '', entryFile = ''): Config 
       version: '1.0.0',
       tags: [{ name: 'hello', description: 'Endpoints related to greeting functionality' }],
     },
-  };
+  }
 }
 
 export function getDefaultExtendedOptions(outputDirectory = '', entryFile = ''): ExtendedSpecConfig {
-  const defaultOptions = getDefaultOptions(outputDirectory, entryFile);
+  const defaultOptions = getDefaultOptions(outputDirectory, entryFile)
   return {
     ...defaultOptions.spec,
     entryFile,
     noImplicitAdditionalProperties: 'ignore',
     controllerPathGlobs: defaultOptions.controllerPathGlobs,
-  };
+  }
 }

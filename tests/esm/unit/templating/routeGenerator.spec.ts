@@ -1,11 +1,11 @@
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-import 'mocha';
-import { generateRoutes, type ExtendedRoutesConfig } from 'tsoa';
-import { DummyRouteGenerator } from '../../fixtures/templating/dummyRouteGenerator';
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import 'mocha'
+import { generateRoutes, type ExtendedRoutesConfig } from 'tsoa-next'
+import { DummyRouteGenerator } from '../../fixtures/templating/dummyRouteGenerator'
 
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+chai.use(chaiAsPromised)
+const expect = chai.expect
 
 describe('RouteGenerator', () => {
   describe('.generateRoutes', () => {
@@ -18,13 +18,13 @@ describe('RouteGenerator', () => {
         routesDir: 'dist/routes',
         controllerPathGlobs: ['fixtures/controllers/*.ts'],
         routeGenerator: DummyRouteGenerator,
-      };
+      }
 
       // Act
-      await generateRoutes(routesConfig);
+      await generateRoutes(routesConfig)
 
       // Assert
-      expect(DummyRouteGenerator.getCallCount()).gt(0);
-    });
-  });
-});
+      expect(DummyRouteGenerator.getCallCount()).gt(0)
+    })
+  })
+})

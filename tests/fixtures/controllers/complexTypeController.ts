@@ -1,5 +1,5 @@
-import { Body, Get, Post, Queries, Query, Route } from '@tsoa/runtime';
-import { z } from 'zod';
+import { Body, Get, Post, Queries, Query, Route } from '@tsoa/runtime'
+import { z } from 'zod'
 
 // Zod schemas for testing z.infer type resolution
 const UserSchema = z.object({
@@ -10,7 +10,7 @@ const UserSchema = z.object({
   isActive: z.boolean(),
   tags: z.array(z.string()),
   metadata: z.object({ source: z.string() }).optional(),
-});
+})
 
 const ProductSchema = z.object({
   id: z.string(),
@@ -30,7 +30,7 @@ const ProductSchema = z.object({
         .optional(),
     })
     .optional(),
-});
+})
 
 const OrderSchema = z.object({
   id: z.string(),
@@ -46,42 +46,42 @@ const OrderSchema = z.object({
   status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
   createdAt: z.date(),
   updatedAt: z.date(),
-});
+})
 
 // Complex generic types for testing
 interface GenericWrapper<T> {
-  data: T;
+  data: T
   metadata: {
-    timestamp: Date;
-    version: string;
-  };
+    timestamp: Date
+    version: string
+  }
 }
 
 interface NestedGeneric<A, B> {
-  first: A;
-  second: B;
-  combined: GenericWrapper<A & B>;
+  first: A
+  second: B
+  combined: GenericWrapper<A & B>
 }
 
 interface ConditionalType<T> {
-  value: T extends string ? { text: T; length: number } : { numeric: T; doubled: number };
+  value: T extends string ? { text: T; length: number } : { numeric: T; doubled: number }
 }
 
 type MappedType<T> = {
-  [K in keyof T]: T[K] extends string ? string : T[K];
-};
+  [K in keyof T]: T[K] extends string ? string : T[K]
+}
 
 // Union types
-type Status = 'active' | 'inactive' | 'pending';
-type Priority = 'low' | 'medium' | 'high' | 'urgent';
+type Status = 'active' | 'inactive' | 'pending'
+type Priority = 'low' | 'medium' | 'high' | 'urgent'
 
 interface Task {
-  id: string;
-  title: string;
-  status: Status;
-  priority: Priority;
-  assignee?: string;
-  dueDate?: Date;
+  id: string
+  title: string
+  status: Status
+  priority: Priority
+  assignee?: string
+  dueDate?: Date
 }
 
 // Pagination schema for @Queries testing
@@ -96,9 +96,9 @@ export const PaginationSchema = z.object({
     .transform(val => parseInt(val || '10')),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
-});
+})
 
-export type PaginationQuery = z.infer<typeof PaginationSchema>;
+export type PaginationQuery = z.infer<typeof PaginationSchema>
 
 // Discriminated union schemas for complex body testing
 export const UserCreatedEventSchema = z.object({
@@ -106,25 +106,25 @@ export const UserCreatedEventSchema = z.object({
   userId: z.string(),
   email: z.string().email(),
   createdAt: z.date(),
-});
+})
 
 export const UserUpdatedEventSchema = z.object({
   type: z.literal('user_updated'),
   userId: z.string(),
   changes: z.record(z.string(), z.any()),
   updatedAt: z.date(),
-});
+})
 
 export const UserDeletedEventSchema = z.object({
   type: z.literal('user_deleted'),
   userId: z.string(),
   deletedAt: z.date(),
   reason: z.string().optional(),
-});
+})
 
-export const UserEventSchema = z.discriminatedUnion('type', [UserCreatedEventSchema, UserUpdatedEventSchema, UserDeletedEventSchema]);
+export const UserEventSchema = z.discriminatedUnion('type', [UserCreatedEventSchema, UserUpdatedEventSchema, UserDeletedEventSchema])
 
-export type UserEvent = z.infer<typeof UserEventSchema>;
+export type UserEvent = z.infer<typeof UserEventSchema>
 
 @Route('ComplexType')
 export class ComplexTypeController {
@@ -133,7 +133,7 @@ export class ComplexTypeController {
    */
   @Post('ZodUserBody')
   public async postZodUserBody(@Body() body: z.infer<typeof UserSchema>): Promise<z.infer<typeof UserSchema>> {
-    return body;
+    return body
   }
 
   /**
@@ -141,7 +141,7 @@ export class ComplexTypeController {
    */
   @Post('ZodProductBody')
   public async postZodProductBody(@Body() body: z.infer<typeof ProductSchema>): Promise<z.infer<typeof ProductSchema>> {
-    return body;
+    return body
   }
 
   /**
@@ -149,7 +149,7 @@ export class ComplexTypeController {
    */
   @Post('ZodOrderBody')
   public async postZodOrderBody(@Body() body: z.infer<typeof OrderSchema>): Promise<z.infer<typeof OrderSchema>> {
-    return body;
+    return body
   }
 
   /**
@@ -157,7 +157,7 @@ export class ComplexTypeController {
    */
   @Post('SimpleGenericBody')
   public async postSimpleGenericBody(@Body() body: GenericWrapper<string>): Promise<GenericWrapper<string>> {
-    return body;
+    return body
   }
 
   /**
@@ -165,7 +165,7 @@ export class ComplexTypeController {
    */
   @Post('InterfaceGenericBody')
   public async postInterfaceGenericBody(@Body() body: GenericWrapper<Task>): Promise<GenericWrapper<Task>> {
-    return body;
+    return body
   }
 
   /**
@@ -173,7 +173,7 @@ export class ComplexTypeController {
    */
   @Post('SimpleInterfaceBody')
   public async postSimpleInterfaceBody(@Body() body: Task): Promise<Task> {
-    return body;
+    return body
   }
 
   /**
@@ -181,7 +181,7 @@ export class ComplexTypeController {
    */
   @Post('UnionTypeBody')
   public async postUnionTypeBody(@Body() body: Task): Promise<Task> {
-    return body;
+    return body
   }
 
   /**
@@ -189,7 +189,7 @@ export class ComplexTypeController {
    */
   @Get('SimpleQuery')
   public async getSimpleQuery(@Query() id: string, @Query() name: string, @Query() age: number, @Query() isActive: boolean): Promise<{ id: string; name: string; age: number; isActive: boolean }> {
-    return { id, name, age, isActive };
+    return { id, name, age, isActive }
   }
 
   /**
@@ -197,7 +197,7 @@ export class ComplexTypeController {
    */
   @Get('UnionQuery')
   public async getUnionQuery(@Query() status: Status): Promise<{ status: Status }> {
-    return { status };
+    return { status }
   }
 
   /**
@@ -205,7 +205,7 @@ export class ComplexTypeController {
    */
   @Get('EnumQuery')
   public async getEnumQuery(@Query() priority: Priority): Promise<{ priority: Priority }> {
-    return { priority };
+    return { priority }
   }
 
   /**
@@ -219,7 +219,7 @@ export class ComplexTypeController {
         { id: '1', name: 'Item 1' },
         { id: '2', name: 'Item 2' },
       ],
-    };
+    }
   }
 
   /**
@@ -230,7 +230,7 @@ export class ComplexTypeController {
     return {
       received: body,
       processed: true,
-    };
+    }
   }
 
   /**
@@ -241,7 +241,7 @@ export class ComplexTypeController {
     return {
       event: body,
       message: `User ${body.userId} created successfully`,
-    };
+    }
   }
 
   /**
@@ -252,7 +252,7 @@ export class ComplexTypeController {
     return {
       event: body,
       message: `User ${body.userId} updated successfully`,
-    };
+    }
   }
 
   /**
@@ -263,6 +263,6 @@ export class ComplexTypeController {
     return {
       event: body,
       message: `User ${body.userId} deleted successfully`,
-    };
+    }
   }
 }

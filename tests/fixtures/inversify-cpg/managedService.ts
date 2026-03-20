@@ -1,5 +1,5 @@
-import { provide } from 'inversify-binding-decorators';
-import { TestModel, TestSubModel } from '../testModel';
+import { provide } from 'inversify-binding-decorators'
+import { TestModel, TestSubModel } from '../testModel'
 
 @provide(ManagedService)
 export class ManagedService {
@@ -37,7 +37,7 @@ export class ManagedService {
       strLiteralVal: 'Foo',
       stringArray: ['string one', 'string two'],
       stringValue: 'a string',
-    };
-    return testModel as TestModel;
+    }
+    return testModel as TestModel
   }
 }

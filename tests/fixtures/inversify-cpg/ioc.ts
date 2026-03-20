@@ -1,8 +1,8 @@
-import { Container } from 'inversify';
-import { buildProviderModule } from 'inversify-binding-decorators';
+import { Container } from 'inversify'
+import { buildProviderModule } from 'inversify-binding-decorators'
 
-const iocContainer = new Container();
+const iocContainer = new Container()
 
-iocContainer.load(buildProviderModule());
+iocContainer.load(buildProviderModule())
 
-export { iocContainer };
+export { iocContainer }

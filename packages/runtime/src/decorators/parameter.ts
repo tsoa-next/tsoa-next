@@ -4,8 +4,8 @@
  */
 export function Body(): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -15,8 +15,8 @@ export function Body(): ParameterDecorator {
  */
 export function BodyProp(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -24,8 +24,8 @@ export function BodyProp(name?: string): ParameterDecorator {
  */
 export function Request(): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -35,8 +35,8 @@ export function Request(): ParameterDecorator {
  */
 export function RequestProp(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -46,8 +46,8 @@ export function RequestProp(name?: string): ParameterDecorator {
  */
 export function Path(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -57,8 +57,8 @@ export function Path(name?: string): ParameterDecorator {
  */
 export function Query(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -66,8 +66,8 @@ export function Query(name?: string): ParameterDecorator {
  */
 export function Queries(): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -77,8 +77,8 @@ export function Queries(): ParameterDecorator {
  */
 export function Header(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -86,8 +86,8 @@ export function Header(name?: string): ParameterDecorator {
  */
 export function Inject(): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -97,8 +97,8 @@ export function Inject(): ParameterDecorator {
  */
 export function UploadedFile(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -108,8 +108,8 @@ export function UploadedFile(name?: string): ParameterDecorator {
  */
 export function UploadedFiles(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -119,8 +119,8 @@ export function UploadedFiles(name?: string): ParameterDecorator {
  */
 export function FormField(name?: string): ParameterDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -132,6 +132,6 @@ export function FormField(name?: string): ParameterDecorator {
  */
 export function Consumes(value: string): MethodDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }

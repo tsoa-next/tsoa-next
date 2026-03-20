@@ -1,54 +1,54 @@
-import { expect } from 'chai';
-import 'mocha';
-import { MetadataGenerator } from '@tsoa/cli/metadataGeneration/metadataGenerator';
-import { Tsoa } from '@tsoa/runtime';
-import { SpecGenerator2 } from '@tsoa/cli/swagger/specGenerator2';
-import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions';
+import { expect } from 'chai'
+import 'mocha'
+import { MetadataGenerator } from '@tsoa/cli/metadataGeneration/metadataGenerator'
+import { Tsoa } from '@tsoa/runtime'
+import { SpecGenerator2 } from '@tsoa/cli/swagger/specGenerator2'
+import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions'
 
 describe('Metadata generation', () => {
-  const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate();
+  const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
 
   describe('ControllerGenerator', () => {
     it('should generate one controller', () => {
-      expect(metadata.controllers.length).to.equal(1);
-      expect(metadata.controllers[0].name).to.equal('GetTestController');
-      expect(metadata.controllers[0].path).to.equal('GetTest');
-    });
+      expect(metadata.controllers.length).to.equal(1)
+      expect(metadata.controllers[0].name).to.equal('GetTestController')
+      expect(metadata.controllers[0].path).to.equal('GetTest')
+    })
 
     it('should fail if there are no controllers', () => {
       expect(() => {
-        new MetadataGenerator('./fixtures/controllers/noController.ts').Generate();
-      }).to.throw('no controllers found, check tsoa configuration');
-    });
-  });
+        new MetadataGenerator('./fixtures/controllers/noController.ts').Generate()
+      }).to.throw('no controllers found, check tsoa configuration')
+    })
+  })
 
   describe('InvalidExtensionControllerGenerator', () => {
     it('should throw an Error when an attribute is not prefixed with "x-"', () => {
       expect(() => {
-        new MetadataGenerator('./fixtures/controllers/invalidExtensionController.ts').Generate();
-      }).to.throw('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/');
-    });
+        new MetadataGenerator('./fixtures/controllers/invalidExtensionController.ts').Generate()
+      }).to.throw('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/')
+    })
 
     it('should throw an Error when an model attribute is not prefixed with "x-"', () => {
       expect(() => {
-        new MetadataGenerator('./fixtures/controllers/invalidExtensionModelController.ts').Generate();
-      }).to.throw('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/');
-    });
-  });
+        new MetadataGenerator('./fixtures/controllers/invalidExtensionModelController.ts').Generate()
+      }).to.throw('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/')
+    })
+  })
 
   describe('DynamicControllerGenerator', () => {
     it("should should throw 'globs found 0 controllers.'", () => {
       expect(() => {
         // Non existing controllers folder to get 0 controllers found error
-        const NON_CONTROLLER_EXISTS_GLOB = './unit/swagger';
-        new MetadataGenerator('./fixtures/express-dynamic-controllers/server.ts', undefined, [], [NON_CONTROLLER_EXISTS_GLOB]).Generate();
-      }).to.throw(/globs found 0 controllers./);
-    });
-  });
+        const NON_CONTROLLER_EXISTS_GLOB = './unit/swagger'
+        new MetadataGenerator('./fixtures/express-dynamic-controllers/server.ts', undefined, [], [NON_CONTROLLER_EXISTS_GLOB]).Generate()
+      }).to.throw(/globs found 0 controllers./)
+    })
+  })
 
   describe('MethodGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/methodController.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/methodController.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
     const definedMethods = [
       'optionsMethod',
       'getMethod',
@@ -70,244 +70,244 @@ describe('Metadata generation', () => {
       'oauthAndAPIkeySecurity',
       'returnAnyType',
       'returnAliasedVoidType',
-    ];
+    ]
 
     it('should only generate the defined methods', () => {
-      expect(controller.methods.filter(m => definedMethods.indexOf(m.name) === -1).length).to.equal(0);
-    });
+      expect(controller.methods.filter(m => definedMethods.indexOf(m.name) === -1).length).to.equal(0)
+    })
 
     it('should generate the defined methods', () => {
-      expect(definedMethods.filter(methodName => controller.methods.map(m => m.name).indexOf(methodName) === -1).length).to.equal(0);
-    });
+      expect(definedMethods.filter(methodName => controller.methods.map(m => m.name).indexOf(methodName) === -1).length).to.equal(0)
+    })
 
     it('should generate options method', () => {
-      const method = controller.methods.find(m => m.name === 'optionsMethod');
+      const method = controller.methods.find(m => m.name === 'optionsMethod')
       if (!method) {
-        throw new Error('Method optionsMethod no detined!');
+        throw new Error('Method optionsMethod no detined!')
       }
 
-      expect(method.method).to.equal('options');
-      expect(method.path).to.equal('Options');
-    });
+      expect(method.method).to.equal('options')
+      expect(method.path).to.equal('Options')
+    })
 
     it('should generate get method', () => {
-      const method = controller.methods.find(m => m.name === 'getMethod');
+      const method = controller.methods.find(m => m.name === 'getMethod')
       if (!method) {
-        throw new Error('Method getMethod not defined!');
+        throw new Error('Method getMethod not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('Get');
-    });
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('Get')
+    })
 
     it('should generate post method', () => {
-      const method = controller.methods.find(m => m.name === 'postMethod');
+      const method = controller.methods.find(m => m.name === 'postMethod')
       if (!method) {
-        throw new Error('Method postMethod not defined!');
+        throw new Error('Method postMethod not defined!')
       }
 
-      expect(method.method).to.equal('post');
-      expect(method.path).to.equal('Post');
-    });
+      expect(method.method).to.equal('post')
+      expect(method.path).to.equal('Post')
+    })
 
     it('should generate patch method', () => {
-      const method = controller.methods.find(m => m.name === 'patchMethod');
+      const method = controller.methods.find(m => m.name === 'patchMethod')
       if (!method) {
-        throw new Error('Method patchMethod not defined!');
+        throw new Error('Method patchMethod not defined!')
       }
 
-      expect(method.method).to.equal('patch');
-      expect(method.path).to.equal('Patch');
-    });
+      expect(method.method).to.equal('patch')
+      expect(method.path).to.equal('Patch')
+    })
 
     it('should generate put method', () => {
-      const method = controller.methods.find(m => m.name === 'putMethod');
+      const method = controller.methods.find(m => m.name === 'putMethod')
       if (!method) {
-        throw new Error('Method putMethod not defined!');
+        throw new Error('Method putMethod not defined!')
       }
 
-      expect(method.method).to.equal('put');
-      expect(method.path).to.equal('Put');
-    });
+      expect(method.method).to.equal('put')
+      expect(method.path).to.equal('Put')
+    })
 
     it('should generate delete method', () => {
-      const method = controller.methods.find(m => m.name === 'deleteMethod');
+      const method = controller.methods.find(m => m.name === 'deleteMethod')
       if (!method) {
-        throw new Error('Method deleteMethod not defined!');
+        throw new Error('Method deleteMethod not defined!')
       }
 
-      expect(method.method).to.equal('delete');
-      expect(method.path).to.equal('Delete');
-    });
+      expect(method.method).to.equal('delete')
+      expect(method.path).to.equal('Delete')
+    })
 
     it('should generate method description', () => {
-      const method = controller.methods.find(m => m.name === 'description');
+      const method = controller.methods.find(m => m.name === 'description')
       if (!method) {
-        throw new Error('Method description not defined!');
+        throw new Error('Method description not defined!')
       }
 
-      expect(method.description).to.equal('method description');
-    });
+      expect(method.description).to.equal('method description')
+    })
 
     it('should generate tags', () => {
-      const method = controller.methods.find(m => m.name === 'tags');
+      const method = controller.methods.find(m => m.name === 'tags')
       if (!method) {
-        throw new Error('Method tags not defined!');
+        throw new Error('Method tags not defined!')
       }
 
-      expect(method.tags).to.deep.equal(['Tag1', 'Tag2', 'Tag3', 'MethodTest']);
-    });
+      expect(method.tags).to.deep.equal(['Tag1', 'Tag2', 'Tag3', 'MethodTest'])
+    })
 
     it('should generate multi response', () => {
-      const method = controller.methods.find(m => m.name === 'multiResponse');
+      const method = controller.methods.find(m => m.name === 'multiResponse')
       if (!method) {
-        throw new Error('Method multiResponse not defined!');
+        throw new Error('Method multiResponse not defined!')
       }
 
-      expect(method.responses.length).to.equal(5);
+      expect(method.responses.length).to.equal(5)
 
-      const badResponse = method.responses[1];
-      expect(badResponse.name).to.equal('400');
-      expect(badResponse.description).to.equal('Bad Request');
+      const badResponse = method.responses[1]
+      expect(badResponse.name).to.equal('400')
+      expect(badResponse.description).to.equal('Bad Request')
       expect(badResponse.examples).to.deep.equal([
         { status: 400, message: 'reason 1' },
         { status: 400, message: 'reason 2' },
-      ]);
+      ])
 
-      const unauthResponse = method.responses[2];
-      expect(unauthResponse.name).to.equal('401');
-      expect(unauthResponse.description).to.equal('Unauthorized');
-      expect(unauthResponse.examples).to.be.undefined;
+      const unauthResponse = method.responses[2]
+      expect(unauthResponse.name).to.equal('401')
+      expect(unauthResponse.description).to.equal('Unauthorized')
+      expect(unauthResponse.examples).to.be.undefined
 
-      const defaultResponse = method.responses[3];
-      expect(defaultResponse.name).to.equal('default');
-      expect(defaultResponse.description).to.equal('Unexpected error');
-      expect(defaultResponse.examples).to.deep.equal([{ status: 500, message: 'Something went wrong!' }]);
+      const defaultResponse = method.responses[3]
+      expect(defaultResponse.name).to.equal('default')
+      expect(defaultResponse.description).to.equal('Unexpected error')
+      expect(defaultResponse.examples).to.deep.equal([{ status: 500, message: 'Something went wrong!' }])
 
-      const successResponse = method.responses[4];
-      expect(successResponse.name).to.equal('200');
-      expect(successResponse.description).to.equal('Ok');
-    });
+      const successResponse = method.responses[4]
+      expect(successResponse.name).to.equal('200')
+      expect(successResponse.description).to.equal('Ok')
+    })
 
     it('should get decorator values passed by different ways', () => {
-      const method = controller.methods.find(m => m.name === 'decoratorVariousValues');
+      const method = controller.methods.find(m => m.name === 'decoratorVariousValues')
       if (!method) {
-        throw new Error('Method decoratorVariousValues not defined!');
+        throw new Error('Method decoratorVariousValues not defined!')
       }
 
-      expect(method.responses.length).to.equal(4);
+      expect(method.responses.length).to.equal(4)
 
-      const valuesFromObject = method.responses[0];
-      expect(valuesFromObject.name).to.equal('401');
-      expect(valuesFromObject.description).to.equal('Unauthorized');
+      const valuesFromObject = method.responses[0]
+      expect(valuesFromObject.name).to.equal('401')
+      expect(valuesFromObject.description).to.equal('Unauthorized')
 
-      const enumNumber = method.responses[1];
-      expect(enumNumber.name).to.equal(400);
-      expect(enumNumber.description).to.equal('Bad Request');
+      const enumNumber = method.responses[1]
+      expect(enumNumber.name).to.equal(400)
+      expect(enumNumber.description).to.equal('Bad Request')
 
-      const enumString = method.responses[2];
-      expect(enumString.name).to.equal('404');
-      expect(enumString.description).to.equal('Not Found');
+      const enumString = method.responses[2]
+      expect(enumString.name).to.equal('404')
+      expect(enumString.description).to.equal('Not Found')
 
-      const success = method.responses[3];
-      expect(success.name).to.equal(201);
-      expect(success.description).to.equal('Created');
+      const success = method.responses[3]
+      expect(success.name).to.equal(201)
+      expect(success.description).to.equal('Created')
 
       if (!method.security) {
-        throw new Error('Security decorator not defined!');
+        throw new Error('Security decorator not defined!')
       }
 
-      const security = method.security[0];
-      expect(security).to.haveOwnProperty('JWT2');
-      expect(security.JWT2).to.deep.equal(['permission:admin', 'permission:owner']);
+      const security = method.security[0]
+      expect(security).to.haveOwnProperty('JWT2')
+      expect(security.JWT2).to.deep.equal(['permission:admin', 'permission:owner'])
 
-      const objSecurity = method.security[1];
+      const objSecurity = method.security[1]
       expect(objSecurity).to.deep.equal({
         firstSec: [],
         secondSec: ['permission:admin', 'permission:owner'],
-      });
+      })
 
-      expect(method.tags).to.deep.equal(['EnumTag1', 'MethodTest']);
-    });
+      expect(method.tags).to.deep.equal(['EnumTag1', 'MethodTest'])
+    })
 
     it('should generate success response', () => {
-      const method = controller.methods.find(m => m.name === 'successResponse');
+      const method = controller.methods.find(m => m.name === 'successResponse')
       if (!method) {
-        throw new Error('Method successResponse not defined!');
+        throw new Error('Method successResponse not defined!')
       }
 
-      expect(method.responses.length).to.equal(1);
+      expect(method.responses.length).to.equal(1)
 
-      const mainResponse = method.responses[0];
-      expect(mainResponse.name).to.equal('201');
-      expect(mainResponse.description).to.equal('Created');
-    });
+      const mainResponse = method.responses[0]
+      expect(mainResponse.name).to.equal('201')
+      expect(mainResponse.description).to.equal('Created')
+    })
 
     it('should generate 204 response on aliased voids', () => {
-      const method = controller.methods.find(m => m.name === 'returnAliasedVoidType');
+      const method = controller.methods.find(m => m.name === 'returnAliasedVoidType')
       if (!method) {
-        throw new Error('Method returnAliasedVoidType not defined!');
+        throw new Error('Method returnAliasedVoidType not defined!')
       }
 
-      expect(method.responses.length).to.equal(1);
+      expect(method.responses.length).to.equal(1)
 
-      const mainResponse = method.responses[0];
-      expect(mainResponse.name).to.equal('204');
-    });
+      const mainResponse = method.responses[0]
+      expect(mainResponse.name).to.equal('204')
+    })
 
     it('should generate api security', () => {
-      const method = controller.methods.find(m => m.name === 'apiSecurity');
+      const method = controller.methods.find(m => m.name === 'apiSecurity')
       if (!method) {
-        throw new Error('Method apiSecurity not defined!');
+        throw new Error('Method apiSecurity not defined!')
       }
       if (!method.security) {
-        throw new Error('Security decorator not defined!');
+        throw new Error('Security decorator not defined!')
       }
-      expect(method.security[0].api_key).to.deep.equal([]);
-    });
+      expect(method.security[0].api_key).to.deep.equal([])
+    })
 
     it('should generate oauth2 security', () => {
-      const method = controller.methods.find(m => m.name === 'oauthSecurity');
+      const method = controller.methods.find(m => m.name === 'oauthSecurity')
       if (!method) {
-        throw new Error('Method oauthSecurity not defined!');
+        throw new Error('Method oauthSecurity not defined!')
       }
       if (!method.security) {
-        throw new Error('Security decorator not defined!');
+        throw new Error('Security decorator not defined!')
       }
-      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets']);
-    });
+      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets'])
+    })
 
     it('should generate oauth2 or api key security', () => {
-      const method = controller.methods.find(m => m.name === 'oauthOrAPIkeySecurity');
+      const method = controller.methods.find(m => m.name === 'oauthOrAPIkeySecurity')
       if (!method) {
-        throw new Error('Method OauthOrApiKeySecurity not defined!');
+        throw new Error('Method OauthOrApiKeySecurity not defined!')
       }
       if (!method.security) {
-        throw new Error('Security decorator not defined!');
+        throw new Error('Security decorator not defined!')
       }
-      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets']);
-      expect(method.security[1].api_key).to.deep.equal([]);
-    });
+      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets'])
+      expect(method.security[1].api_key).to.deep.equal([])
+    })
 
     it('should generate oauth2 and api key security', () => {
-      const method = controller.methods.find(m => m.name === 'oauthAndAPIkeySecurity');
+      const method = controller.methods.find(m => m.name === 'oauthAndAPIkeySecurity')
       if (!method) {
-        throw new Error('Method OauthAndApiKeySecurity not defined!');
+        throw new Error('Method OauthAndApiKeySecurity not defined!')
       }
       if (!method.security) {
-        throw new Error('Security decorator not defined!');
+        throw new Error('Security decorator not defined!')
       }
-      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets']);
-      expect(method.security[0].api_key).to.deep.equal([]);
-    });
+      expect(method.security[0].tsoa_auth).to.deep.equal(['write:pets', 'read:pets'])
+      expect(method.security[0].api_key).to.deep.equal([])
+    })
 
     it('should generate all extensions', () => {
-      const method = controller.methods.find(m => m.name === 'extension');
+      const method = controller.methods.find(m => m.name === 'extension')
       if (!method) {
-        throw new Error('Method extension not defined!');
+        throw new Error('Method extension not defined!')
       }
       if (!method.extensions || method.extensions.length <= 0) {
-        throw new Error('No extension decorators defined!');
+        throw new Error('No extension decorators defined!')
       }
 
       const expectedExtensions = [
@@ -326,171 +326,171 @@ describe('Metadata generation', () => {
         { key: 'x-attKey12', value: { '0': 1, '1': 2, '2': 3, '3': 4 } },
         { key: 'x-attKey13', value: { '0': 'testVal1', '1': 123, '2': true, '3': null } },
         { key: 'x-attKey14', value: { y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null } },
-      ];
+      ]
 
-      expect(method.extensions).to.deep.equal(expectedExtensions);
-    });
+      expect(method.extensions).to.deep.equal(expectedExtensions)
+    })
 
     it('should generate deprecated method true', () => {
-      const method = controller.methods.find(m => m.name === 'deprecatedMethod');
+      const method = controller.methods.find(m => m.name === 'deprecatedMethod')
       if (!method) {
-        throw new Error('Method deprecatedMethod not defined!');
+        throw new Error('Method deprecatedMethod not defined!')
       }
 
-      expect(method.deprecated).to.equal(true);
-    });
+      expect(method.deprecated).to.equal(true)
+    })
 
     it('should generate deprecated method false', () => {
-      const method = controller.methods.find(m => m.name === 'oauthSecurity');
+      const method = controller.methods.find(m => m.name === 'oauthSecurity')
       if (!method) {
-        throw new Error('Method oauthSecurity not defined!');
+        throw new Error('Method oauthSecurity not defined!')
       }
 
-      expect(method.deprecated).to.equal(false);
-    });
+      expect(method.deprecated).to.equal(false)
+    })
 
     it('should generate summary method', () => {
-      const method = controller.methods.find(m => m.name === 'summaryMethod');
+      const method = controller.methods.find(m => m.name === 'summaryMethod')
       if (!method) {
-        throw new Error('Method summaryMethod not defined!');
+        throw new Error('Method summaryMethod not defined!')
       }
 
-      expect(method.summary).to.equal('simple summary');
-    });
-  });
+      expect(method.summary).to.equal('simple summary')
+    })
+  })
 
   describe('ParameterGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/parameterController.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/parameterController.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
 
     it('should generate single and multiple examples', () => {
-      const method = controller.methods.find(m => m.name === 'example');
+      const method = controller.methods.find(m => m.name === 'example')
       if (!method) {
-        throw new Error('Method example not defined!');
+        throw new Error('Method example not defined!')
       }
 
-      expect(method.parameters.length).to.equal(4);
+      expect(method.parameters.length).to.equal(4)
 
-      const firstnameParam = method.parameters[0];
-      expect(firstnameParam.example).not.to.be.undefined;
-      expect(firstnameParam.example).to.deep.equal(['name1', 'name2']);
-      expect((firstnameParam.example as unknown[]).length).to.be.equal(2);
+      const firstnameParam = method.parameters[0]
+      expect(firstnameParam.example).not.to.be.undefined
+      expect(firstnameParam.example).to.deep.equal(['name1', 'name2'])
+      expect((firstnameParam.example as unknown[]).length).to.be.equal(2)
 
-      const lastnameParam = method.parameters[1];
-      expect(lastnameParam.example).not.to.be.undefined;
-      expect(lastnameParam.example).to.deep.equal(['lastname']);
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(1);
+      const lastnameParam = method.parameters[1]
+      expect(lastnameParam.example).not.to.be.undefined
+      expect(lastnameParam.example).to.deep.equal(['lastname'])
+      expect((lastnameParam.example as unknown[]).length).to.be.equal(1)
 
-      const genderParam = method.parameters[2];
-      expect(genderParam.example).not.to.be.undefined;
+      const genderParam = method.parameters[2]
+      expect(genderParam.example).not.to.be.undefined
       expect(genderParam.example).to.deep.equal([
         { MALE: 'MALE', FEMALE: 'FEMALE' },
         { MALE: 'MALE2', FEMALE: 'FEMALE2' },
-      ]);
-      expect((genderParam.example as unknown[]).length).to.be.equal(2);
+      ])
+      expect((genderParam.example as unknown[]).length).to.be.equal(2)
 
-      const nicknamesParam = method.parameters[3];
-      expect(nicknamesParam.example).not.to.be.undefined;
+      const nicknamesParam = method.parameters[3]
+      expect(nicknamesParam.example).not.to.be.undefined
       expect(nicknamesParam.example).to.deep.equal([
         ['name1', 'name2'],
         ['name2_1', 'name2_2'],
-      ]);
-      expect((nicknamesParam.example as unknown[]).length).to.be.equal(2);
-    });
+      ])
+      expect((nicknamesParam.example as unknown[]).length).to.be.equal(2)
+    })
 
     it('should generate a query parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getQuery');
+      const method = controller.methods.find(m => m.name === 'getQuery')
       if (!method) {
-        throw new Error('Method getQuery not defined!');
+        throw new Error('Method getQuery not defined!')
       }
 
-      expect(method.parameters.length).to.equal(7);
+      expect(method.parameters.length).to.equal(7)
 
-      const firstnameParam = method.parameters[0];
-      expect(firstnameParam.in).to.equal('query');
-      expect(firstnameParam.name).to.equal('firstname');
-      expect(firstnameParam.parameterName).to.equal('firstname');
-      expect(firstnameParam.description).to.equal('Firstname description');
-      expect(firstnameParam.required).to.be.true;
-      expect(firstnameParam.type.dataType).to.equal('string');
-      expect(firstnameParam.example).to.be.undefined;
+      const firstnameParam = method.parameters[0]
+      expect(firstnameParam.in).to.equal('query')
+      expect(firstnameParam.name).to.equal('firstname')
+      expect(firstnameParam.parameterName).to.equal('firstname')
+      expect(firstnameParam.description).to.equal('Firstname description')
+      expect(firstnameParam.required).to.be.true
+      expect(firstnameParam.type.dataType).to.equal('string')
+      expect(firstnameParam.example).to.be.undefined
 
-      const lastnameParam = method.parameters[1];
-      expect(lastnameParam.in).to.equal('query');
-      expect(lastnameParam.name).to.equal('last_name');
-      expect(lastnameParam.parameterName).to.equal('lastname');
-      expect(lastnameParam.description).to.equal('Lastname description');
-      expect(lastnameParam.required).to.be.true;
-      expect(lastnameParam.type.dataType).to.equal('string');
-      expect(lastnameParam.example).not.to.be.undefined;
-      expect(lastnameParam.example).to.deep.equal(['name1', 'name2']);
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2);
+      const lastnameParam = method.parameters[1]
+      expect(lastnameParam.in).to.equal('query')
+      expect(lastnameParam.name).to.equal('last_name')
+      expect(lastnameParam.parameterName).to.equal('lastname')
+      expect(lastnameParam.description).to.equal('Lastname description')
+      expect(lastnameParam.required).to.be.true
+      expect(lastnameParam.type.dataType).to.equal('string')
+      expect(lastnameParam.example).not.to.be.undefined
+      expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
+      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
 
-      const ageParam = method.parameters[2];
-      expect(ageParam.in).to.equal('query');
-      expect(ageParam.name).to.equal('age');
-      expect(ageParam.parameterName).to.equal('age');
-      expect(ageParam.description).to.equal('Age description');
-      expect(ageParam.required).to.be.true;
-      expect(ageParam.type.dataType).to.equal('integer');
-      expect(ageParam.example).to.be.undefined;
+      const ageParam = method.parameters[2]
+      expect(ageParam.in).to.equal('query')
+      expect(ageParam.name).to.equal('age')
+      expect(ageParam.parameterName).to.equal('age')
+      expect(ageParam.description).to.equal('Age description')
+      expect(ageParam.required).to.be.true
+      expect(ageParam.type.dataType).to.equal('integer')
+      expect(ageParam.example).to.be.undefined
 
-      const weightParam = method.parameters[3];
-      expect(weightParam.in).to.equal('query');
-      expect(weightParam.name).to.equal('weight');
-      expect(weightParam.parameterName).to.equal('weight');
-      expect(weightParam.description).to.equal('Weight description');
-      expect(weightParam.required).to.be.true;
-      expect(weightParam.type.dataType).to.equal('float');
-      expect(weightParam.example).to.be.undefined;
+      const weightParam = method.parameters[3]
+      expect(weightParam.in).to.equal('query')
+      expect(weightParam.name).to.equal('weight')
+      expect(weightParam.parameterName).to.equal('weight')
+      expect(weightParam.description).to.equal('Weight description')
+      expect(weightParam.required).to.be.true
+      expect(weightParam.type.dataType).to.equal('float')
+      expect(weightParam.example).to.be.undefined
 
-      const humanParam = method.parameters[4];
-      expect(humanParam.in).to.equal('query');
-      expect(humanParam.name).to.equal('human');
-      expect(humanParam.parameterName).to.equal('human');
-      expect(humanParam.description).to.equal('Human description');
-      expect(humanParam.required).to.be.true;
-      expect(humanParam.type.dataType).to.equal('boolean');
-      expect(humanParam.example).to.be.undefined;
+      const humanParam = method.parameters[4]
+      expect(humanParam.in).to.equal('query')
+      expect(humanParam.name).to.equal('human')
+      expect(humanParam.parameterName).to.equal('human')
+      expect(humanParam.description).to.equal('Human description')
+      expect(humanParam.required).to.be.true
+      expect(humanParam.type.dataType).to.equal('boolean')
+      expect(humanParam.example).to.be.undefined
 
-      const genderParam = method.parameters[5];
-      expect(genderParam.in).to.equal('query');
-      expect(genderParam.name).to.equal('gender');
-      expect(genderParam.parameterName).to.equal('gender');
-      expect(genderParam.description).to.equal('Gender description');
-      expect(genderParam.required).to.be.true;
-      expect(genderParam.type.dataType).to.equal('refEnum');
-      expect(genderParam.example).to.be.undefined;
+      const genderParam = method.parameters[5]
+      expect(genderParam.in).to.equal('query')
+      expect(genderParam.name).to.equal('gender')
+      expect(genderParam.parameterName).to.equal('gender')
+      expect(genderParam.description).to.equal('Gender description')
+      expect(genderParam.required).to.be.true
+      expect(genderParam.type.dataType).to.equal('refEnum')
+      expect(genderParam.example).to.be.undefined
 
-      const nicknamesParam = method.parameters[6] as Tsoa.ArrayParameter;
-      expect(nicknamesParam.in).to.equal('query');
-      expect(nicknamesParam.name).to.equal('nicknames');
-      expect(nicknamesParam.parameterName).to.equal('nicknames');
-      expect(nicknamesParam.description).to.equal('Nicknames description');
-      expect(nicknamesParam.required).to.be.true;
-      expect(nicknamesParam.type.dataType).to.equal('array');
-      expect(nicknamesParam.collectionFormat).to.equal('multi');
-      expect(nicknamesParam.type.elementType).to.deep.equal({ dataType: 'string' });
-      expect(nicknamesParam.example).to.be.undefined;
-    });
+      const nicknamesParam = method.parameters[6] as Tsoa.ArrayParameter
+      expect(nicknamesParam.in).to.equal('query')
+      expect(nicknamesParam.name).to.equal('nicknames')
+      expect(nicknamesParam.parameterName).to.equal('nicknames')
+      expect(nicknamesParam.description).to.equal('Nicknames description')
+      expect(nicknamesParam.required).to.be.true
+      expect(nicknamesParam.type.dataType).to.equal('array')
+      expect(nicknamesParam.collectionFormat).to.equal('multi')
+      expect(nicknamesParam.type.elementType).to.deep.equal({ dataType: 'string' })
+      expect(nicknamesParam.example).to.be.undefined
+    })
 
     it('should generate a queries parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getQueries');
+      const method = controller.methods.find(m => m.name === 'getQueries')
       if (!method) {
-        throw new Error('Method getQueries not defined!');
+        throw new Error('Method getQueries not defined!')
       }
-      const parameter = method.parameters.find(param => param.parameterName === 'queryParams');
+      const parameter = method.parameters.find(param => param.parameterName === 'queryParams')
       if (!parameter) {
-        throw new Error('Parameter queryParams not defined!');
+        throw new Error('Parameter queryParams not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1);
-      expect(parameter.description).to.equal('Queries description');
-      expect(parameter.in).to.equal('queries');
-      expect(parameter.name).to.equal('queryParams');
-      expect(parameter.parameterName).to.equal('queryParams');
-      expect(parameter.required).to.be.true;
-      expect(parameter.example).not.to.be.undefined;
+      expect(method.parameters.length).to.equal(1)
+      expect(parameter.description).to.equal('Queries description')
+      expect(parameter.in).to.equal('queries')
+      expect(parameter.name).to.equal('queryParams')
+      expect(parameter.parameterName).to.equal('queryParams')
+      expect(parameter.required).to.be.true
+      expect(parameter.example).not.to.be.undefined
       expect(parameter.example).to.deep.equal([
         {
           firstname: 'first1',
@@ -502,240 +502,240 @@ describe('Metadata generation', () => {
           lastname: 'last2',
           age: 2,
         },
-      ]);
-      expect((parameter.example as unknown[]).length).to.be.equal(2);
-    });
+      ])
+      expect((parameter.example as unknown[]).length).to.be.equal(2)
+    })
 
     it('should generate a path parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getPath');
+      const method = controller.methods.find(m => m.name === 'getPath')
       if (!method) {
-        throw new Error('Method getPath not defined!');
+        throw new Error('Method getPath not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6);
+      expect(method.parameters.length).to.equal(6)
 
-      const firstnameParam = method.parameters[0];
-      expect(firstnameParam.in).to.equal('path');
-      expect(firstnameParam.name).to.equal('firstname');
-      expect(firstnameParam.parameterName).to.equal('firstname');
-      expect(firstnameParam.description).to.equal('Firstname description');
-      expect(firstnameParam.required).to.be.true;
-      expect(firstnameParam.type.dataType).to.equal('string');
+      const firstnameParam = method.parameters[0]
+      expect(firstnameParam.in).to.equal('path')
+      expect(firstnameParam.name).to.equal('firstname')
+      expect(firstnameParam.parameterName).to.equal('firstname')
+      expect(firstnameParam.description).to.equal('Firstname description')
+      expect(firstnameParam.required).to.be.true
+      expect(firstnameParam.type.dataType).to.equal('string')
 
-      const lastnameParam = method.parameters[1];
-      expect(lastnameParam.in).to.equal('path');
-      expect(lastnameParam.name).to.equal('last_name');
-      expect(lastnameParam.parameterName).to.equal('lastname');
-      expect(lastnameParam.description).to.equal('Lastname description');
-      expect(lastnameParam.required).to.be.true;
-      expect(lastnameParam.type.dataType).to.equal('string');
-      expect(lastnameParam.example).not.to.be.undefined;
-      expect(lastnameParam.example).to.deep.equal(['name1', 'name2']);
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2);
+      const lastnameParam = method.parameters[1]
+      expect(lastnameParam.in).to.equal('path')
+      expect(lastnameParam.name).to.equal('last_name')
+      expect(lastnameParam.parameterName).to.equal('lastname')
+      expect(lastnameParam.description).to.equal('Lastname description')
+      expect(lastnameParam.required).to.be.true
+      expect(lastnameParam.type.dataType).to.equal('string')
+      expect(lastnameParam.example).not.to.be.undefined
+      expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
+      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
 
-      const ageParam = method.parameters[2];
-      expect(ageParam.in).to.equal('path');
-      expect(ageParam.name).to.equal('age');
-      expect(ageParam.parameterName).to.equal('age');
-      expect(ageParam.description).to.equal('Age description');
-      expect(ageParam.required).to.be.true;
-      expect(ageParam.type.dataType).to.equal('integer');
+      const ageParam = method.parameters[2]
+      expect(ageParam.in).to.equal('path')
+      expect(ageParam.name).to.equal('age')
+      expect(ageParam.parameterName).to.equal('age')
+      expect(ageParam.description).to.equal('Age description')
+      expect(ageParam.required).to.be.true
+      expect(ageParam.type.dataType).to.equal('integer')
 
-      const weightParam = method.parameters[3];
-      expect(weightParam.in).to.equal('path');
-      expect(weightParam.name).to.equal('weight');
-      expect(weightParam.parameterName).to.equal('weight');
-      expect(weightParam.description).to.equal('Weight description');
-      expect(weightParam.required).to.be.true;
-      expect(weightParam.type.dataType).to.equal('float');
+      const weightParam = method.parameters[3]
+      expect(weightParam.in).to.equal('path')
+      expect(weightParam.name).to.equal('weight')
+      expect(weightParam.parameterName).to.equal('weight')
+      expect(weightParam.description).to.equal('Weight description')
+      expect(weightParam.required).to.be.true
+      expect(weightParam.type.dataType).to.equal('float')
 
-      const humanParam = method.parameters[4];
-      expect(humanParam.in).to.equal('path');
-      expect(humanParam.name).to.equal('human');
-      expect(humanParam.parameterName).to.equal('human');
-      expect(humanParam.description).to.equal('Human description');
-      expect(humanParam.required).to.be.true;
-      expect(humanParam.type.dataType).to.equal('boolean');
+      const humanParam = method.parameters[4]
+      expect(humanParam.in).to.equal('path')
+      expect(humanParam.name).to.equal('human')
+      expect(humanParam.parameterName).to.equal('human')
+      expect(humanParam.description).to.equal('Human description')
+      expect(humanParam.required).to.be.true
+      expect(humanParam.type.dataType).to.equal('boolean')
 
-      const genderParam = method.parameters[5];
-      expect(genderParam.in).to.equal('path');
-      expect(genderParam.name).to.equal('gender');
-      expect(genderParam.parameterName).to.equal('gender');
-      expect(genderParam.description).to.equal('Gender description');
-      expect(genderParam.required).to.be.true;
-      expect(genderParam.type.dataType).to.equal('refEnum');
-    });
+      const genderParam = method.parameters[5]
+      expect(genderParam.in).to.equal('path')
+      expect(genderParam.name).to.equal('gender')
+      expect(genderParam.parameterName).to.equal('gender')
+      expect(genderParam.description).to.equal('Gender description')
+      expect(genderParam.required).to.be.true
+      expect(genderParam.type.dataType).to.equal('refEnum')
+    })
 
     it('should generate a path parameter from colon delimiter path params', () => {
-      const method = controller.methods.find(m => m.name === 'getPathColonDelimiter');
+      const method = controller.methods.find(m => m.name === 'getPathColonDelimiter')
       if (!method) {
-        throw new Error('Method getPathColonDelimiter not defined!');
+        throw new Error('Method getPathColonDelimiter not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6);
+      expect(method.parameters.length).to.equal(6)
 
-      const firstnameParam = method.parameters[0];
-      expect(firstnameParam.in).to.equal('path');
-      expect(firstnameParam.name).to.equal('firstname');
-      expect(firstnameParam.parameterName).to.equal('firstname');
-      expect(firstnameParam.description).to.equal('Firstname description');
-      expect(firstnameParam.required).to.be.true;
-      expect(firstnameParam.type.dataType).to.equal('string');
+      const firstnameParam = method.parameters[0]
+      expect(firstnameParam.in).to.equal('path')
+      expect(firstnameParam.name).to.equal('firstname')
+      expect(firstnameParam.parameterName).to.equal('firstname')
+      expect(firstnameParam.description).to.equal('Firstname description')
+      expect(firstnameParam.required).to.be.true
+      expect(firstnameParam.type.dataType).to.equal('string')
 
-      const lastnameParam = method.parameters[1];
-      expect(lastnameParam.in).to.equal('path');
-      expect(lastnameParam.name).to.equal('last_name');
-      expect(lastnameParam.parameterName).to.equal('lastname');
-      expect(lastnameParam.description).to.equal('Lastname description');
-      expect(lastnameParam.required).to.be.true;
-      expect(lastnameParam.type.dataType).to.equal('string');
+      const lastnameParam = method.parameters[1]
+      expect(lastnameParam.in).to.equal('path')
+      expect(lastnameParam.name).to.equal('last_name')
+      expect(lastnameParam.parameterName).to.equal('lastname')
+      expect(lastnameParam.description).to.equal('Lastname description')
+      expect(lastnameParam.required).to.be.true
+      expect(lastnameParam.type.dataType).to.equal('string')
 
-      const ageParam = method.parameters[2];
-      expect(ageParam.in).to.equal('path');
-      expect(ageParam.name).to.equal('age');
-      expect(ageParam.parameterName).to.equal('age');
-      expect(ageParam.description).to.equal('Age description');
-      expect(ageParam.required).to.be.true;
-      expect(ageParam.type.dataType).to.equal('integer');
+      const ageParam = method.parameters[2]
+      expect(ageParam.in).to.equal('path')
+      expect(ageParam.name).to.equal('age')
+      expect(ageParam.parameterName).to.equal('age')
+      expect(ageParam.description).to.equal('Age description')
+      expect(ageParam.required).to.be.true
+      expect(ageParam.type.dataType).to.equal('integer')
 
-      const weightParam = method.parameters[3];
-      expect(weightParam.in).to.equal('path');
-      expect(weightParam.name).to.equal('weight');
-      expect(weightParam.parameterName).to.equal('weight');
-      expect(weightParam.description).to.equal('Weight description');
-      expect(weightParam.required).to.be.true;
-      expect(weightParam.type.dataType).to.equal('float');
+      const weightParam = method.parameters[3]
+      expect(weightParam.in).to.equal('path')
+      expect(weightParam.name).to.equal('weight')
+      expect(weightParam.parameterName).to.equal('weight')
+      expect(weightParam.description).to.equal('Weight description')
+      expect(weightParam.required).to.be.true
+      expect(weightParam.type.dataType).to.equal('float')
 
-      const humanParam = method.parameters[4];
-      expect(humanParam.in).to.equal('path');
-      expect(humanParam.name).to.equal('human');
-      expect(humanParam.parameterName).to.equal('human');
-      expect(humanParam.description).to.equal('Human description');
-      expect(humanParam.required).to.be.true;
-      expect(humanParam.type.dataType).to.equal('boolean');
+      const humanParam = method.parameters[4]
+      expect(humanParam.in).to.equal('path')
+      expect(humanParam.name).to.equal('human')
+      expect(humanParam.parameterName).to.equal('human')
+      expect(humanParam.description).to.equal('Human description')
+      expect(humanParam.required).to.be.true
+      expect(humanParam.type.dataType).to.equal('boolean')
 
-      const genderParam = method.parameters[5];
-      expect(genderParam.in).to.equal('path');
-      expect(genderParam.name).to.equal('gender');
-      expect(genderParam.parameterName).to.equal('gender');
-      expect(genderParam.description).to.equal('Gender description');
-      expect(genderParam.required).to.be.true;
-      expect(genderParam.type.dataType).to.equal('refEnum');
-    });
+      const genderParam = method.parameters[5]
+      expect(genderParam.in).to.equal('path')
+      expect(genderParam.name).to.equal('gender')
+      expect(genderParam.parameterName).to.equal('gender')
+      expect(genderParam.description).to.equal('Gender description')
+      expect(genderParam.required).to.be.true
+      expect(genderParam.type.dataType).to.equal('refEnum')
+    })
 
     it('should generate a path parameter from template literal', () => {
-      const method = controller.methods.find(m => m.name === 'getPathTemplateLiteral');
+      const method = controller.methods.find(m => m.name === 'getPathTemplateLiteral')
       if (!method) {
-        throw new Error('Method getPathTemplateLiteral not defined!');
+        throw new Error('Method getPathTemplateLiteral not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1);
+      expect(method.parameters.length).to.equal(1)
 
-      const idParam = method.parameters[0];
-      expect(idParam.in).to.equal('path');
-      expect(idParam.name).to.equal('id');
-      expect(idParam.parameterName).to.equal('id');
-      expect(idParam.description).to.equal('ID description');
-      expect(idParam.required).to.be.true;
-      expect(idParam.type.dataType).to.equal('string');
-    });
+      const idParam = method.parameters[0]
+      expect(idParam.in).to.equal('path')
+      expect(idParam.name).to.equal('id')
+      expect(idParam.parameterName).to.equal('id')
+      expect(idParam.description).to.equal('ID description')
+      expect(idParam.required).to.be.true
+      expect(idParam.type.dataType).to.equal('string')
+    })
 
     it('should generate an header parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getHeader');
+      const method = controller.methods.find(m => m.name === 'getHeader')
       if (!method) {
-        throw new Error('Method getHeader not defined!');
+        throw new Error('Method getHeader not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6);
+      expect(method.parameters.length).to.equal(6)
 
-      const firstnameParam = method.parameters[0];
-      expect(firstnameParam.in).to.equal('header');
-      expect(firstnameParam.name).to.equal('firstname');
-      expect(firstnameParam.parameterName).to.equal('firstname');
-      expect(firstnameParam.description).to.equal('Firstname description');
-      expect(firstnameParam.required).to.be.true;
-      expect(firstnameParam.type.dataType).to.equal('string');
+      const firstnameParam = method.parameters[0]
+      expect(firstnameParam.in).to.equal('header')
+      expect(firstnameParam.name).to.equal('firstname')
+      expect(firstnameParam.parameterName).to.equal('firstname')
+      expect(firstnameParam.description).to.equal('Firstname description')
+      expect(firstnameParam.required).to.be.true
+      expect(firstnameParam.type.dataType).to.equal('string')
 
-      const lastnameParam = method.parameters[1];
-      expect(lastnameParam.in).to.equal('header');
-      expect(lastnameParam.name).to.equal('last_name');
-      expect(lastnameParam.parameterName).to.equal('lastname');
-      expect(lastnameParam.description).to.equal('Lastname description');
-      expect(lastnameParam.required).to.be.true;
-      expect(lastnameParam.type.dataType).to.equal('string');
-      expect(lastnameParam.example).not.to.be.undefined;
-      expect(lastnameParam.example).to.deep.equal(['name1', 'name2']);
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2);
+      const lastnameParam = method.parameters[1]
+      expect(lastnameParam.in).to.equal('header')
+      expect(lastnameParam.name).to.equal('last_name')
+      expect(lastnameParam.parameterName).to.equal('lastname')
+      expect(lastnameParam.description).to.equal('Lastname description')
+      expect(lastnameParam.required).to.be.true
+      expect(lastnameParam.type.dataType).to.equal('string')
+      expect(lastnameParam.example).not.to.be.undefined
+      expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
+      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
 
-      const ageParam = method.parameters[2];
-      expect(ageParam.in).to.equal('header');
-      expect(ageParam.name).to.equal('age');
-      expect(ageParam.parameterName).to.equal('age');
-      expect(ageParam.description).to.equal('Age description');
-      expect(ageParam.required).to.be.true;
-      expect(ageParam.type.dataType).to.equal('integer');
+      const ageParam = method.parameters[2]
+      expect(ageParam.in).to.equal('header')
+      expect(ageParam.name).to.equal('age')
+      expect(ageParam.parameterName).to.equal('age')
+      expect(ageParam.description).to.equal('Age description')
+      expect(ageParam.required).to.be.true
+      expect(ageParam.type.dataType).to.equal('integer')
 
-      const weightParam = method.parameters[3];
-      expect(weightParam.in).to.equal('header');
-      expect(weightParam.name).to.equal('weight');
-      expect(weightParam.parameterName).to.equal('weight');
-      expect(weightParam.description).to.equal('Weight description');
-      expect(weightParam.required).to.be.true;
-      expect(weightParam.type.dataType).to.equal('float');
+      const weightParam = method.parameters[3]
+      expect(weightParam.in).to.equal('header')
+      expect(weightParam.name).to.equal('weight')
+      expect(weightParam.parameterName).to.equal('weight')
+      expect(weightParam.description).to.equal('Weight description')
+      expect(weightParam.required).to.be.true
+      expect(weightParam.type.dataType).to.equal('float')
 
-      const humanParam = method.parameters[4];
-      expect(humanParam.in).to.equal('header');
-      expect(humanParam.name).to.equal('human');
-      expect(humanParam.parameterName).to.equal('human');
-      expect(humanParam.description).to.equal('Human description');
-      expect(humanParam.required).to.be.true;
-      expect(humanParam.type.dataType).to.equal('boolean');
+      const humanParam = method.parameters[4]
+      expect(humanParam.in).to.equal('header')
+      expect(humanParam.name).to.equal('human')
+      expect(humanParam.parameterName).to.equal('human')
+      expect(humanParam.description).to.equal('Human description')
+      expect(humanParam.required).to.be.true
+      expect(humanParam.type.dataType).to.equal('boolean')
 
-      const genderParam = method.parameters[5];
-      expect(genderParam.in).to.equal('header');
-      expect(genderParam.name).to.equal('gender');
-      expect(genderParam.parameterName).to.equal('gender');
-      expect(genderParam.description).to.equal('Gender description');
-      expect(genderParam.required).to.be.true;
-      expect(genderParam.type.dataType).to.equal('refEnum');
-    });
+      const genderParam = method.parameters[5]
+      expect(genderParam.in).to.equal('header')
+      expect(genderParam.name).to.equal('gender')
+      expect(genderParam.parameterName).to.equal('gender')
+      expect(genderParam.description).to.equal('Gender description')
+      expect(genderParam.required).to.be.true
+      expect(genderParam.type.dataType).to.equal('refEnum')
+    })
 
     it('should generate an request parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getRequest');
+      const method = controller.methods.find(m => m.name === 'getRequest')
       if (!method) {
-        throw new Error('Method getRequest not defined!');
+        throw new Error('Method getRequest not defined!')
       }
-      const parameter = method.parameters.find(param => param.parameterName === 'request');
+      const parameter = method.parameters.find(param => param.parameterName === 'request')
       if (!parameter) {
-        throw new Error('Parameter request not defined!');
+        throw new Error('Parameter request not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1);
-      expect(parameter.description).to.equal('Request description');
-      expect(parameter.in).to.equal('request');
-      expect(parameter.name).to.equal('request');
-      expect(parameter.parameterName).to.equal('request');
-      expect(parameter.required).to.be.true;
-      expect(parameter.type.dataType).to.equal('object');
-    });
+      expect(method.parameters.length).to.equal(1)
+      expect(parameter.description).to.equal('Request description')
+      expect(parameter.in).to.equal('request')
+      expect(parameter.name).to.equal('request')
+      expect(parameter.parameterName).to.equal('request')
+      expect(parameter.required).to.be.true
+      expect(parameter.type.dataType).to.equal('object')
+    })
 
     it('should generate an body parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getBody');
+      const method = controller.methods.find(m => m.name === 'getBody')
       if (!method) {
-        throw new Error('Method getBody not defined!');
+        throw new Error('Method getBody not defined!')
       }
-      const parameter = method.parameters.find(param => param.parameterName === 'body');
+      const parameter = method.parameters.find(param => param.parameterName === 'body')
       if (!parameter) {
-        throw new Error('Parameter body not defined!');
+        throw new Error('Parameter body not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1);
-      expect(parameter.description).to.equal('Body description');
-      expect(parameter.in).to.equal('body');
-      expect(parameter.name).to.equal('body');
-      expect(parameter.parameterName).to.equal('body');
-      expect(parameter.required).to.be.true;
-      expect(parameter.example).not.to.be.undefined;
+      expect(method.parameters.length).to.equal(1)
+      expect(parameter.description).to.equal('Body description')
+      expect(parameter.in).to.equal('body')
+      expect(parameter.name).to.equal('body')
+      expect(parameter.parameterName).to.equal('body')
+      expect(parameter.required).to.be.true
+      expect(parameter.example).not.to.be.undefined
       expect(parameter.example).to.deep.equal([
         {
           firstname: 'first1',
@@ -747,219 +747,219 @@ describe('Metadata generation', () => {
           lastname: 'last2',
           age: 2,
         },
-      ]);
-      expect((parameter.example as unknown[]).length).to.be.equal(2);
-    });
+      ])
+      expect((parameter.example as unknown[]).length).to.be.equal(2)
+    })
 
     it('should generate an body props parameter', () => {
-      const method = controller.methods.find(m => m.name === 'getBodyProps');
+      const method = controller.methods.find(m => m.name === 'getBodyProps')
       if (!method) {
-        throw new Error('Method getBodyProps not defined!');
+        throw new Error('Method getBodyProps not defined!')
       }
-      const parameter = method.parameters.find(param => param.parameterName === 'firstname');
+      const parameter = method.parameters.find(param => param.parameterName === 'firstname')
       if (!parameter) {
-        throw new Error('Parameter firstname not defined!');
+        throw new Error('Parameter firstname not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6);
-      expect(parameter.description).to.equal('firstname description');
-      expect(parameter.in).to.equal('body-prop');
-      expect(parameter.name).to.equal('firstname');
-      expect(parameter.parameterName).to.equal('firstname');
-      expect(parameter.required).to.be.true;
-      expect(parameter.example).not.to.be.undefined;
-      expect(parameter.example).to.deep.equal(['name1', 'name2']);
-      expect((parameter.example as unknown[]).length).to.be.equal(2);
-    });
+      expect(method.parameters.length).to.equal(6)
+      expect(parameter.description).to.equal('firstname description')
+      expect(parameter.in).to.equal('body-prop')
+      expect(parameter.name).to.equal('firstname')
+      expect(parameter.parameterName).to.equal('firstname')
+      expect(parameter.required).to.be.true
+      expect(parameter.example).not.to.be.undefined
+      expect(parameter.example).to.deep.equal(['name1', 'name2'])
+      expect((parameter.example as unknown[]).length).to.be.equal(2)
+    })
 
     it('should generate a res parameter and the corresponding additional response', () => {
-      const method = controller.methods.find(m => m.name === 'getRes');
+      const method = controller.methods.find(m => m.name === 'getRes')
       if (!method) {
-        throw new Error('Method getRes not defined!');
+        throw new Error('Method getRes not defined!')
       }
-      const parameter = method.parameters.find(param => param.parameterName === 'res');
+      const parameter = method.parameters.find(param => param.parameterName === 'res')
       if (!parameter) {
-        throw new Error('Parameter firstname not defined!');
+        throw new Error('Parameter firstname not defined!')
       }
-      const additionalResponse = method.responses[1];
+      const additionalResponse = method.responses[1]
 
-      expect(method.parameters.length).to.equal(1);
-      expect(parameter.description).to.equal('The alternate response');
-      expect(parameter.in).to.equal('res');
-      expect(parameter.name).to.equal('400');
-      expect(parameter.parameterName).to.equal('res');
-      expect(parameter.required).to.be.true;
+      expect(method.parameters.length).to.equal(1)
+      expect(parameter.description).to.equal('The alternate response')
+      expect(parameter.in).to.equal('res')
+      expect(parameter.name).to.equal('400')
+      expect(parameter.parameterName).to.equal('res')
+      expect(parameter.required).to.be.true
 
-      expect(additionalResponse.description).to.equal('The alternate response');
-      expect(additionalResponse.name).to.equal('400');
-    });
+      expect(additionalResponse.description).to.equal('The alternate response')
+      expect(additionalResponse.name).to.equal('400')
+    })
 
     it('Should inline enums for TS Enums in path, query and header when using Swagger', () => {
-      const spec = new SpecGenerator2(parameterMetadata, getDefaultExtendedOptions()).GetSpec();
-      const method = spec.paths['/ParameterTest/Path/{firstname}/{last_name}/{age}/{weight}/{human}/{gender}'].get;
+      const spec = new SpecGenerator2(parameterMetadata, getDefaultExtendedOptions()).GetSpec()
+      const method = spec.paths['/ParameterTest/Path/{firstname}/{last_name}/{age}/{weight}/{human}/{gender}'].get
 
       if (!method || !method.parameters) {
-        throw new Error("Method or it's parameters are not defined!");
+        throw new Error("Method or it's parameters are not defined!")
       }
 
-      const genderParam = method.parameters.find(p => p.name === 'gender');
+      const genderParam = method.parameters.find(p => p.name === 'gender')
 
       if (!genderParam) {
-        throw new Error('genderParam not defined!');
+        throw new Error('genderParam not defined!')
       }
 
-      expect(genderParam.in).to.equal('path');
-      expect(genderParam.name).to.equal('gender');
-      expect(genderParam.description).to.equal('Gender description');
-      expect(genderParam.required).to.be.true;
-      expect(genderParam.enum).to.deep.equal(['MALE', 'FEMALE']);
-    });
+      expect(genderParam.in).to.equal('path')
+      expect(genderParam.name).to.equal('gender')
+      expect(genderParam.description).to.equal('Gender description')
+      expect(genderParam.required).to.be.true
+      expect(genderParam.enum).to.deep.equal(['MALE', 'FEMALE'])
+    })
 
     it('should mark deprecated params as deprecated', () => {
-      const method = controller.methods.find(m => m.name === 'postDeprecated');
+      const method = controller.methods.find(m => m.name === 'postDeprecated')
       if (!method) {
-        throw new Error('Method postDeprecated not defined!');
+        throw new Error('Method postDeprecated not defined!')
       }
 
-      const supportedParam = method.parameters[0];
-      expect(supportedParam.deprecated).to.be.false;
+      const supportedParam = method.parameters[0]
+      expect(supportedParam.deprecated).to.be.false
 
-      const deprecatedParam = method.parameters[1];
-      expect(deprecatedParam.deprecated).to.be.true;
+      const deprecatedParam = method.parameters[1]
+      expect(deprecatedParam.deprecated).to.be.true
 
-      const deprecatedParam2 = method.parameters[2];
-      expect(deprecatedParam2.deprecated).to.be.true;
-    });
-  });
+      const deprecatedParam2 = method.parameters[2]
+      expect(deprecatedParam2.deprecated).to.be.true
+    })
+  })
 
   describe('HiddenMethodGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/hiddenMethodController.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/hiddenMethodController.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
 
     it('should mark methods as visible by default', () => {
-      const method = controller.methods.find(m => m.name === 'normalGetMethod');
+      const method = controller.methods.find(m => m.name === 'normalGetMethod')
       if (!method) {
-        throw new Error('Method normalGetMethod not defined!');
+        throw new Error('Method normalGetMethod not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('normalGetMethod');
-      expect(method.isHidden).to.equal(false);
-    });
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('normalGetMethod')
+      expect(method.isHidden).to.equal(false)
+    })
 
     it('should mark methods as hidden', () => {
-      const method = controller.methods.find(m => m.name === 'hiddenGetMethod');
+      const method = controller.methods.find(m => m.name === 'hiddenGetMethod')
       if (!method) {
-        throw new Error('Method hiddenGetMethod not defined!');
+        throw new Error('Method hiddenGetMethod not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('hiddenGetMethod');
-      expect(method.isHidden).to.equal(true);
-    });
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('hiddenGetMethod')
+      expect(method.isHidden).to.equal(true)
+    })
 
     it('should mark query params as hidden', () => {
-      const method = controller.methods.find(m => m.name === 'hiddenQueryMethod');
+      const method = controller.methods.find(m => m.name === 'hiddenQueryMethod')
       if (!method) {
-        throw new Error('Method hiddenQueryMethod not defined!');
+        throw new Error('Method hiddenQueryMethod not defined!')
       }
 
-      const defaultSecret = method.parameters.find(p => p.name === 'defaultSecret');
-      expect(defaultSecret).to.be.undefined;
+      const defaultSecret = method.parameters.find(p => p.name === 'defaultSecret')
+      expect(defaultSecret).to.be.undefined
 
-      const optionalSecret = method.parameters.find(p => p.name === 'optionalSecret');
-      expect(optionalSecret).to.be.undefined;
+      const optionalSecret = method.parameters.find(p => p.name === 'optionalSecret')
+      expect(optionalSecret).to.be.undefined
 
-      expect(method.parameters.length).to.equal(1);
+      expect(method.parameters.length).to.equal(1)
 
-      const normalParam = method.parameters[0];
-      expect(normalParam.in).to.equal('query');
-      expect(normalParam.name).to.equal('normalParam');
-      expect(normalParam.parameterName).to.equal('normalParam');
-      expect(normalParam.required).to.be.true;
-      expect(normalParam.type.dataType).to.equal('string');
-    });
-  });
+      const normalParam = method.parameters[0]
+      expect(normalParam.in).to.equal('query')
+      expect(normalParam.name).to.equal('normalParam')
+      expect(normalParam.parameterName).to.equal('normalParam')
+      expect(normalParam.required).to.be.true
+      expect(normalParam.type.dataType).to.equal('string')
+    })
+  })
 
   describe('HiddenControllerGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/hiddenController.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/hiddenController.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
 
     it('should mark all methods as hidden', () => {
-      expect(controller.methods).to.have.lengthOf(2);
+      expect(controller.methods).to.have.lengthOf(2)
       controller.methods.forEach(method => {
-        expect(method.isHidden).to.equal(true);
-      });
-    });
-  });
+        expect(method.isHidden).to.equal(true)
+      })
+    })
+  })
 
   describe('ControllerWithCommonResponsesGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/controllerWithCommonResponses.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/controllerWithCommonResponses.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
 
     it('should add common responses to every method', () => {
-      expect(controller.methods).to.have.lengthOf(2);
+      expect(controller.methods).to.have.lengthOf(2)
       controller.methods.forEach(method => {
-        expect(method.responses.length).to.equal(2);
+        expect(method.responses.length).to.equal(2)
 
-        let response = method.responses[0];
-        expect(response.name).to.equal('401');
-        expect(response.description).to.equal('Unauthorized');
+        let response = method.responses[0]
+        expect(response.name).to.equal('401')
+        expect(response.description).to.equal('Unauthorized')
 
-        response = method.responses[1];
-        expect(response.name).to.equal('200');
-        expect(response.description).to.equal('Ok');
-      });
-    });
-  });
+        response = method.responses[1]
+        expect(response.name).to.equal('200')
+        expect(response.description).to.equal('Ok')
+      })
+    })
+  })
 
   describe('DeprecatedMethodGenerator', () => {
-    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/deprecatedController.ts').Generate();
-    const controller = parameterMetadata.controllers[0];
+    const parameterMetadata = new MetadataGenerator('./fixtures/controllers/deprecatedController.ts').Generate()
+    const controller = parameterMetadata.controllers[0]
 
     it('should generate normal method', () => {
-      const method = controller.methods.find(m => m.name === 'normalGetMethod');
+      const method = controller.methods.find(m => m.name === 'normalGetMethod')
       if (!method) {
-        throw new Error('Method normalGetMethod not defined!');
+        throw new Error('Method normalGetMethod not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('normalGetMethod');
-      expect(method.deprecated).to.equal(false);
-    });
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('normalGetMethod')
+      expect(method.deprecated).to.equal(false)
+    })
 
     it('should generate deprecated method', () => {
-      const method = controller.methods.find(m => m.name === 'deprecatedGetMethod');
+      const method = controller.methods.find(m => m.name === 'deprecatedGetMethod')
       if (!method) {
-        throw new Error('Method deprecatedGetMethod not defined!');
+        throw new Error('Method deprecatedGetMethod not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('deprecatedGetMethod');
-      expect(method.deprecated).to.equal(true);
-    });
-  });
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('deprecatedGetMethod')
+      expect(method.deprecated).to.equal(true)
+    })
+  })
 
   describe('TypeInferenceController', () => {
-    const metadata = new MetadataGenerator('./fixtures/controllers/typeInferenceController.ts').Generate();
-    const controller = metadata.controllers.find(controller => controller.name === 'TypeInferenceController');
+    const metadata = new MetadataGenerator('./fixtures/controllers/typeInferenceController.ts').Generate()
+    const controller = metadata.controllers.find(controller => controller.name === 'TypeInferenceController')
 
     if (!controller) {
-      throw new Error('TypeInferenceController not defined!');
+      throw new Error('TypeInferenceController not defined!')
     }
 
     it('should generate multiKeysInterfaceInference method', () => {
-      const method = controller.methods.find(method => method.name === 'multiKeysInterfaceInference');
+      const method = controller.methods.find(method => method.name === 'multiKeysInterfaceInference')
       if (!method) {
-        throw new Error('Method multiKeysInterfaceInference not defined!');
+        throw new Error('Method multiKeysInterfaceInference not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('keys-interface-inference');
-      const [response] = method.responses;
-      expect(response.schema?.dataType).to.eq('refAlias');
-      expect((response.schema as Tsoa.RefAliasType)?.refName).to.eq('Partial_TruncationTestModel_');
-      const properties = ((response.schema as Tsoa.RefAliasType).type as Tsoa.NestedObjectLiteralType).properties;
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('keys-interface-inference')
+      const [response] = method.responses
+      expect(response.schema?.dataType).to.eq('refAlias')
+      expect((response.schema as Tsoa.RefAliasType)?.refName).to.eq('Partial_TruncationTestModel_')
+      const properties = ((response.schema as Tsoa.RefAliasType).type as Tsoa.NestedObjectLiteralType).properties
       expect(properties.map(prop => prop.name)).to.have.members([
         'demo01',
         'demo02',
@@ -979,20 +979,20 @@ describe('Metadata generation', () => {
         'demo16',
         'demo17',
         'd',
-      ]);
-    });
+      ])
+    })
 
     it('should generate multiKeysPropertyInference method', () => {
-      const method = controller.methods.find(method => method.name === 'multiKeysPropertyInference');
+      const method = controller.methods.find(method => method.name === 'multiKeysPropertyInference')
       if (!method) {
-        throw new Error('Method multiKeysPropertyInference not defined!');
+        throw new Error('Method multiKeysPropertyInference not defined!')
       }
 
-      expect(method.method).to.equal('get');
-      expect(method.path).to.equal('keys-property-inference');
-      const [response] = method.responses;
-      expect(response.schema?.dataType).to.eq('nestedObjectLiteral');
-      const properties = (response.schema as Tsoa.NestedObjectLiteralType).properties;
+      expect(method.method).to.equal('get')
+      expect(method.path).to.equal('keys-property-inference')
+      const [response] = method.responses
+      expect(response.schema?.dataType).to.eq('nestedObjectLiteral')
+      const properties = (response.schema as Tsoa.NestedObjectLiteralType).properties
       expect(properties.map(prop => prop.name)).to.have.members([
         'demo01',
         'demo02',
@@ -1015,79 +1015,79 @@ describe('Metadata generation', () => {
         'demo19',
         'demo20',
         'demo21',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('controllerWithJsDocResponseDescriptionGeneration', () => {
-    const metadata = new MetadataGenerator('./fixtures/controllers/controllerWithJsDocResponseDescription.ts').Generate();
-    const controller = metadata.controllers[0];
+    const metadata = new MetadataGenerator('./fixtures/controllers/controllerWithJsDocResponseDescription.ts').Generate()
+    const controller = metadata.controllers[0]
 
     it('has success response description', () => {
-      const description = 'SuccessResponse description';
-      const method = controller.methods.find(m => m.name === 'descriptionWithSuccessResponse');
+      const description = 'SuccessResponse description'
+      const method = controller.methods.find(m => m.name === 'descriptionWithSuccessResponse')
       if (!method) {
-        throw new Error('method descriptionWithSuccessResponse not defined');
+        throw new Error('method descriptionWithSuccessResponse not defined')
       }
-      expect(method.responses[0].name).to.equal(200);
-      expect(method.responses[0].description).to.equal(description);
-    });
+      expect(method.responses[0].name).to.equal(200)
+      expect(method.responses[0].description).to.equal(description)
+    })
 
     it('has a custom description when @returns is used on response 200', () => {
-      const description = 'custom description with jsdoc annotation';
-      const method = controller.methods.find(m => m.name === 'descriptionWithJsDocAnnotation');
+      const description = 'custom description with jsdoc annotation'
+      const method = controller.methods.find(m => m.name === 'descriptionWithJsDocAnnotation')
       if (!method) {
-        throw new Error('method descriptionWithJsDocAnnotation not defined');
+        throw new Error('method descriptionWithJsDocAnnotation not defined')
       }
-      expect(method.responses[0].name).to.equal('200');
-      expect(method.responses[0].description).to.equal(description);
-    });
+      expect(method.responses[0].name).to.equal('200')
+      expect(method.responses[0].description).to.equal(description)
+    })
     it("should not override @SuccessResponse's description even if @returns is present", () => {
-      const description = 'Success Response description';
-      const method = controller.methods.find(m => m.name === 'successResponseAndJsDocAnnotation');
+      const description = 'Success Response description'
+      const method = controller.methods.find(m => m.name === 'successResponseAndJsDocAnnotation')
       if (!method) {
-        throw new Error('method successResponseAndJsDocAnnotation not defined');
+        throw new Error('method successResponseAndJsDocAnnotation not defined')
       }
-      expect(method.responses[0].name).to.equal(200);
-      expect(method.responses[0].description).to.equal(description);
-    });
-  });
+      expect(method.responses[0].name).to.equal(200)
+      expect(method.responses[0].description).to.equal(description)
+    })
+  })
 
   describe('AnnotatedTypesControllerGenerator', () => {
-    const metadata = new MetadataGenerator('./fixtures/controllers/annotatedTypesController.ts').Generate();
-    const metadataIntDefault = new MetadataGenerator('./fixtures/controllers/annotatedTypesController.ts', undefined, undefined, undefined, undefined, 'integer').Generate();
+    const metadata = new MetadataGenerator('./fixtures/controllers/annotatedTypesController.ts').Generate()
+    const metadataIntDefault = new MetadataGenerator('./fixtures/controllers/annotatedTypesController.ts', undefined, undefined, undefined, undefined, 'integer').Generate()
 
-    const controller = metadata.controllers.find(controller => controller.name === 'AnnotatedTypesController');
-    const controllerIntDefault = metadataIntDefault.controllers.find(controller => controller.name === 'AnnotatedTypesController');
+    const controller = metadata.controllers.find(controller => controller.name === 'AnnotatedTypesController')
+    const controllerIntDefault = metadataIntDefault.controllers.find(controller => controller.name === 'AnnotatedTypesController')
 
-    if (!controller || !controllerIntDefault) throw new Error('AnnotatedTypesController not defined!');
+    if (!controller || !controllerIntDefault) throw new Error('AnnotatedTypesController not defined!')
 
     const getControllerNumberMethods = (controller: Tsoa.Controller) => {
-      const getDefault = controller.methods.find(method => method.name === 'getDefault');
-      const getDouble = controller.methods.find(method => method.name === 'getDouble');
-      const getInteger = controller.methods.find(method => method.name === 'getInteger');
-      if (!getDefault || !getDouble || !getInteger) throw new Error('Methods not defined!');
-      return { getDefault, getDouble, getInteger };
-    };
+      const getDefault = controller.methods.find(method => method.name === 'getDefault')
+      const getDouble = controller.methods.find(method => method.name === 'getDouble')
+      const getInteger = controller.methods.find(method => method.name === 'getInteger')
+      if (!getDefault || !getDouble || !getInteger) throw new Error('Methods not defined!')
+      return { getDefault, getDouble, getInteger }
+    }
 
     const checkNumberType = (method: Tsoa.Method, numberType: string) => {
-      const numberDataType = (method.responses[0].schema as Tsoa.NestedObjectLiteralType).properties.find(p => p.name === 'number')?.type.dataType;
+      const numberDataType = (method.responses[0].schema as Tsoa.NestedObjectLiteralType).properties.find(p => p.name === 'number')?.type.dataType
 
-      expect(numberDataType).to.equal(numberType);
-    };
+      expect(numberDataType).to.equal(numberType)
+    }
 
     it('Double default number type is applied correctly', () => {
-      const { getDefault, getDouble, getInteger } = getControllerNumberMethods(controller);
-      checkNumberType(getDefault, 'double');
-      checkNumberType(getDouble, 'double');
-      checkNumberType(getInteger, 'integer');
-    });
+      const { getDefault, getDouble, getInteger } = getControllerNumberMethods(controller)
+      checkNumberType(getDefault, 'double')
+      checkNumberType(getDouble, 'double')
+      checkNumberType(getInteger, 'integer')
+    })
 
     it('Integer default number type is applied correctly', () => {
-      const { getDefault, getDouble, getInteger } = getControllerNumberMethods(controllerIntDefault);
-      checkNumberType(getDefault, 'integer');
-      checkNumberType(getDouble, 'double');
-      checkNumberType(getInteger, 'integer');
-    });
-  });
-});
+      const { getDefault, getDouble, getInteger } = getControllerNumberMethods(controllerIntDefault)
+      checkNumberType(getDefault, 'integer')
+      checkNumberType(getDouble, 'double')
+      checkNumberType(getInteger, 'integer')
+    })
+  })
+})

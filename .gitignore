@@ -10,3 +10,5 @@ yarn-error.log
 tsconfig.tsbuildinfo
 .typedoc
 codealike.json
+.turbo
+**/.turbo

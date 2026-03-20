@@ -1,5 +1,5 @@
-import { injectable } from 'inversify';
-import { TestModel, TestSubModel } from '../testModel';
+import { injectable } from 'inversify'
+import { TestModel, TestSubModel } from '../testModel'
 
 @injectable()
 export class AsyncService {
@@ -37,7 +37,7 @@ export class AsyncService {
       strLiteralVal: 'Foo',
       stringArray: ['string one', 'string two'],
       stringValue: 'a string',
-    };
-    return testModel as TestModel;
+    }
+    return testModel as TestModel
   }
 }

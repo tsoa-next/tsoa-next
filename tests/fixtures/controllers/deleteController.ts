@@ -1,17 +1,17 @@
-import { Delete, Query, Route } from '@tsoa/runtime';
-import { ModelService } from '../services/modelService';
-import { TestModel } from '../testModel';
+import { Delete, Query, Route } from '@tsoa/runtime'
+import { ModelService } from '../services/modelService'
+import { TestModel } from '../testModel'
 
 @Route('DeleteTest')
 export class DeleteTestController {
   @Delete()
   public async deleteWithReturnValue(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Delete('Current')
   public async deleteCurrent(): Promise<void> {
-    return;
+    return
   }
 
   @Delete('{numberPathParam}/{booleanPathParam}/{stringPathParam}')
@@ -23,6 +23,6 @@ export class DeleteTestController {
     @Query() stringParam: string,
     @Query() numberParam: number,
   ): Promise<void> {
-    return;
+    return
   }
 }

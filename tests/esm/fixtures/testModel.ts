@@ -1,3 +1,3 @@
 export type TestModel = {
-  str: string;
-};
+  str: string
+}

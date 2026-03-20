@@ -3,8 +3,8 @@
  */
 export function NoSecurity(): ClassDecorator & MethodDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }
 
 /**
@@ -12,6 +12,6 @@ export function NoSecurity(): ClassDecorator & MethodDecorator {
  */
 export function Security(name: string | { [name: string]: string[] }, scopes?: string[]): ClassDecorator & MethodDecorator {
   return () => {
-    return;
-  };
+    return
+  }
 }

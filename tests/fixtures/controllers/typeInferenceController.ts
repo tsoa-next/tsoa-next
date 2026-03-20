@@ -1,5 +1,5 @@
-import { Get, Route } from '@tsoa/runtime';
-import { TruncationTestModel } from '../testModel';
+import { Get, Route } from '@tsoa/runtime'
+import { TruncationTestModel } from '../testModel'
 
 @Route('inference')
 export class TypeInferenceController {
@@ -24,7 +24,7 @@ export class TypeInferenceController {
       demo16: '',
       demo17: '',
       d: '',
-    };
+    }
   }
 
   @Get('keys-property-inference')
@@ -51,6 +51,6 @@ export class TypeInferenceController {
       demo19: '',
       demo20: '',
       demo21: '',
-    };
+    }
   }
 }

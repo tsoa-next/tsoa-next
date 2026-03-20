@@ -1,9 +1,9 @@
-import { Route, Controller, Get, Query } from '@tsoa/runtime';
+import { Route, Controller, Get, Query } from '@tsoa/runtime'
 
 /**
  * @isLong
  */
-export type NumType = number;
+export type NumType = number
 
 @Route('TagTest')
 export class TagController extends Controller {
@@ -13,6 +13,6 @@ export class TagController extends Controller {
    */
   @Get()
   public async get(@Query() index: NumType, @Query() index2: number): Promise<void> {
-    return;
+    return
   }
 }

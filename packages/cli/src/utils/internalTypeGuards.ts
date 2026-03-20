@@ -1,5 +1,5 @@
 // This file is designed to contain functions that narrow the input type to a type within src\metadataGeneration\tsoa.ts
-import { Tsoa, assertNever } from '@tsoa/runtime';
+import { Tsoa, assertNever } from '@tsoa/runtime'
 
 /**
  * This will help us do exhaustive matching against only reference types. For example, once you have narrowed the input, you don't then have to check the case where it's a `integer` because it never will be.
@@ -7,57 +7,57 @@ import { Tsoa, assertNever } from '@tsoa/runtime';
 export function isRefType(metaType: Tsoa.Type): metaType is Tsoa.ReferenceType {
   switch (metaType.dataType) {
     case 'any':
-      return false;
+      return false
     case 'array':
-      return false;
+      return false
     case 'binary':
-      return false;
+      return false
     case 'boolean':
-      return false;
+      return false
     case 'buffer':
-      return false;
+      return false
     case 'byte':
-      return false;
+      return false
     case 'date':
-      return false;
+      return false
     case 'file':
-      return false;
+      return false
     case 'datetime':
-      return false;
+      return false
     case 'double':
-      return false;
+      return false
     case 'enum':
-      return false;
+      return false
     case 'float':
-      return false;
+      return false
     case 'integer':
-      return false;
+      return false
     case 'intersection':
-      return false;
+      return false
     case 'long':
-      return false;
+      return false
     case 'nestedObjectLiteral':
-      return false;
+      return false
     case 'object':
-      return false;
+      return false
     case 'refEnum':
-      return true;
+      return true
     case 'refObject':
-      return true;
+      return true
     case 'refAlias':
-      return true;
+      return true
     case 'string':
-      return false;
+      return false
     case 'tuple':
-      return false;
+      return false
     case 'union':
-      return false;
+      return false
     case 'void':
-      return false;
+      return false
     case 'undefined':
-      return false;
+      return false
     default: {
-      return assertNever(metaType);
+      return assertNever(metaType)
     }
   }
 }

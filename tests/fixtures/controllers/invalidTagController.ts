@@ -1,4 +1,4 @@
-import { Route, Get, Query, Controller } from '@tsoa/runtime';
+import { Route, Get, Query, Controller } from '@tsoa/runtime'
 
 @Route('TagTest')
 export class InvalidTagController extends Controller {
@@ -8,6 +8,6 @@ export class InvalidTagController extends Controller {
    */
   @Get('OrphanTag')
   public async OrphanTagWithNoName(@Query() index: number): Promise<void> {
-    return;
+    return
   }
 }

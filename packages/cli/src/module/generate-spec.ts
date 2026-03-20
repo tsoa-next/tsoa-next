@@ -1,19 +1,19 @@
-import * as ts from 'typescript';
-import * as YAML from 'yaml';
-import { ExtendedSpecConfig } from '../cli';
-import { MetadataGenerator } from '../metadataGeneration/metadataGenerator';
-import { Tsoa, Swagger, Config } from '@tsoa/runtime';
-import { SpecGenerator2 } from '../swagger/specGenerator2';
-import { SpecGenerator3 } from '../swagger/specGenerator3';
-import { SpecGenerator31 } from '../swagger/specGenerator31';
-import { fsMkDir, fsWriteFile } from '../utils/fs';
+import * as ts from 'typescript'
+import * as YAML from 'yaml'
+import { ExtendedSpecConfig } from '../cli'
+import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
+import { Tsoa, Swagger, Config } from '@tsoa/runtime'
+import { SpecGenerator2 } from '../swagger/specGenerator2'
+import { SpecGenerator3 } from '../swagger/specGenerator3'
+import { SpecGenerator31 } from '../swagger/specGenerator31'
+import { fsMkDir, fsWriteFile } from '../utils/fs'
 
 export const getSwaggerOutputPath = (swaggerConfig: ExtendedSpecConfig) => {
-  const ext = swaggerConfig.yaml ? 'yaml' : 'json';
-  const specFileBaseName = swaggerConfig.specFileBaseName || 'swagger';
+  const ext = swaggerConfig.yaml ? 'yaml' : 'json'
+  const specFileBaseName = swaggerConfig.specFileBaseName || 'swagger'
 
-  return `${swaggerConfig.outputDirectory}/${specFileBaseName}.${ext}`;
-};
+  return `${swaggerConfig.outputDirectory}/${specFileBaseName}.${ext}`
+}
 
 export const generateSpec = async (
   swaggerConfig: ExtendedSpecConfig,
@@ -26,32 +26,32 @@ export const generateSpec = async (
   defaultNumberType?: Config['defaultNumberType'],
 ) => {
   if (!metadata) {
-    metadata = new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, swaggerConfig.controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate();
+    metadata = new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, swaggerConfig.controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
   }
 
-  let spec: Swagger.Spec;
+  let spec: Swagger.Spec
 
   switch (swaggerConfig.specVersion) {
     case 2:
-      spec = new SpecGenerator2(metadata, swaggerConfig).GetSpec();
-      break;
+      spec = new SpecGenerator2(metadata, swaggerConfig).GetSpec()
+      break
     case 3:
-      spec = new SpecGenerator3(metadata, swaggerConfig).GetSpec();
-      break;
+      spec = new SpecGenerator3(metadata, swaggerConfig).GetSpec()
+      break
     case 3.1:
     default:
-      spec = new SpecGenerator31(metadata, swaggerConfig).GetSpec();
+      spec = new SpecGenerator31(metadata, swaggerConfig).GetSpec()
   }
 
-  await fsMkDir(swaggerConfig.outputDirectory, { recursive: true });
+  await fsMkDir(swaggerConfig.outputDirectory, { recursive: true })
 
-  let data = JSON.stringify(spec, null, '\t');
+  let data = JSON.stringify(spec, null, '\t')
   if (swaggerConfig.yaml) {
-    data = YAML.stringify(JSON.parse(data));
+    data = YAML.stringify(JSON.parse(data))
   }
 
-  const outputPath = getSwaggerOutputPath(swaggerConfig);
-  await fsWriteFile(outputPath, data, { encoding: 'utf8' });
+  const outputPath = getSwaggerOutputPath(swaggerConfig)
+  await fsWriteFile(outputPath, data, { encoding: 'utf8' })
 
-  return metadata;
-};
+  return metadata
+}

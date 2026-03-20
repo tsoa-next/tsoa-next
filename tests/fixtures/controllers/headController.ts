@@ -1,15 +1,15 @@
-import { Head, Query, Route } from '@tsoa/runtime';
+import { Head, Query, Route } from '@tsoa/runtime'
 
 @Route('HeadTest')
 export class HeadTestController {
   @Head()
   public async resourceExists(): Promise<void> {
-    return;
+    return
   }
 
   @Head('Current')
   public async resourceExistsCurrent(): Promise<void> {
-    return;
+    return
   }
 
   @Head('{numberPathParam}/{booleanPathParam}/{stringPathParam}')
@@ -21,6 +21,6 @@ export class HeadTestController {
     @Query() stringParam: string,
     @Query() numberParam: number,
   ): Promise<void> {
-    return;
+    return
   }
 }

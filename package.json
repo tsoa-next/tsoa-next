@@ -29,17 +29,15 @@
     ]
   },
   "scripts": {
-    "build": "lerna run build --stream",
-    "deploy": "npm run bump && lerna publish from-git",
-    "bump": "lerna version patch -m \"Release v%s\" --force-publish",
-    "clean": "lerna run clean --stream",
+    "build": "turbo run build --output-logs=full",
+    "clean": "turbo run clean --output-logs=full",
     "prepare": "npm run build",
     "preversion": "npm run test",
-    "test": "lerna run test --stream --concurrency 1",
+    "test": "turbo run test --concurrency=1 --output-logs=full",
     "lint": "eslint . --ext .ts",
     "lint:fix": "npm run lint -- --fix",
-    "watch": "lerna run watch",
-    "lerna": "lerna",
+    "watch": "turbo run watch --parallel --output-logs=full",
+    "turbo": "turbo",
     "typedocs": "typedoc --options ./typedoc.json"
   },
   "dependencies": {},
@@ -49,9 +47,9 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "husky": "^4.3.0",
-    "lerna": "^8.1.8",
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
+    "turbo": "^2.8.20",
     "ts-node": "^10.9.2",
     "typedoc": "^0.26.7"
   },
@@ -60,7 +58,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lukeautry/tsoa.git"
+    "url": "https://github.com/VannaDii/tsoa-next.git"
   },
   "engines": {
     "npm": ">=10.0.0",

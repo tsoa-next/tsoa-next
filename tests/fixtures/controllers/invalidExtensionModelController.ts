@@ -1,10 +1,10 @@
-import { Get, Route } from '@tsoa/runtime';
+import { Get, Route } from '@tsoa/runtime'
 
 interface InvalidExtension {
   /**
    * @extension {"key-1": "value-1"}
    */
-  invalidExtension: number;
+  invalidExtension: number
 }
 
 @Route('BadExtensionTest')
@@ -14,6 +14,6 @@ export class InvalidExtensionModelController {
   public async badExtensionMethod(): Promise<InvalidExtension> {
     return {
       invalidExtension: 1,
-    };
+    }
   }
 }

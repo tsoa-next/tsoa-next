@@ -1,0 +1,121 @@
+name: Publish packages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build workspace packages
+        run: npm run build
+
+      - name: Read package metadata
+        id: package
+        run: |
+          echo "name=$(node -p "require('./packages/tsoa/package.json').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./packages/tsoa/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Derive GitHub Packages metadata
+        id: github-package
+        run: |
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          publish_dir="$(mktemp -d "${RUNNER_TEMP}/github-package-XXXXXX")"
+
+          cp -R ./packages/tsoa/. "${publish_dir}/"
+
+          node -e '
+            const fs = require("fs");
+            const publishDir = process.argv[1];
+            const owner = process.argv[2];
+            const repo = process.argv[3];
+            const pkgPath = `${publishDir}/package.json`;
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+
+            pkg.name = `@${owner}/${pkg.name}`;
+            pkg.repository = {
+              type: "git",
+              url: `https://github.com/${repo}.git`,
+            };
+            pkg.publishConfig = {
+              ...(pkg.publishConfig ?? {}),
+              registry: "https://npm.pkg.github.com",
+            };
+
+            fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+          ' "${publish_dir}" "${owner}" "${GITHUB_REPOSITORY}"
+
+          echo "name=@${owner}/${{ steps.package.outputs.name }}" >> "$GITHUB_OUTPUT"
+          echo "dir=${publish_dir}" >> "$GITHUB_OUTPUT"
+
+      - name: Check npm for existing version
+        id: npm-existing
+        run: |
+          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish npm package
+        if: steps.npm-existing.outputs.published != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish ./packages/tsoa --access public --provenance
+
+      - name: Skip npm publish for existing version
+        if: steps.npm-existing.outputs.published == 'true'
+        run: echo "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} is already published; skipping."
+
+      - name: Configure GitHub Packages auth
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          cat <<EOF > "${HOME}/.npmrc"
+          @${owner}:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+          always-auth=true
+          EOF
+
+      - name: Check GitHub Packages for existing version
+        id: github-existing
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if npm view "${{ steps.github-package.outputs.name }}@${{ steps.package.outputs.version }}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub package
+        if: steps.github-existing.outputs.published != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish "${{ steps.github-package.outputs.dir }}" --registry=https://npm.pkg.github.com
+
+      - name: Skip GitHub publish for existing version
+        if: steps.github-existing.outputs.published == 'true'
+        run: echo "${{ steps.github-package.outputs.name }}@${{ steps.package.outputs.version }} is already published to GitHub Packages; skipping."

@@ -1,11 +1,11 @@
-import { normalize } from 'path';
-import { Node, TypeNode } from 'typescript';
+import { normalize } from 'path'
+import { Node, TypeNode } from 'typescript'
 
 export class GenerateMetadataError extends Error {
   constructor(message?: string, node?: Node | TypeNode, onlyCurrent = false) {
-    super(message);
+    super(message)
     if (node) {
-      this.message = `${message!}\n${prettyLocationOfNode(node)}\n${prettyTroubleCause(node, onlyCurrent)}`;
+      this.message = `${message!}\n${prettyLocationOfNode(node)}\n${prettyTroubleCause(node, onlyCurrent)}`
     }
   }
 }
@@ -18,29 +18,29 @@ export class GenerateMetaDataWarning {
   ) {}
 
   toString() {
-    return `Warning: ${this.message}\n${prettyLocationOfNode(this.node)}\n${prettyTroubleCause(this.node, this.onlyCurrent)}`;
+    return `Warning: ${this.message}\n${prettyLocationOfNode(this.node)}\n${prettyTroubleCause(this.node, this.onlyCurrent)}`
   }
 }
 
 export function prettyLocationOfNode(node: Node | TypeNode) {
-  const sourceFile = node.getSourceFile();
+  const sourceFile = node.getSourceFile()
   if (sourceFile) {
-    const token = node.getFirstToken() || node.parent.getFirstToken();
-    const start = token ? `:${sourceFile.getLineAndCharacterOfPosition(token.getStart()).line + 1}` : '';
-    const end = token ? `:${sourceFile.getLineAndCharacterOfPosition(token.getEnd()).line + 1}` : '';
-    const normalizedPath = normalize(`${sourceFile.fileName}${start}${end}`);
-    return `At: ${normalizedPath}.`;
+    const token = node.getFirstToken() || node.parent.getFirstToken()
+    const start = token ? `:${sourceFile.getLineAndCharacterOfPosition(token.getStart()).line + 1}` : ''
+    const end = token ? `:${sourceFile.getLineAndCharacterOfPosition(token.getEnd()).line + 1}` : ''
+    const normalizedPath = normalize(`${sourceFile.fileName}${start}${end}`)
+    return `At: ${normalizedPath}.`
   } else {
-    return `At unknown position...`;
+    return `At unknown position...`
   }
 }
 
 export function prettyTroubleCause(node: Node | TypeNode, onlyCurrent = false) {
-  let name: string;
+  let name: string
   if (onlyCurrent || !node.parent) {
-    name = node.pos !== -1 && node.parent ? node.getText() : (node as any).name?.text || '<unknown name>';
+    name = node.pos !== -1 && node.parent ? node.getText() : (node as any).name?.text || '<unknown name>'
   } else {
-    name = node.parent.pos !== -1 ? node.parent.getText() : (node as any).parent.name?.text || '<unknown name>';
+    name = node.parent.pos !== -1 ? node.parent.getText() : (node as any).parent.name?.text || '<unknown name>'
   }
-  return `This was caused by '${name}'`;
+  return `This was caused by '${name}'`
 }

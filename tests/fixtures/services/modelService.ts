@@ -1,4 +1,4 @@
-import { TestClassModel, TestModel, TestSubModel } from '../testModel';
+import { TestClassModel, TestModel, TestSubModel } from '../testModel'
 
 export class ModelService {
   public getModel(): TestModel {
@@ -33,19 +33,19 @@ export class ModelService {
       strLiteralVal: 'Foo',
       stringArray: ['string one', 'string two'],
       stringValue: 'a string',
-    };
-    return testModel as TestModel;
+    }
+    return testModel as TestModel
   }
 
   public getModelPromise(): Promise<TestModel> {
-    return Promise.resolve(this.getModel());
+    return Promise.resolve(this.getModel())
   }
 
   public getClassModel(): TestClassModel {
-    const testClassModel = new TestClassModel('constructor var', 'private constructor var', '_default constructor var', 'readonlyConstructorvar', 'optional constructor var');
-    testClassModel.id = 1;
-    testClassModel.publicStringProperty = 'public string property';
+    const testClassModel = new TestClassModel('constructor var', 'private constructor var', '_default constructor var', 'readonlyConstructorvar', 'optional constructor var')
+    testClassModel.id = 1
+    testClassModel.publicStringProperty = 'public string property'
 
-    return testClassModel;
+    return testClassModel
   }
 }

@@ -1,11 +1,11 @@
-import { Tsoa } from '@tsoa/runtime';
+import { Tsoa } from '@tsoa/runtime'
 
 export const isVoidType = (type: Tsoa.Type): boolean => {
   if (type.dataType === 'void' || type.dataType === 'undefined') {
-    return true;
+    return true
   } else if (type.dataType === 'refAlias') {
-    return isVoidType(type.type);
+    return isVoidType(type.type)
   } else {
-    return false;
+    return false
   }
-};
+}

@@ -1,61 +1,61 @@
-import * as ts from 'typescript';
-import { getInitializerValue, isNonUndefinedInitializerValue } from './initializer-value';
-import { MetadataGenerator } from './metadataGenerator';
-import { Tsoa } from '@tsoa/runtime';
-import { safeFromJson } from '../utils/jsonUtils';
+import * as ts from 'typescript'
+import { getInitializerValue, isNonUndefinedInitializerValue } from './initializer-value'
+import { MetadataGenerator } from './metadataGenerator'
+import { Tsoa } from '@tsoa/runtime'
+import { safeFromJson } from '../utils/jsonUtils'
 
 export function getExtensions(decorators: ts.Identifier[], metadataGenerator: MetadataGenerator): Tsoa.Extension[] {
   const extensions: Tsoa.Extension[] = decorators.map(extensionDecorator => {
     if (!ts.isCallExpression(extensionDecorator.parent)) {
-      throw new Error('The parent of the @Extension is not a CallExpression. Are you using it in the right place?');
+      throw new Error('The parent of the @Extension is not a CallExpression. Are you using it in the right place?')
     }
 
-    const [decoratorKeyArg, decoratorValueArg] = extensionDecorator.parent.arguments;
+    const [decoratorKeyArg, decoratorValueArg] = extensionDecorator.parent.arguments
 
     if (!ts.isStringLiteral(decoratorKeyArg) && !ts.isIdentifier(decoratorKeyArg)) {
-      throw new Error('The first argument of @Extension must be a string');
+      throw new Error('The first argument of @Extension must be a string')
     }
 
-    const attributeKey = ts.isIdentifier(decoratorKeyArg) ? getInitializerValue(decoratorKeyArg, metadataGenerator.typeChecker) : decoratorKeyArg.text;
+    const attributeKey = ts.isIdentifier(decoratorKeyArg) ? getInitializerValue(decoratorKeyArg, metadataGenerator.typeChecker) : decoratorKeyArg.text
 
     if (typeof attributeKey !== 'string') {
-      throw new Error('The first argument of @Extension must be a string');
+      throw new Error('The first argument of @Extension must be a string')
     }
 
     if (!decoratorValueArg) {
-      throw new Error(`Extension '${attributeKey}' must contain a value`);
+      throw new Error(`Extension '${attributeKey}' must contain a value`)
     }
 
-    assertValidExtensionKey(attributeKey);
+    assertValidExtensionKey(attributeKey)
 
-    const attributeValue = getInitializerValue(decoratorValueArg, metadataGenerator.typeChecker);
+    const attributeValue = getInitializerValue(decoratorValueArg, metadataGenerator.typeChecker)
     if (!isNonUndefinedInitializerValue(attributeValue)) {
-      throw new Error(`Extension '${attributeKey}' cannot have an undefined initializer value`);
+      throw new Error(`Extension '${attributeKey}' cannot have an undefined initializer value`)
     }
-    return { key: attributeKey, value: attributeValue };
-  });
+    return { key: attributeKey, value: attributeValue }
+  })
 
-  return extensions;
+  return extensions
 }
 
 export function getExtensionsFromJSDocComments(comments: string[]): Tsoa.Extension[] {
-  const extensions: Tsoa.Extension[] = [];
+  const extensions: Tsoa.Extension[] = []
   comments.forEach(comment => {
-    const extensionData = safeFromJson(comment);
+    const extensionData = safeFromJson(comment)
     if (extensionData) {
-      const keys = Object.keys(extensionData);
+      const keys = Object.keys(extensionData)
       keys.forEach(key => {
-        assertValidExtensionKey(key);
-        extensions.push({ key: key, value: extensionData[key] });
-      });
+        assertValidExtensionKey(key)
+        extensions.push({ key: key, value: extensionData[key] })
+      })
     }
-  });
+  })
 
-  return extensions;
+  return extensions
 }
 
 function assertValidExtensionKey(key: string): asserts key is `x-${string}` {
   if (!key.startsWith('x-')) {
-    throw new Error('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/');
+    throw new Error('Extensions must begin with "x-" to be valid. Please see the following link for more information: https://swagger.io/docs/specification/openapi-extensions/')
   }
 }

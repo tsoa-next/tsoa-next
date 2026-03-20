@@ -1,7 +1,7 @@
-import { inject, injectable } from 'inversify';
-import { Get, Route, Security } from '@tsoa/runtime';
-import { TestModel } from '../testModel';
-import { ManagedService } from './managedService';
+import { inject, injectable } from 'inversify'
+import { Get, Route, Security } from '@tsoa/runtime'
+import { TestModel } from '../testModel'
+import { ManagedService } from './managedService'
 
 @injectable()
 @Route('ManagedTest')
@@ -11,6 +11,6 @@ export class ManagedController {
 
   @Get()
   public async getModel(): Promise<TestModel> {
-    return this.managedService.getModel();
+    return this.managedService.getModel()
   }
 }

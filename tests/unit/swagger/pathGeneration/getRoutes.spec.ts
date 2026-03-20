@@ -1,296 +1,296 @@
-import { expect } from 'chai';
-import 'mocha';
-import { MetadataGenerator } from '@tsoa/cli/metadataGeneration/metadataGenerator';
-import { SpecGenerator2 } from '@tsoa/cli/swagger/specGenerator2';
-import { SpecGenerator3 } from '@tsoa/cli/swagger/specGenerator3';
-import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions';
-import { VerifyPathableNumberParameter, VerifyPathableParameter, VerifyPathableStringParameter } from '../../utilities/verifyParameter';
-import { VerifyPath } from '../../utilities/verifyPath';
+import { expect } from 'chai'
+import 'mocha'
+import { MetadataGenerator } from '@tsoa/cli/metadataGeneration/metadataGenerator'
+import { SpecGenerator2 } from '@tsoa/cli/swagger/specGenerator2'
+import { SpecGenerator3 } from '@tsoa/cli/swagger/specGenerator3'
+import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions'
+import { VerifyPathableNumberParameter, VerifyPathableParameter, VerifyPathableStringParameter } from '../../utilities/verifyParameter'
+import { VerifyPath } from '../../utilities/verifyPath'
 
 describe('GET route generation', () => {
-  const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate();
-  const spec = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec();
-  const baseRoute = '/GetTest';
+  const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
+  const spec = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec()
+  const baseRoute = '/GetTest'
 
   const getValidatedGetOperation = (actionRoute: string) => {
-    const path = verifyPath(actionRoute);
+    const path = verifyPath(actionRoute)
     if (!path.get) {
-      throw new Error('No get operation.');
+      throw new Error('No get operation.')
     }
 
-    return path.get;
-  };
+    return path.get
+  }
 
   const getValidatedSuccessResponse = (route: string) => {
-    const get = getValidatedGetOperation(route);
+    const get = getValidatedGetOperation(route)
 
-    const responses = get.responses;
+    const responses = get.responses
     if (!responses) {
-      throw new Error('No responses.');
+      throw new Error('No responses.')
     }
 
-    const successResponse = responses['200'];
+    const successResponse = responses['200']
     if (!successResponse) {
-      throw new Error('No success response.');
+      throw new Error('No success response.')
     }
 
-    return successResponse;
-  };
+    return successResponse
+  }
 
   const getValidatedParameters = (actionRoute: string) => {
-    const get = getValidatedGetOperation(actionRoute);
+    const get = getValidatedGetOperation(actionRoute)
     if (!get.parameters) {
-      throw new Error('No operation parameters.');
+      throw new Error('No operation parameters.')
     }
 
-    return get.parameters;
-  };
+    return get.parameters
+  }
 
   it('should generate a path for a GET route with no path argument', () => {
-    verifyPath(baseRoute);
-  });
+    verifyPath(baseRoute)
+  })
 
   it('should generate params for date type parameter', () => {
-    const parameters = getValidatedParameters(`${baseRoute}/DateParam`);
+    const parameters = getValidatedParameters(`${baseRoute}/DateParam`)
 
-    const parameter = parameters[0];
+    const parameter = parameters[0]
     if (!parameter) {
-      throw new Error('Should have one parameter.');
+      throw new Error('Should have one parameter.')
     }
 
-    expect(parameter.type).to.equal('string');
-    expect(parameter.format).to.equal('date-time');
-  });
+    expect(parameter.type).to.equal('string')
+    expect(parameter.format).to.equal('date-time')
+  })
 
   it('should generate tags for tag decorated method', () => {
-    const operation = getValidatedGetOperation(`${baseRoute}/GeneratesTags`);
-    expect(operation.tags).to.deep.equal(['test', 'test-two']);
-  });
+    const operation = getValidatedGetOperation(`${baseRoute}/GeneratesTags`)
+    expect(operation.tags).to.deep.equal(['test', 'test-two'])
+  })
 
   it('should generate a custom operation id for methods with that decorator', () => {
-    const operation = getValidatedGetOperation(`${baseRoute}/CustomOperationId`);
-    expect(operation.operationId).to.equal('MyCustomOperationId');
-  });
+    const operation = getValidatedGetOperation(`${baseRoute}/CustomOperationId`)
+    expect(operation.operationId).to.equal('MyCustomOperationId')
+  })
 
   it('should generate a path for a GET route with no controller path argument', () => {
-    const pathlessMetadata = new MetadataGenerator('./fixtures/controllers/pathlessGetController.ts').Generate();
-    const pathlessSpec = new SpecGenerator2(pathlessMetadata, getDefaultExtendedOptions()).GetSpec();
-    VerifyPath(pathlessSpec, '/Current', path => path.get, false);
-  });
+    const pathlessMetadata = new MetadataGenerator('./fixtures/controllers/pathlessGetController.ts').Generate()
+    const pathlessSpec = new SpecGenerator2(pathlessMetadata, getDefaultExtendedOptions()).GetSpec()
+    VerifyPath(pathlessSpec, '/Current', path => path.get, false)
+  })
 
   it('should generate a path for a GET route with a path argument', () => {
-    const actionRoute = `${baseRoute}/Current`;
-    verifyPath(actionRoute);
-  });
+    const actionRoute = `${baseRoute}/Current`
+    verifyPath(actionRoute)
+  })
 
   it('should generate a path for a GET route with const argument', () => {
-    const actionRoute = `${baseRoute}/PathFromConstantValue`;
-    verifyPath(actionRoute);
-  });
+    const actionRoute = `${baseRoute}/PathFromConstantValue`
+    verifyPath(actionRoute)
+  })
 
   it('should generate a path for a GET route with Enum argument', () => {
-    const actionRoute = `${baseRoute}/PathFromEnumValue`;
-    verifyPath(actionRoute);
-  });
+    const actionRoute = `${baseRoute}/PathFromEnumValue`
+    verifyPath(actionRoute)
+  })
 
   it('should generate a parameter for path parameters', () => {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    VerifyPathableParameter(parameters, 'booleanPathParam', 'boolean', 'path');
-    VerifyPathableParameter(parameters, 'numberPathParam', 'number', 'path', 'double');
-    VerifyPathableParameter(parameters, 'stringPathParam', 'string', 'path');
-  });
+    VerifyPathableParameter(parameters, 'booleanPathParam', 'boolean', 'path')
+    VerifyPathableParameter(parameters, 'numberPathParam', 'number', 'path', 'double')
+    VerifyPathableParameter(parameters, 'stringPathParam', 'string', 'path')
+  })
 
   it('should generate a parameter for query parameters', () => {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    VerifyPathableParameter(parameters, 'booleanParam', 'boolean', 'query');
-    VerifyPathableParameter(parameters, 'numberParam', 'number', 'query', 'double');
-    VerifyPathableParameter(parameters, 'stringParam', 'string', 'query');
-  });
+    VerifyPathableParameter(parameters, 'booleanParam', 'boolean', 'query')
+    VerifyPathableParameter(parameters, 'numberParam', 'number', 'query', 'double')
+    VerifyPathableParameter(parameters, 'stringParam', 'string', 'query')
+  })
 
   it('should generate a parameter for path parameters with decorator', () => {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    VerifyPathableParameter(parameters, 'booleanPathParam', 'boolean', 'path');
-    VerifyPathableNumberParameter(parameters, 'numberPathParam', 'number', 'path', 'double', 1, 10);
-    VerifyPathableStringParameter(parameters, 'stringPathParam', 'string', 'path', 1, 10);
-  });
+    VerifyPathableParameter(parameters, 'booleanPathParam', 'boolean', 'path')
+    VerifyPathableNumberParameter(parameters, 'numberPathParam', 'number', 'path', 'double', 1, 10)
+    VerifyPathableStringParameter(parameters, 'stringPathParam', 'string', 'path', 1, 10)
+  })
 
   it('should generate a parameter for query parameters with decorator', () => {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    VerifyPathableParameter(parameters, 'booleanParam', 'boolean', 'query');
-    VerifyPathableParameter(parameters, 'numberParam', 'number', 'query', 'double');
-    VerifyPathableStringParameter(parameters, 'stringParam', 'string', 'query', 3, 10);
-  });
+    VerifyPathableParameter(parameters, 'booleanParam', 'boolean', 'query')
+    VerifyPathableParameter(parameters, 'numberParam', 'number', 'query', 'double')
+    VerifyPathableStringParameter(parameters, 'stringParam', 'string', 'query', 3, 10)
+  })
 
   it('should set a valid response type for collection responses', () => {
-    const actionRoute = `${baseRoute}/Multi`;
-    verifyPath(actionRoute, true);
-  });
+    const actionRoute = `${baseRoute}/Multi`
+    verifyPath(actionRoute, true)
+  })
 
   it('should set a valid response type for union type return type', () => {
-    const actionRoute = `${baseRoute}/UnionTypeResponse`;
+    const actionRoute = `${baseRoute}/UnionTypeResponse`
 
-    const paths = spec.paths;
+    const paths = spec.paths
     if (!paths) {
-      throw new Error('No paths.');
+      throw new Error('No paths.')
     }
 
-    const path = paths[actionRoute];
+    const path = paths[actionRoute]
     if (!path) {
-      throw new Error('No path.');
+      throw new Error('No path.')
     }
 
-    const getOperation = path.get;
+    const getOperation = path.get
     if (!getOperation) {
-      throw new Error('No get operation.');
+      throw new Error('No get operation.')
     }
 
-    const responses = getOperation.responses;
+    const responses = getOperation.responses
     if (!responses) {
-      throw new Error('No responses.');
+      throw new Error('No responses.')
     }
 
-    const successResponse = responses['200'];
+    const successResponse = responses['200']
     if (!successResponse) {
-      throw new Error('No success response.');
+      throw new Error('No success response.')
     }
 
     if (!successResponse.schema) {
-      throw new Error('No response schema.');
+      throw new Error('No response schema.')
     }
     if (!successResponse.schema.type) {
-      throw new Error('No response schema type.');
+      throw new Error('No response schema type.')
     }
 
-    expect(successResponse.schema.type).to.equal('object');
-  });
+    expect(successResponse.schema.type).to.equal('object')
+  })
 
   it('should not generate content for 204 responses in v3', () => {
-    const oas3 = new SpecGenerator3(metadata, getDefaultExtendedOptions()).GetSpec();
-    const operation = oas3.paths['/GetTest/Void'].get;
+    const oas3 = new SpecGenerator3(metadata, getDefaultExtendedOptions()).GetSpec()
+    const operation = oas3.paths['/GetTest/Void'].get
 
-    const voidResponse = operation?.responses[204];
+    const voidResponse = operation?.responses[204]
     if (!voidResponse) {
-      throw new Error('Void get operation not defined!');
+      throw new Error('Void get operation not defined!')
     }
-    expect(voidResponse).to.not.haveOwnProperty('content');
-  });
+    expect(voidResponse).to.not.haveOwnProperty('content')
+  })
 
   it('should reject complex types as arguments', () => {
     expect(() => {
-      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidGetController.ts').Generate();
-      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec();
-    }).to.throw("@Query('myModel') Can't support 'refObject' type. \n in 'InvalidGetTestController.getModelWithComplex'");
-  });
+      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidGetController.ts').Generate()
+      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec()
+    }).to.throw("@Query('myModel') Can't support 'refObject' type. \n in 'InvalidGetTestController.getModelWithComplex'")
+  })
 
   it('should reject Query and Queries decorators at the same time', () => {
     expect(() => {
-      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidQueryController.ts').Generate();
-      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec();
-    }).to.throw("Choose either during @Query or @Queries in 'InvalidQueryTestController.getQueryAndQueries' method.");
-  });
+      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidQueryController.ts').Generate()
+      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec()
+    }).to.throw("Choose either during @Query or @Queries in 'InvalidQueryTestController.getQueryAndQueries' method.")
+  })
 
   it('should reject multiple Queries decorators', () => {
     expect(() => {
-      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidQueriesController.ts').Generate();
-      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec();
-    }).to.throw("Only one queries parameter allowed in 'InvalidQueriesTestController.getWithMultipleQueriesParams' method.");
-  });
+      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidQueriesController.ts').Generate()
+      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec()
+    }).to.throw("Only one queries parameter allowed in 'InvalidQueriesTestController.getWithMultipleQueriesParams' method.")
+  })
 
   it('should reject nested Query object inside Queries decorator', () => {
     expect(() => {
-      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidNestedQueriesController.ts').Generate();
-      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec();
-    }).to.throw("@Queries('nestedQueries') nested property 'nestedObject' Can't support 'refObject' type. \n in 'InvalidNestedQueriesController.nestedQueriesMethod'");
-  });
+      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/invalidNestedQueriesController.ts').Generate()
+      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec()
+    }).to.throw("@Queries('nestedQueries') nested property 'nestedObject' Can't support 'refObject' type. \n in 'InvalidNestedQueriesController.nestedQueriesMethod'")
+  })
 
   it('should reject invalid header types', function () {
-    this.timeout(10_000);
+    this.timeout(10_000)
     expect(() => {
-      new MetadataGenerator('./fixtures/controllers/invalidHeaderController.ts').Generate();
-    }).to.throw(/^Unable to parse Header Type 'Header names must be of type string.*/);
+      new MetadataGenerator('./fixtures/controllers/invalidHeaderController.ts').Generate()
+    }).to.throw(/^Unable to parse Header Type 'Header names must be of type string.*/)
 
     expect(() => {
-      new MetadataGenerator('./fixtures/controllers/incorrectResponseHeaderController.ts').Generate();
-    }).to.throw(/^Unable to parse Header Type any.*/);
-  });
+      new MetadataGenerator('./fixtures/controllers/incorrectResponseHeaderController.ts').Generate()
+    }).to.throw(/^Unable to parse Header Type any.*/)
+  })
 
   it('should reject unsupported indexed types', () => {
     expect(() => {
-      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/unsupportedIndexedTypeController.ts').Generate();
-      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec();
-    }).to.throw(/^Unknown type: IndexedAccessType.*/);
-  });
+      const invalidMetadata = new MetadataGenerator('./fixtures/controllers/unsupportedIndexedTypeController.ts').Generate()
+      new SpecGenerator2(invalidMetadata, getDefaultExtendedOptions()).GetSpec()
+    }).to.throw(/^Unknown type: IndexedAccessType.*/)
+  })
 
   it('should generate a path description from jsdoc comment', () => {
-    const get = getValidatedGetOperation(baseRoute);
+    const get = getValidatedGetOperation(baseRoute)
     if (!get.description) {
-      throw new Error('No description.');
+      throw new Error('No description.')
     }
 
-    expect(get.description).to.contain('This is a description of the getModel method');
-  });
+    expect(get.description).to.contain('This is a description of the getModel method')
+  })
 
   it('should generate optional parameters from default value', () => {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    const parameter = parameters.filter((p: any) => p.name === 'optionalStringParam')[0];
-    expect(parameter).to.exist;
-    expect(parameter.required).to.be.false;
-  });
+    const parameter = parameters.filter((p: any) => p.name === 'optionalStringParam')[0]
+    expect(parameter).to.exist
+    expect(parameter.required).to.be.false
+  })
 
   it('should generate parameter description from jsdoc comment on path parameter', () => {
-    verifyParameterDescription('numberPathParam');
-  });
+    verifyParameterDescription('numberPathParam')
+  })
 
   it('should generate parameter description from jsdoc comment on query parameter', () => {
-    verifyParameterDescription('numberParam');
-  });
+    verifyParameterDescription('numberParam')
+  })
 
   it('should generate example from example decorator', () => {
-    const response = getValidatedSuccessResponse(baseRoute);
+    const response = getValidatedSuccessResponse(baseRoute)
     if (!response.examples) {
-      throw new Error('No examples.');
+      throw new Error('No examples.')
     }
 
-    const jsonExample = response.examples['application/json'] as any;
+    const jsonExample = response.examples['application/json'] as any
     if (!jsonExample) {
-      throw new Error('No json example.');
+      throw new Error('No json example.')
     }
 
-    expect(response.description).to.equal('Returns TestModel');
-    expect(jsonExample.id).to.equal(1);
-    expect(jsonExample.boolArray).to.deep.equal([true, false]);
-    expect(jsonExample.boolValue).to.equal(true);
-    expect(jsonExample.modelValue.email).to.equal('test@test.com');
-    expect(jsonExample.modelValue.id).to.equal(100);
-    expect(jsonExample.modelsArray).to.be.undefined;
-    expect(jsonExample.numberArray).to.deep.equal([1, 2, 3]);
-    expect(jsonExample.numberArrayReadonly).to.deep.equal([1, 2, 3]);
-    expect(jsonExample.numberValue).to.equal(1);
-    expect(jsonExample.optionalString).to.equal('optional string');
-    expect(jsonExample.stringArray).to.deep.equal(['string one', 'string two']);
-    expect(jsonExample.stringValue).to.equal('a string');
-  });
+    expect(response.description).to.equal('Returns TestModel')
+    expect(jsonExample.id).to.equal(1)
+    expect(jsonExample.boolArray).to.deep.equal([true, false])
+    expect(jsonExample.boolValue).to.equal(true)
+    expect(jsonExample.modelValue.email).to.equal('test@test.com')
+    expect(jsonExample.modelValue.id).to.equal(100)
+    expect(jsonExample.modelsArray).to.be.undefined
+    expect(jsonExample.numberArray).to.deep.equal([1, 2, 3])
+    expect(jsonExample.numberArrayReadonly).to.deep.equal([1, 2, 3])
+    expect(jsonExample.numberValue).to.equal(1)
+    expect(jsonExample.optionalString).to.equal('optional string')
+    expect(jsonExample.stringArray).to.deep.equal(['string one', 'string two'])
+    expect(jsonExample.stringValue).to.equal('a string')
+  })
 
   function verifyParameterDescription(parameterName: string) {
-    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`;
-    const parameters = getValidatedParameters(actionRoute);
+    const actionRoute = `${baseRoute}/{numberPathParam}/{booleanPathParam}/{stringPathParam}`
+    const parameters = getValidatedParameters(actionRoute)
 
-    const parameter = parameters.filter((p: any) => p.name === parameterName)[0];
-    expect(parameter).to.exist;
-    expect(parameter.description).to.equal(`This is a description for ${parameterName}`);
+    const parameter = parameters.filter((p: any) => p.name === parameterName)[0]
+    expect(parameter).to.exist
+    expect(parameter.description).to.equal(`This is a description for ${parameterName}`)
   }
 
   function verifyPath(route: string, isCollection?: boolean) {
-    return VerifyPath(spec, route, path => path.get, isCollection);
+    return VerifyPath(spec, route, path => path.get, isCollection)
   }
-});
+})

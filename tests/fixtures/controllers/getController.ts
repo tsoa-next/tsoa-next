@@ -1,8 +1,8 @@
 ///<reference path="../tsoaTestModule.d.ts" />
-import { Controller, Example, Get, OperationId, Queries, Query, Request, Res, Response, Route, SuccessResponse, Tags, TsoaResponse } from '@tsoa/runtime';
-import { Readable } from 'stream';
-import TsoaTest from 'tsoaTest';
-import '../duplicateTestModel';
+import { Controller, Example, Get, OperationId, Queries, Query, Request, Res, Response, Route, SuccessResponse, Tags, TsoaResponse } from '@tsoa/runtime'
+import { Readable } from 'stream'
+import TsoaTest from 'tsoaTest'
+import '../duplicateTestModel'
 import {
   GenericModel,
   GetterClass,
@@ -17,13 +17,13 @@ import {
   TestClassModel,
   TestModel,
   TestSubModel,
-} from '../testModel';
-import { ModelService } from './../services/modelService';
+} from '../testModel'
+import { ModelService } from './../services/modelService'
 
-export type BadRequest = TsoaResponse<400, TestModel, { name: 'some_thing' }>;
-export type ForbiddenRequest = TsoaResponse<401, TestModel, { name: 'another some_thing' }>;
-export type BadAndInternalErrorRequest = TsoaResponse<400 | 500, TestModel, { name: 'combine' }>;
-export const PathFromConstant = 'PathFromConstantValue';
+export type BadRequest = TsoaResponse<400, TestModel, { name: 'some_thing' }>
+export type ForbiddenRequest = TsoaResponse<401, TestModel, { name: 'another some_thing' }>
+export type BadAndInternalErrorRequest = TsoaResponse<400 | 500, TestModel, { name: 'combine' }>
+export const PathFromConstant = 'PathFromConstantValue'
 export enum EnumPaths {
   PathFromEnum = 'PathFromEnumValue',
 }
@@ -74,63 +74,63 @@ export class GetTestController extends Controller {
     undefinedValue: undefined,
   })
   public async getModel(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get('Current')
   public async getCurrentModel(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get('ClassModel')
   public async getClassModel(): Promise<TestClassModel> {
-    return new ModelService().getClassModel();
+    return new ModelService().getClassModel()
   }
 
   @Get('GetterClass')
   public async getGetterClass(): Promise<GetterClass> {
-    return new GetterClass();
+    return new GetterClass()
   }
 
   @Get('SimpleClassWithToJSON')
   public async simpleClassWithToJSON(): Promise<SimpleClassWithToJSON> {
-    return new SimpleClassWithToJSON('hello, world', true);
+    return new SimpleClassWithToJSON('hello, world', true)
   }
 
   @Get('GetterInterface')
   public async getGetterInterface(): Promise<GetterInterface> {
-    return {} as GetterInterface;
+    return {} as GetterInterface
   }
 
   @Get('GetterInterfaceHerited')
   public async getGetterInterfaceHerited(): Promise<GetterInterfaceHerited> {
-    return {} as GetterInterfaceHerited;
+    return {} as GetterInterfaceHerited
   }
 
   @Get('InnerInterface')
   public async getInnerInterface() {
     interface InnerInterface {
-      value?: string;
+      value?: string
     }
-    return { value: 'test' } as InnerInterface;
+    return { value: 'test' } as InnerInterface
   }
 
   @Get('ModuleRedeclarationAndNamespace')
   public async getModuleRedeclarationAndNamespace(): Promise<TsoaTest.TestModel73> {
-    return {} as TsoaTest.TestModel73;
+    return {} as TsoaTest.TestModel73
   }
 
   @Get('NamespaceWithTypeCastedObject')
   public async getNamespaceWithTypeCastedObject() {
-    const test = { value: 'test' };
+    const test = { value: 'test' }
     return {
       value: test as TsoaTest.TestModel73,
-    };
+    }
   }
 
   @Get('Multi')
   public async getMultipleModels(): Promise<TestModel[]> {
-    return [new ModelService().getModel(), new ModelService().getModel(), new ModelService().getModel()];
+    return [new ModelService().getModel(), new ModelService().getModel(), new ModelService().getModel()]
   }
 
   /**
@@ -157,68 +157,68 @@ export class GetTestController extends Controller {
     @Query() numberParam: number,
     @Query() optionalStringParam = '',
   ) {
-    const model = new ModelService().getModel();
-    model.optionalString = optionalStringParam;
-    model.numberValue = numberPathParam;
-    model.boolValue = booleanPathParam;
-    model.stringValue = stringPathParam;
+    const model = new ModelService().getModel()
+    model.optionalString = optionalStringParam
+    model.numberValue = numberPathParam
+    model.boolValue = booleanPathParam
+    model.stringValue = stringPathParam
 
-    return model;
+    return model
   }
 
   @Get('AllQueriesInOneObject')
   public async getAllQueriesInOneObject(@Queries() queryParams: QueryParams) {
-    const model = new ModelService().getModel();
-    model.optionalString = queryParams.optionalStringParam;
-    model.numberValue = queryParams.numberParam;
-    model.boolValue = queryParams.booleanParam;
-    model.stringValue = queryParams.stringParam;
+    const model = new ModelService().getModel()
+    model.optionalString = queryParams.optionalStringParam
+    model.numberValue = queryParams.numberParam
+    model.boolValue = queryParams.booleanParam
+    model.stringValue = queryParams.stringParam
 
-    return model;
+    return model
   }
 
   @Get('WildcardQueries')
   public async getWildcardQueries(@Queries() queryParams: { [name: string]: any }) {
-    const model = new ModelService().getModel();
-    model.anyType = queryParams;
+    const model = new ModelService().getModel()
+    model.anyType = queryParams
 
-    return model;
+    return model
   }
 
   @Get('TypedRecordQueries')
   public async getTypedRecordQueries(@Queries() queryParams: { [name: string]: number }) {
-    const model = new ModelService().getModel();
-    model.anyType = queryParams;
+    const model = new ModelService().getModel()
+    model.anyType = queryParams
 
-    return model;
+    return model
   }
 
   @Get('ResponseWithUnionTypeProperty')
   public async getResponseWithUnionTypeProperty(): Promise<Result> {
     return {
       value: 'success',
-    };
+    }
   }
 
   @Get('UnionTypeResponse')
   public async getUnionTypeResponse(): Promise<string | boolean> {
-    return '';
+    return ''
   }
 
   @Get('Request')
   public async getRequest(@Request() request: any): Promise<TestModel> {
-    const model = new ModelService().getModel();
+    const model = new ModelService().getModel()
     // set the stringValue from the request context to test successful injection
-    model.stringValue = request.stringValue;
-    return model;
+    model.stringValue = request.stringValue
+    return model
   }
 
   @Get('DateParam')
   public async getByDataParam(@Query() date: Date): Promise<TestModel> {
-    const model = new ModelService().getModel();
-    model.dateValue = date;
+    const model = new ModelService().getModel()
+    model.dateValue = date
 
-    return model;
+    return model
   }
 
   @Get('ThrowsError')
@@ -227,66 +227,66 @@ export class GetTestController extends Controller {
     throw {
       message: 'error thrown',
       status: 400,
-    };
+    }
   }
 
   @Get('GeneratesTags')
   @Tags('test', 'test-two')
   public async getGeneratesTags(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get('CustomOperationId')
   @OperationId('MyCustomOperationId')
   public async getCustomOperationId(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get('HandleBufferType')
   public async getBuffer(@Query() buffer: Buffer): Promise<Buffer> {
-    return Buffer.from('testbuffer');
+    return Buffer.from('testbuffer')
   }
 
   @Get('HandleStreamType')
   public async getStream(): Promise<Readable> {
-    const readable = new Readable();
-    readable._read = () => ({});
-    readable.push(Buffer.from('testbuffer'));
-    readable.push(null);
-    return readable;
+    const readable = new Readable()
+    readable._read = () => ({})
+    readable.push(Buffer.from('testbuffer'))
+    readable.push(null)
+    return readable
   }
 
   @Get('GenericModel')
   public async getGenericModel(): Promise<GenericModel<TestModel>> {
     return {
       result: new ModelService().getModel(),
-    };
+    }
   }
 
   @Get('GenericModelArray')
   public async getGenericModelArray(): Promise<GenericModel<TestModel[]>> {
     return {
       result: [new ModelService().getModel()],
-    };
+    }
   }
 
   @Get('GenericPrimitive')
   public async getGenericPrimitive(): Promise<GenericModel<string>> {
     return {
       result: new ModelService().getModel().stringValue,
-    };
+    }
   }
 
   @Get('GenericPrimitiveArray')
   public async getGenericPrimitiveArray(): Promise<GenericModel<string[]>> {
     return {
       result: new ModelService().getModel().stringArray,
-    };
+    }
   }
 
   @Get('Void')
   public async getVoid(): Promise<void> {
-    return Promise.resolve();
+    return Promise.resolve()
   }
 
   /**
@@ -294,7 +294,7 @@ export class GetTestController extends Controller {
    */
   @Get('Res')
   public async getRes(@Res() res: TsoaResponse<400, TestModel, { 'custom-header': string }>): Promise<void> {
-    res?.(400, new ModelService().getModel(), { 'custom-header': 'hello' });
+    res?.(400, new ModelService().getModel(), { 'custom-header': 'hello' })
   }
 
   /**
@@ -302,7 +302,7 @@ export class GetTestController extends Controller {
    */
   @Get('Res_Alias')
   public async getResAlias(@Res() res: BadRequest): Promise<void> {
-    res?.(400, new ModelService().getModel(), { name: 'some_thing' });
+    res?.(400, new ModelService().getModel(), { name: 'some_thing' })
   }
 
   /**
@@ -311,11 +311,11 @@ export class GetTestController extends Controller {
    */
   @Get('MultipleRes')
   public async multipleRes(@Res() res: TsoaResponse<400, TestModel, { 'custom-header': string }>, @Res() anotherRes: TsoaResponse<401, TestModel, { 'custom-header': string }>): Promise<Result> {
-    res?.(400, new ModelService().getModel(), { 'custom-header': 'hello' });
-    anotherRes?.(401, new ModelService().getModel(), { 'custom-header': 'another hello' });
+    res?.(400, new ModelService().getModel(), { 'custom-header': 'hello' })
+    anotherRes?.(401, new ModelService().getModel(), { 'custom-header': 'another hello' })
     return {
       value: 'success',
-    };
+    }
   }
 
   /**
@@ -323,11 +323,11 @@ export class GetTestController extends Controller {
    */
   @Get('MultipleRes_Alias')
   public async multipleResAlias(@Res() res: BadRequest, @Res() anotherRes: ForbiddenRequest): Promise<Result> {
-    res?.(400, new ModelService().getModel(), { name: 'some_thing' });
-    anotherRes?.(401, new ModelService().getModel(), { name: 'another some_thing' });
+    res?.(400, new ModelService().getModel(), { name: 'some_thing' })
+    anotherRes?.(401, new ModelService().getModel(), { name: 'another some_thing' })
     return {
       value: 'success',
-    };
+    }
   }
 
   /**
@@ -335,7 +335,7 @@ export class GetTestController extends Controller {
    */
   @Get('MultipleStatusCodeRes')
   public async multipleStatusCodeRes(@Res() res: TsoaResponse<400 | 500, TestModel, { 'custom-header': string }>, @Query('statusCode') statusCode: 400 | 500): Promise<void> {
-    res?.(statusCode, new ModelService().getModel(), { 'custom-header': 'hello' });
+    res?.(statusCode, new ModelService().getModel(), { 'custom-header': 'hello' })
   }
 
   /**
@@ -343,62 +343,62 @@ export class GetTestController extends Controller {
    */
   @Get('MultipleStatusCodeRes_Alias')
   public async multipleStatusCodeResAlias(@Res() res: BadAndInternalErrorRequest, @Query('statusCode') statusCode: 400 | 500): Promise<void> {
-    res?.(statusCode, new ModelService().getModel(), { name: 'combine' });
+    res?.(statusCode, new ModelService().getModel(), { name: 'combine' })
   }
 
   @Get(PathFromConstant)
   public async getPathFromConstantValue(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get(EnumPaths.PathFromEnum)
   public async getPathFromEnumValue(): Promise<TestModel> {
-    return new ModelService().getModel();
+    return new ModelService().getModel()
   }
 
   @Get('IndexedValue')
   public async getIndexedValue(): Promise<IndexedValue> {
-    return 'FOO';
+    return 'FOO'
   }
 
   @Get('ParenthesizedIndexedValue')
   public async getParenthesizedIndexedValue(): Promise<ParenthesizedIndexedValue> {
-    return 'FOO';
+    return 'FOO'
   }
 
   @Get('IndexedValueReference')
   public async getIndexedValueReference(): Promise<IndexedValueReference> {
-    return 'FOO';
+    return 'FOO'
   }
 
   @Get('IndexedValueGeneric')
   public async getIndexedValueGeneric(): Promise<IndexedValueGeneric<IndexedValueTypeReference>> {
-    return 'FOO';
+    return 'FOO'
   }
 
   @Get('UnionTypeWithDefault')
   public async getUnionTypeWithDefault(@Query() unionType: 'a' | 'b' | undefined = 'a'): Promise<void> {
-    return;
+    return
   }
 }
 
 export interface ErrorResponse {
-  code: string;
-  msg: string;
+  code: string
+  msg: string
 }
 
 export interface CustomError extends Error {
-  message: string;
-  status: number;
+  message: string
+  status: number
 }
 
 export interface Result {
-  value: 'success' | 'failure';
+  value: 'success' | 'failure'
 }
 
 export interface QueryParams {
-  numberParam: number;
-  stringParam: string;
-  booleanParam: boolean;
-  optionalStringParam?: string;
+  numberParam: number
+  stringParam: string
+  booleanParam: boolean
+  optionalStringParam?: string
 }

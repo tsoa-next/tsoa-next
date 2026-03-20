@@ -1,5 +1,5 @@
-import { Route, Get, Path, Query, Header, Post, Body, BodyProp, Example, Res, TsoaResponse, Produces } from '@tsoa/runtime';
-import { exampleResponse } from './consts';
+import { Route, Get, Path, Query, Header, Post, Body, BodyProp, Example, Res, TsoaResponse, Produces } from '@tsoa/runtime'
+import { exampleResponse } from './consts'
 
 /**
  * @example {
@@ -8,13 +8,13 @@ import { exampleResponse } from './consts';
  * }
  */
 export interface Location {
-  contry: string;
-  city: string;
+  contry: string
+  city: string
 }
 
 export interface Doc {
-  id: number;
-  description: string;
+  id: number
+  description: string
 }
 
 @Route('ExampleTest')
@@ -25,7 +25,7 @@ export class ExampleTestController {
    */
   @Get('/path/{path}')
   public async path(@Path() path: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -34,7 +34,7 @@ export class ExampleTestController {
    */
   @Get('/query')
   public async query(@Query() query: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -43,7 +43,7 @@ export class ExampleTestController {
    */
   @Get('/header')
   public async header(@Header() header: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -58,7 +58,7 @@ export class ExampleTestController {
    */
   @Post('/post_body')
   public async post(@Body() location: Location): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -66,7 +66,7 @@ export class ExampleTestController {
    */
   @Post('/post_body_prop_single')
   public async postBodyPropSingle(@BodyProp() prop1: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -79,7 +79,7 @@ export class ExampleTestController {
    */
   @Post('/post_body_prop')
   public async postBodyProp(@BodyProp() prop1: string, @BodyProp() prop2: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -97,7 +97,7 @@ export class ExampleTestController {
    */
   @Post('/two_parameter/{s}')
   public async twoParameter(@Body() location: Location, @Path() s: string): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -125,7 +125,7 @@ export class ExampleTestController {
    */
   @Post('/array_with_object')
   public async arrayWithObject(@Body() locations: Location[]): Promise<void> {
-    return;
+    return
   }
 
   /**
@@ -137,8 +137,8 @@ export class ExampleTestController {
   @Example<string>('test 2')
   @Get('MultiResponseExamples')
   public async responseExamples(@Res() res: TsoaResponse<400, number, { 'custom-header': string }>): Promise<string> {
-    res?.(400, 123, { 'custom-header': 'hello' });
-    return 'test 1';
+    res?.(400, 123, { 'custom-header': 'hello' })
+    return 'test 1'
   }
 
   /**
@@ -158,8 +158,8 @@ export class ExampleTestController {
    */
   @Get('CustomExampleLabels')
   public async customExampleLabels(@Res() res: TsoaResponse<400, number, { 'custom-header': string }>): Promise<string> {
-    res?.(400, 123, { 'custom-header': 'hello' });
-    return 'test 1';
+    res?.(400, 123, { 'custom-header': 'hello' })
+    return 'test 1'
   }
 
   /**
@@ -172,7 +172,7 @@ export class ExampleTestController {
    */
   @Post('CustomBodyExampleLabels')
   public async customBodyExampleLabels(@Body() requestBody: string): Promise<string> {
-    return 'test custom body labels';
+    return 'test custom body labels'
   }
 
   /**
@@ -182,7 +182,7 @@ export class ExampleTestController {
   @Example<string>(exampleResponse)
   @Get('ResponseExampleWithImportedValue')
   public async responseExamplesWithImportedValue(): Promise<string> {
-    return 'test 1';
+    return 'test 1'
   }
 
   /**
@@ -192,7 +192,7 @@ export class ExampleTestController {
   @Example<string>(exampleResponse, 'Custom_label')
   @Get('ResponseExampleWithLabel')
   public async responseExamplesWithLabel(): Promise<string> {
-    return 'test 1';
+    return 'test 1'
   }
 
   /**
@@ -204,7 +204,7 @@ export class ExampleTestController {
   @Example<string>('no label example')
   @Get('ResponseMultiExampleWithLabel')
   public async responseMultiExampleWithLabel(): Promise<string> {
-    return 'test 1';
+    return 'test 1'
   }
 
   /**
@@ -215,7 +215,7 @@ export class ExampleTestController {
   @Example<string>(exampleResponse, 'OneExample')
   @Get('ResponseExampleWithProduces')
   public async responseExampleWithProduces(): Promise<string> {
-    return 'test 1';
+    return 'test 1'
   }
 
   /**
@@ -228,7 +228,7 @@ export class ExampleTestController {
   @Example<string>(exampleResponse, 'TwoExample')
   @Get('ResponseMultiExamplesWithProduces')
   public async responseMultiExamplesWithProduces(): Promise<string> {
-    return 'test 1';
+    return 'test 1'
   }
 
   @Example<Doc>({
@@ -240,7 +240,7 @@ export class ExampleTestController {
     return {
       id: -1,
       description: 'test doc des',
-    };
+    }
   }
 
   @Example<Doc>({
@@ -252,6 +252,6 @@ export class ExampleTestController {
     return {
       id: 1,
       description: 'test doc des',
-    };
+    }
   }
 }

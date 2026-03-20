@@ -1,6 +1,6 @@
-type Middleware<T extends CallableFunction | object> = T;
+type Middleware<T extends CallableFunction | object> = T
 
-const TSOA_MIDDLEWARES = Symbol('@tsoa:middlewares');
+const TSOA_MIDDLEWARES = Symbol('@tsoa:middlewares')
 
 /**
  * Helper function to create a decorator
@@ -15,16 +15,16 @@ function decorator(fn: (value: any) => void) {
   return (...args: any[]) => {
     // class decorator
     if (args.length === 1) {
-      fn(args[0]);
+      fn(args[0])
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     } else if (args.length === 3 && args[2].value) {
       // method decorator
-      const descriptor = args[2] as PropertyDescriptor;
+      const descriptor = args[2] as PropertyDescriptor
       if (descriptor.value) {
-        fn(descriptor.value);
+        fn(descriptor.value)
       }
     }
-  };
+  }
 }
 
 /**
@@ -35,10 +35,10 @@ function decorator(fn: (value: any) => void) {
 export function Middlewares<T extends CallableFunction | object>(...mws: Array<Middleware<T>>): ClassDecorator & MethodDecorator {
   return decorator(target => {
     if (mws) {
-      const current = fetchMiddlewares<T>(target);
-      Reflect.defineMetadata(TSOA_MIDDLEWARES, [...current, ...mws], target);
+      const current = fetchMiddlewares<T>(target)
+      Reflect.defineMetadata(TSOA_MIDDLEWARES, [...current, ...mws], target)
     }
-  });
+  })
 }
 
 /**
@@ -48,5 +48,5 @@ export function Middlewares<T extends CallableFunction | object>(...mws: Array<M
  * @returns list of middlewares
  */
 export function fetchMiddlewares<T extends CallableFunction | object>(target: any): Array<Middleware<T>> {
-  return Reflect.getMetadata(TSOA_MIDDLEWARES, target) || [];
+  return Reflect.getMetadata(TSOA_MIDDLEWARES, target) || []
 }
