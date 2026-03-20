@@ -35,6 +35,9 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 
 ## Getting Started
 
+- Requirements:
+  - Node.js 24.14 or newer
+  - npm 11 or newer
 - [Documentation](https://tsoa-community.github.io/docs/)
 - [API Reference](https://tsoa-community.github.io/reference/)
 - [Getting started guide](https://tsoa-community.github.io/docs/getting-started)

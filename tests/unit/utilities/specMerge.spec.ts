@@ -5,6 +5,7 @@ import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGen
 import { ExtendedSpecConfig } from '@tsoa-next/cli'
 import { Swagger } from '@tsoa-next/runtime'
 import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
+import { recursiveMerge } from '@tsoa-next/cli/utils/specMerge'
 
 describe('specMergins', () => {
   const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
@@ -45,8 +46,18 @@ describe('specMergins', () => {
     }
     const mergedSpec = new SpecGenerator3(metadata, options).GetSpec()
 
-    it('does not merge arrays, but overwrites instead', () => {
-      expect(mergedSpec.paths['/GetTest/DateParam'].get?.parameters).to.deep.eq([addedParameter])
+    it('merges arrays', () => {
+      expect(mergedSpec.paths['/GetTest/DateParam'].get?.parameters).to.deep.eq([
+        {
+          description: undefined,
+          example: undefined,
+          in: 'query',
+          name: 'date',
+          required: true,
+          schema: { format: 'date-time', type: 'string', default: undefined, items: undefined, enum: undefined },
+        },
+        addedParameter,
+      ])
     })
 
     it('merges deep object, overriding primitives', () => {
@@ -57,9 +68,18 @@ describe('specMergins', () => {
       const originalSpec = new SpecGenerator3(metadata, defaultOptions).GetSpec()
 
       originalSpec.paths['/GetTest/DateParam'].get!.operationId = 'OverriddenId'
-      originalSpec.paths['/GetTest/DateParam'].get!.parameters = [addedParameter]
+      originalSpec.paths['/GetTest/DateParam'].get?.parameters?.push(addedParameter as any)
 
       expect(mergedSpec).to.deep.eq(originalSpec)
+    })
+
+    it('skips unsafe keys when recursively merging user supplied specs', () => {
+      const pollutedSource = JSON.parse('{"__proto__":{"polluted":"yes"}}') as Swagger.Spec3
+
+      const merged = recursiveMerge({}, pollutedSource as unknown as Record<string, unknown>)
+
+      expect(Object.prototype.hasOwnProperty.call(merged, '__proto__')).to.equal(false)
+      expect(({} as { polluted?: string }).polluted).to.equal(undefined)
     })
   })
 

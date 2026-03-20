@@ -15,7 +15,7 @@ export function stateOf(key: string): boolean | undefined {
 function testMiddleware(key: string) {
   return async (ctx: KoaContext, next: KoaNext) => {
     middlewaresState[key] = true
-    next()
+    await next()
   }
 }
 

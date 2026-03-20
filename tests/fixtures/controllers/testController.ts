@@ -61,7 +61,7 @@ export class TestController extends Controller {
   public async getUnavailableForLegalReasonsError(): Promise<ErrorResponseModel> {
     throw {
       status: 451,
-      messgage: 'error',
+      message: 'error',
     }
   }
 }
