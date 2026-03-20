@@ -57,7 +57,7 @@
 Version of the library: <!-- insert that here -->
 Version of NodeJS: <!-- insert that here -->
 
-- Confirm you were using yarn not npm: [ ]
+- Confirm you were using npm: [ ]
 
 ## Detailed Description
 

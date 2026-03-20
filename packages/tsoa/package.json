@@ -21,7 +21,7 @@
     "koa"
   ],
   "scripts": {
-    "build": "yarn tsc",
+    "build": "npm run tsc",
     "tsc": "tsc -b",
     "watch": "tsc -b -w"
   },
@@ -43,7 +43,7 @@
     "tsoa": "dist/cli.js"
   },
   "engines": {
-    "yarn": ">=1.9.4",
+    "npm": ">=10.0.0",
     "node": ">=18.0.0"
   },
   "engineStrict": true,

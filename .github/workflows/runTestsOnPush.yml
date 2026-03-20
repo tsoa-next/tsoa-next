@@ -1,5 +1,7 @@
 on: [push, pull_request]
 name: Build and Test
+permissions:
+  contents: read
 jobs:
   build:
     name: Build
@@ -11,43 +13,32 @@ jobs:
         typescript-version: ['^5.0.0']
 
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6.0.2
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install Yarn
-        run: npm install -g yarn
-
-      - name: Set resolutions to correct typescript version
-        uses: jossef/action-set-json-field@v2.1
-        with:
-          file: package.json
-          field: resolutions
-          value: '{ "typescript": "${{ matrix.typescript-version }}"}'
-          parse_json: true
-
-      # for yarn3
-      # - name: Set Typescript version
-      #  run: yarn set resolution typescript ${{ matrix.typescript-version }}
+      - name: Set override for matrix TypeScript version
+        run: npm pkg set 'overrides.typescript=${{ matrix.typescript-version }}'
 
       - name: Install
-        run: yarn install --ignore-scripts --no-lockfile
+        run: npm install --ignore-scripts
 
       - name: Output ts version
-        run: yarn tsc --version
+        run: npm exec -- tsc --version
 
       - name: Output packages version
-        run: yarn list
+        run: npm ls --workspaces --depth=0
 
       - name: Build
-        run: yarn run build
+        run: npm run build
 
       - name: Lint
-        run: yarn run lint
+        run: npm run lint
 
       - name: Test
-        run: yarn run test
+        run: npm run test

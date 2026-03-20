@@ -1,12 +1,12 @@
 {
   "version": "7.0.0-alpha.0",
-  "npmClient": "yarn",
+  "npmClient": "npm",
   "command": {
     "version": {
-      "allowBranch": "master"
+      "allowBranch": "main"
     },
     "publish": {
-      "allowBranch": "master"
+      "allowBranch": "main"
     }
   },
   "$schema": "node_modules/lerna/schemas/lerna-schema.json"

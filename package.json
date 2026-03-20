@@ -24,20 +24,20 @@
   },
   "lint-staged": {
     "*.{js,ts}": [
-      "yarn run prettier --write",
-      "yarn run lint:fix"
+      "prettier --write",
+      "npm run lint:fix"
     ]
   },
   "scripts": {
     "build": "lerna run build --stream",
-    "deploy": "yarn bump && lerna publish from-git",
+    "deploy": "npm run bump && lerna publish from-git",
     "bump": "lerna version patch -m \"Release v%s\" --force-publish",
     "clean": "lerna run clean --stream",
-    "prepare": "yarn build",
-    "preversion": "yarn test",
+    "prepare": "npm run build",
+    "preversion": "npm run test",
     "test": "lerna run test --stream --concurrency 1",
     "lint": "eslint . --ext .ts",
-    "lint:fix": "yarn run eslint --ext .ts --fix",
+    "lint:fix": "npm run lint -- --fix",
     "watch": "lerna run watch",
     "lerna": "lerna",
     "typedocs": "typedoc --options ./typedoc.json"
@@ -55,7 +55,7 @@
     "ts-node": "^10.9.2",
     "typedoc": "^0.26.7"
   },
-  "resolutions": {
+  "overrides": {
     "typescript": "^5.2.2"
   },
   "repository": {
@@ -63,7 +63,7 @@
     "url": "https://github.com/lukeautry/tsoa.git"
   },
   "engines": {
-    "yarn": ">=1.9.4",
+    "npm": ">=10.0.0",
     "node": ">=18.0.0"
   },
   "engineStrict": true,
@@ -72,5 +72,5 @@
     "tests",
     "tests/esm"
   ],
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "npm@10.9.2"
 }

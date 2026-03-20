@@ -21,7 +21,7 @@
     "koa"
   ],
   "scripts": {
-    "build": "yarn clean && yarn tsc && yarn copy-templates",
+    "build": "npm run clean && npm run tsc && npm run copy-templates",
     "copy-templates": "copyfiles -u 1 ./src/routeGeneration/templates/*.hbs ./dist",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "tsc": "tsc -b",
@@ -60,7 +60,7 @@
     "tsoa": "dist/cli.js"
   },
   "engines": {
-    "yarn": ">=1.9.4",
+    "npm": ">=10.0.0",
     "node": ">=18.0.0"
   },
   "engineStrict": true,
