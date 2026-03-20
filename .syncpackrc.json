@@ -1,0 +1,95 @@
+{
+  "$schema": "./node_modules/syncpack/schema.json",
+  "source": [
+    "package.json",
+    "packages/*/package.json",
+    "tests/package.json",
+    "tests/esm/package.json"
+  ],
+  "sortPackages": true,
+  "sortAz": [
+    "bin",
+    "dependencies",
+    "devDependencies",
+    "engines",
+    "exports",
+    "files",
+    "keywords",
+    "overrides",
+    "peerDependencies",
+    "peerDependenciesMeta",
+    "publishConfig",
+    "resolutions",
+    "scripts",
+    "workspaces"
+  ],
+  "sortFirst": [
+    "name",
+    "version",
+    "private",
+    "description",
+    "type",
+    "sideEffects",
+    "main",
+    "module",
+    "types",
+    "typings",
+    "files",
+    "bin",
+    "scripts",
+    "keywords",
+    "author",
+    "license",
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "peerDependenciesMeta",
+    "overrides",
+    "repository",
+    "engines",
+    "engineStrict",
+    "publishConfig",
+    "workspaces",
+    "packageManager"
+  ],
+  "semverGroups": [
+    {
+      "label": "workspace package dependencies stay exact",
+      "dependencies": [
+        "@tsoa/cli",
+        "@tsoa/runtime"
+      ],
+      "range": ""
+    },
+    {
+      "label": "overrides stay pinned",
+      "dependencyTypes": [
+        "overrides"
+      ],
+      "range": ""
+    }
+  ],
+  "versionGroups": [
+    {
+      "label": "ignore root private workspace package version",
+      "dependencies": [
+        "tsoa-monorepo"
+      ],
+      "isIgnored": true
+    },
+    {
+      "label": "ignore overrides when comparing dependency versions",
+      "dependencyTypes": [
+        "overrides"
+      ],
+      "isIgnored": true
+    },
+    {
+      "label": "express runtime and test fixtures intentionally differ by major version",
+      "dependencies": [
+        "express"
+      ],
+      "isIgnored": true
+    }
+  ]
+}

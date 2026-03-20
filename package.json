@@ -1,46 +1,38 @@
 {
   "name": "tsoa-monorepo",
-  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "private": true,
-  "keywords": [
-    "typescript",
-    "openapi",
-    "swagger",
-    "server",
-    "node",
-    "node.js",
-    "codegen",
-    "generation",
-    "express",
-    "hapi.js",
-    "koa"
-  ],
-  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
-  "license": "MIT",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "npm run prettier -- --write",
-      "npm run lint:fix"
-    ]
-  },
+  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "scripts": {
     "build": "turbo run build --output-logs=full",
     "clean": "turbo run clean --output-logs=full",
-    "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
-    "prepare": "npm run build",
-    "preversion": "npm run test",
-    "test": "turbo run test --concurrency=1 --output-logs=full",
-    "lint": "eslint .",
+    "fix:deps": "syncpack fix && syncpack format",
+    "lint": "npm run lint:deps && eslint .",
+    "lint:deps": "syncpack lint && syncpack format --check",
     "lint:fix": "npm run lint -- --fix",
-    "watch": "turbo run watch --parallel --output-logs=full",
+    "prepare": "npm run build",
+    "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
+    "preversion": "npm run test",
+    "syncpack": "syncpack",
+    "test": "turbo run test --concurrency=1 --output-logs=full",
     "turbo": "turbo",
-    "typedocs": "typedoc --options ./typedoc.json"
+    "typedocs": "typedoc --options ./typedoc.json",
+    "watch": "turbo run watch --parallel --output-logs=full"
   },
+  "keywords": [
+    "codegen",
+    "express",
+    "generation",
+    "hapi.js",
+    "koa",
+    "node",
+    "node.js",
+    "openapi",
+    "server",
+    "swagger",
+    "typescript"
+  ],
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
+  "license": "MIT",
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
@@ -58,12 +50,12 @@
     "typedoc": "^0.28.17"
   },
   "overrides": {
-    "chalk": "4.1.2",
-    "@types/koa": "2.15.0",
     "@tsoa/runtime": {
       "@types/koa": "2.15.0"
     },
+    "@types/koa": "2.15.0",
     "@types/node": "24.12.0",
+    "chalk": "4.1.2",
     "typescript": "^5.9.3"
   },
   "repository": {
@@ -71,8 +63,8 @@
     "url": "https://github.com/VannaDii/tsoa-next.git"
   },
   "engines": {
-    "npm": ">=11.0.0",
-    "node": ">=24.14.0"
+    "node": ">=24.14.0",
+    "npm": ">=11.0.0"
   },
   "engineStrict": true,
   "workspaces": [
@@ -80,5 +72,16 @@
     "tests",
     "tests/esm"
   ],
-  "packageManager": "npm@11.9.0"
+  "packageManager": "npm@11.9.0",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "npm run prettier -- --write",
+      "npm run lint:fix"
+    ]
+  }
 }

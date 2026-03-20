@@ -1,36 +1,36 @@
 {
   "name": "@tsoa/runtime",
-  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "version": "7.0.0",
+  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
     "dist"
-  ],
-  "keywords": [
-    "typescript",
-    "openapi",
-    "swagger",
-    "server",
-    "node",
-    "node.js",
-    "codegen",
-    "generation",
-    "express",
-    "hapi.js",
-    "koa"
   ],
   "scripts": {
     "build": "npm run tsc",
     "tsc": "tsc",
     "watch": "tsc -w"
   },
+  "keywords": [
+    "codegen",
+    "express",
+    "generation",
+    "hapi.js",
+    "koa",
+    "node",
+    "node.js",
+    "openapi",
+    "server",
+    "swagger",
+    "typescript"
+  ],
   "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@hapi/hapi": "^21.4.7",
-    "@types/koa": "2.15.0",
+    "@types/koa": "^2.15.0",
     "@types/multer": "^2.1.0",
     "express": "^5.2.1",
     "reflect-metadata": "^0.2.2",
@@ -46,8 +46,8 @@
     "url": "https://github.com/vannadii/tsoa-next.git"
   },
   "engines": {
-    "npm": ">=11.0.0",
-    "node": ">=24.14.0"
+    "node": ">=24.14.0",
+    "npm": ">=11.0.0"
   },
   "engineStrict": true,
   "publishConfig": {

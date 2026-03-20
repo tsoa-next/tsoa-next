@@ -1,21 +1,8 @@
 {
   "name": "tsoa-tests",
+  "version": "7.0.0-alpha.0",
   "private": true,
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
-  "version": "7.0.0-alpha.0",
-  "keywords": [
-    "typescript",
-    "openapi",
-    "swagger",
-    "server",
-    "node",
-    "node.js",
-    "codegen",
-    "generation",
-    "express",
-    "hapi.js",
-    "koa"
-  ],
   "scripts": {
     "clean": "rimraf --glob dist fixtures/*/routes.ts fixtures/*/customRoutes.ts fixtures/*/custom-route-generator/routes/*",
     "prepare-test": "cross-env NODE_ENV=tsoa_test ts-node --require=tsconfig-paths/register ./prepare.ts",
@@ -23,10 +10,23 @@
     "test": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\"",
     "typecheck": "tsc"
   },
+  "keywords": [
+    "codegen",
+    "express",
+    "generation",
+    "hapi.js",
+    "koa",
+    "node",
+    "node.js",
+    "openapi",
+    "server",
+    "swagger",
+    "typescript"
+  ],
   "author": "Vanna DiCatania <vanna@dicatania.me> (https://www.dicatania.me)",
   "license": "MIT",
   "devDependencies": {
-    "@hapi/hapi": "^21.3.12",
+    "@hapi/hapi": "^21.4.7",
     "@koa/multer": "^3.0.2",
     "@koa/router": "^13.1.0",
     "@types/body-parser": "^1.19.6",
@@ -37,7 +37,7 @@
     "@types/koa__router": "^12.0.5",
     "@types/method-override": "3.0.0",
     "@types/mocha": "^10.0.10",
-    "@types/multer": "1.4.12",
+    "@types/multer": "^2.1.0",
     "@types/node": "24.12.0",
     "@types/promise.any": "^2.0.3",
     "@types/sinon": "^17.0.3",
@@ -58,7 +58,7 @@
     "mocha": "^11.7.5",
     "multer": "^2.0.2",
     "reflect-metadata": "^0.2.2",
-    "rimraf": "^5.0.5",
+    "rimraf": "^6.1.3",
     "sinon": "^19.0.2",
     "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
@@ -71,8 +71,8 @@
     "url": "https://github.com/vannadii/tsoa-next.git"
   },
   "engines": {
-    "npm": ">=11.0.0",
-    "node": ">=24.14.0"
+    "node": ">=24.14.0",
+    "npm": ">=11.0.0"
   },
   "engineStrict": true
 }

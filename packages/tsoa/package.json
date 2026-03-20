@@ -1,35 +1,38 @@
 {
   "name": "tsoa-next",
-  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "version": "7.0.0",
+  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
-  "keywords": [
-    "typescript",
-    "openapi",
-    "swagger",
-    "server",
-    "node",
-    "node.js",
-    "codegen",
-    "generation",
-    "express",
-    "hapi.js",
-    "koa"
-  ],
+  "bin": {
+    "tsoa": "dist/cli.js"
+  },
   "scripts": {
     "build": "npm run tsc",
     "tsc": "tsc -b",
     "watch": "tsc -b -w"
   },
+  "keywords": [
+    "codegen",
+    "express",
+    "generation",
+    "hapi.js",
+    "koa",
+    "node",
+    "node.js",
+    "openapi",
+    "server",
+    "swagger",
+    "typescript"
+  ],
   "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
   "license": "MIT",
   "dependencies": {
-    "@tsoa/cli": "^7.0.0",
-    "@tsoa/runtime": "^7.0.0"
+    "@tsoa/cli": "7.0.0",
+    "@tsoa/runtime": "7.0.0"
   },
   "devDependencies": {
     "@types/node": "24.12.0",
@@ -39,12 +42,9 @@
     "type": "git",
     "url": "https://github.com/VannaDii/tsoa-next.git"
   },
-  "bin": {
-    "tsoa": "dist/cli.js"
-  },
   "engines": {
-    "npm": ">=11.0.0",
-    "node": ">=24.14.0"
+    "node": ">=24.14.0",
+    "npm": ">=11.0.0"
   },
   "engineStrict": true,
   "publishConfig": {
