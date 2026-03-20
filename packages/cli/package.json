@@ -1,7 +1,7 @@
 {
   "name": "@tsoa/cli",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
-  "version": "7.0.0-alpha.0",
+  "version": "7.0.0",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
@@ -27,41 +27,40 @@
     "tsc": "tsc -b",
     "watch": "tsc -b -w"
   },
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
-    "@tsoa/runtime": "^7.0.0-alpha.0",
-    "@types/multer": "^1.4.12",
-    "fs-extra": "^11.2.0",
-    "glob": "^10.3.10",
+    "@tsoa/runtime": "^7.0.0",
+    "@types/multer": "^2.1.0",
+    "fs-extra": "^11.3.4",
+    "glob": "^13.0.6",
     "handlebars": "^4.7.8",
-    "merge-anything": "^5.1.7",
-    "minimatch": "^9.0.1",
-    "ts-deepmerge": "^7.0.2",
-    "typescript": "^5.7.2",
-    "validator": "^13.12.0",
-    "yaml": "^2.6.1",
-    "yargs": "^17.7.1"
+    "minimatch": "^10.2.4",
+    "ts-deepmerge": "^7.0.3",
+    "typescript": "^5.9.3",
+    "validator": "^13.15.26",
+    "yaml": "^2.8.2",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
-    "@types/glob": "^8.1.0",
-    "@types/minimatch": "^5.1.0",
-    "@types/node": "^18.0.0",
-    "@types/validator": "^13.12.2",
-    "@types/yargs": "^17.0.33",
+    "@types/glob": "^9.0.0",
+    "@types/minimatch": "^6.0.0",
+    "@types/node": "24.12.0",
+    "@types/validator": "^13.15.10",
+    "@types/yargs": "^17.0.35",
     "copyfiles": "^2.4.1",
-    "rimraf": "^5.0.5"
+    "rimraf": "^6.1.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lukeautry/tsoa.git"
+    "url": "https://github.com/vannadii/tsoa-next.git"
   },
   "bin": {
     "tsoa": "dist/cli.js"
   },
   "engines": {
-    "npm": ">=10.0.0",
-    "node": ">=18.0.0"
+    "npm": ">=11.0.0",
+    "node": ">=24.14.0"
   },
   "engineStrict": true,
   "publishConfig": {

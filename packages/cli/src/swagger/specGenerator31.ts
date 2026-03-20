@@ -1,8 +1,8 @@
 import { Swagger, Tsoa } from '@tsoa/runtime'
-import { merge as mergeAnything } from 'merge-anything'
 import { merge as deepMerge } from 'ts-deepmerge'
 
 import { ExtendedSpecConfig } from '../cli'
+import { recursiveMerge } from '../utils/specMerge'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import { SpecGenerator3 } from './specGenerator3'
 
@@ -40,7 +40,7 @@ export class SpecGenerator31 extends SpecGenerator3 {
       this.config.specMerging = this.config.specMerging || 'immediate'
       const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
         immediate: Object.assign,
-        recursive: mergeAnything,
+        recursive: recursiveMerge,
         deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
       }
 

@@ -1,7 +1,7 @@
 {
   "name": "@tsoa/runtime",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
-  "version": "7.0.0-alpha.0",
+  "version": "7.0.0",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
@@ -25,29 +25,29 @@
     "tsc": "tsc",
     "watch": "tsc -w"
   },
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@hapi/hapi": "^21.3.12",
-    "@types/koa": "^2.15.0",
-    "@types/multer": "^1.4.12",
-    "express": "^4.21.2",
+    "@hapi/hapi": "^21.4.7",
+    "@types/koa": "2.15.0",
+    "@types/multer": "^2.1.0",
+    "express": "^5.2.1",
     "reflect-metadata": "^0.2.2",
-    "validator": "^13.12.0"
+    "validator": "^13.15.26"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
-    "@types/validator": "^13.12.2",
-    "typescript": "^5.7.2"
+    "@types/node": "24.12.0",
+    "@types/validator": "^13.15.10",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lukeautry/tsoa.git"
+    "url": "https://github.com/vannadii/tsoa-next.git"
   },
   "engines": {
-    "npm": ">=10.0.0",
-    "node": ">=18.0.0"
+    "npm": ">=11.0.0",
+    "node": ">=24.14.0"
   },
   "engineStrict": true,
   "publishConfig": {

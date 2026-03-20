@@ -4,11 +4,14 @@
     "rootDir": "src",
     "sourceMap": true,
     "module": "commonjs",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "composite": true,
-    "target": "es2021",
-    "lib": ["es2021"],
-    "typeRoots": ["node_modules/@types", "./typings"],
+    "target": "esnext",
+    "lib": [
+      "esnext"
+    ],
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "declaration": true,

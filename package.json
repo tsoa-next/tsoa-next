@@ -15,7 +15,7 @@
     "hapi.js",
     "koa"
   ],
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "husky": {
     "hooks": {
@@ -24,45 +24,55 @@
   },
   "lint-staged": {
     "*.{js,ts}": [
-      "prettier --write",
+      "npm run prettier -- --write",
       "npm run lint:fix"
     ]
   },
   "scripts": {
     "build": "turbo run build --output-logs=full",
     "clean": "turbo run clean --output-logs=full",
+    "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
     "prepare": "npm run build",
     "preversion": "npm run test",
     "test": "turbo run test --concurrency=1 --output-logs=full",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "lint:fix": "npm run lint -- --fix",
     "watch": "turbo run watch --parallel --output-logs=full",
     "turbo": "turbo",
     "typedocs": "typedoc --options ./typedoc.json"
   },
-  "dependencies": {},
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "6.16.0",
-    "@typescript-eslint/parser": "^6.16.0",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "husky": "^4.3.0",
-    "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
-    "turbo": "^2.8.20",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^9.39.4",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "syncpack": "^14.2.0",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.26.7"
+    "turbo": "^2.8.20",
+    "typedoc": "^0.28.17"
   },
   "overrides": {
-    "typescript": "^5.2.2"
+    "chalk": "4.1.2",
+    "@types/koa": "2.15.0",
+    "@tsoa/runtime": {
+      "@types/koa": "2.15.0"
+    },
+    "@types/node": "24.12.0",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/VannaDii/tsoa-next.git"
   },
   "engines": {
-    "npm": ">=10.0.0",
-    "node": ">=18.0.0"
+    "npm": ">=11.0.0",
+    "node": ">=24.14.0"
   },
   "engineStrict": true,
   "workspaces": [
@@ -70,5 +80,5 @@
     "tests",
     "tests/esm"
   ],
-  "packageManager": "npm@10.9.2"
+  "packageManager": "npm@11.9.0"
 }

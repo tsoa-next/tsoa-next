@@ -1,4 +1,3 @@
-import { merge as mergeAnything } from 'merge-anything'
 import { merge as deepMerge } from 'ts-deepmerge'
 import { Tsoa, assertNever, Swagger } from '@tsoa/runtime'
 
@@ -6,6 +5,7 @@ import { SpecGenerator } from './specGenerator'
 import { ExtendedSpecConfig } from '../cli'
 import { isVoidType } from '../utils/isVoidType'
 import { convertColonPathParams, normalisePath } from '../utils/pathUtils'
+import { recursiveMerge } from '../utils/specMerge'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from '../utils/swaggerUtils'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
@@ -70,7 +70,7 @@ export class SpecGenerator2 extends SpecGenerator {
       this.config.specMerging = this.config.specMerging || 'immediate'
       const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
         immediate: Object.assign,
-        recursive: mergeAnything,
+        recursive: recursiveMerge,
         deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
       }
 

@@ -1,13 +1,13 @@
 <div align="center">
   <a href="https://tsoa-community.github.io/docs/" target="blank">
-    <h1>tsoa</h1>
+    <h1>tsoa-next</h1>
   </a>
 Pronounced so·uh
 
 OpenAPI-compliant REST APIs using TypeScript and Node
 
-![build status](https://github.com/lukeautry/tsoa/actions/workflows/runTestsOnPush.yml/badge.svg)
-[![npm version](https://img.shields.io/npm/v/tsoa/latest)](https://www.npmjs.com/package/tsoa)
+![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)
+[![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
 
 </div>
 
@@ -30,7 +30,7 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 - Use jsdoc for pure text metadata (e.g. endpoint descriptions)
 - Minimize boilerplate
 - Models are best represented by interfaces (pure data structures), but can also be represented by classes
-- Runtime validation of tsoa should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
+- Runtime validation of tsoa-next should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
   - Please note that by enabling OpenAPI 3 you minimize the chances of divergent validation logic since OpenAPI 3 has a more expressive schema syntax.
 
 ## Getting Started
@@ -51,8 +51,4 @@ See example models in [the tests](tests/fixtures/testModel.ts)
 
 ### Contributing code
 
-To contribute (via a PR), please first see the [Contributing Guide](https://github.com/lukeautry/tsoa/tree/master/docs/CONTRIBUTING.md)
-
-### Becoming a maintainer
-
-tsoa wants additional maintainers! The library has increased in popularity and has quite a lot of pull requests and issues. [Please post in this issue](https://github.com/lukeautry/tsoa/issues/236) if you're willing to take on the role of a maintainer.
+To contribute (via a PR), please first see the [Contributing Guide](https://github.com/vannadii/tsoa-next/tree/master/docs/CONTRIBUTING.md)

@@ -23,6 +23,6 @@ describe('GenerateMetadataError', () => {
   })
 
   it(`Should give context on a failing type if provided`, () => {
-    expect(new GenerateMetadataError('Text', type).message).to.eq(`Text\nAt: ${path}:4:4.\nThis was caused by 'fail: unknown;'`)
+    expect(new GenerateMetadataError('Text', type).message).to.eq(`Text\nAt: ${path}:4:4.\nThis was caused by 'fail: unknown'`)
   })
 })

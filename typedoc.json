@@ -1,8 +1,10 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPointStrategy": "packages",
-  "entryPoints": ["packages/*"],
-  "name": "tsoa",
+  "entryPoints": [
+    "packages/*"
+  ],
+  "name": "tsoa-next",
   "includeVersion": true,
   "out": "./.typedoc"
 }
