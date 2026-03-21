@@ -1,6 +1,6 @@
 {
   "name": "@tsoa-next/runtime",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",

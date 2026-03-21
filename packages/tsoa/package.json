@@ -1,6 +1,6 @@
 {
   "name": "tsoa-next",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
@@ -31,8 +31,8 @@
   "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
   "license": "MIT",
   "dependencies": {
-    "@tsoa-next/cli": "7.0.0",
-    "@tsoa-next/runtime": "7.0.0"
+    "@tsoa-next/cli": "7.1.0",
+    "@tsoa-next/runtime": "7.1.0"
   },
   "devDependencies": {
     "@types/node": "24.12.0",
