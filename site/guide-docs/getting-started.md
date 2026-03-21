@@ -269,7 +269,7 @@ npm exec tsoa -- routes
 Now your routes.ts file should've been created and you can compile TypeScript and start your server:
 
 ```shell
-npm run tsc --outDir build --experimentalDecorators
+npm exec tsc -- --outDir build --experimentalDecorators
 node build/src/server.js
 ```
 
