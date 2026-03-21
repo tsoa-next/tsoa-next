@@ -34,5 +34,6 @@ jobs:
           title: Version Packages
           commit: Version Packages
           version: npm run version-packages
+          commitMode: github-api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
