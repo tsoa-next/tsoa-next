@@ -3,8 +3,8 @@
 This requires to have multer installed:
 
 ```bash
-yarn add multer
-yarn add -D @types/multer
+npm install multer
+npm install -D @types/multer
 ```
 
 ## Using the UploadedFile / UploadedFiles decorator
@@ -14,38 +14,27 @@ The simplest way to add support for file upload is by adding `@UploadedFiles` or
 Express example:
 
 ```ts
-import { Post, Route, FormField, UploadedFiles, UploadedFile } from "tsoa-next";
+import { Post, Route, FormField, UploadedFiles, UploadedFile } from 'tsoa-next'
 
-@Route("files")
+@Route('files')
 export class FilesController {
-  @Post("uploadFile")
-  public async uploadFile(
-      @FormField() title: string,
-      @FormField() description: string,
-      @UploadedFiles() files: Express.Multer.File[],
-      @UploadedFile() file: Express.Multer.File,
-  ): Promise<void> {
-    console.log(files);
+  @Post('uploadFile')
+  public async uploadFile(@FormField() title: string, @FormField() description: string, @UploadedFiles() files: Express.Multer.File[], @UploadedFile() file: Express.Multer.File): Promise<void> {
+    console.log(files)
   }
 }
 ```
 
 Koa example:
 
-
 ```ts
-import { Post, Route, FormField, UploadedFiles, UploadedFile } from "tsoa-next";
+import { Post, Route, FormField, UploadedFiles, UploadedFile } from 'tsoa-next'
 
-@Route("files")
+@Route('files')
 export class FilesController {
-  @Post("uploadFile")
-  public async uploadFile(
-      @FormField() title: string,
-      @FormField() description: string,
-      @UploadedFiles() files: File[],
-      @UploadedFile() file: File,
-  ): Promise<void> {
-    console.log(files);
+  @Post('uploadFile')
+  public async uploadFile(@FormField() title: string, @FormField() description: string, @UploadedFiles() files: File[], @UploadedFile() file: File): Promise<void> {
+    console.log(files)
   }
 }
 ```
@@ -59,29 +48,29 @@ To customize the multer upload, you have to use multer inside a controller resou
 To use it with Express, call handleFile and pass the express Request to resolve 'file'. This also handles multipart/form-data. A quick sample:
 
 ```ts
-import { Post, Request, Route } from "tsoa-next";
-import express from "express";
-import multer from "multer";
+import { Post, Request, Route } from 'tsoa-next'
+import express from 'express'
+import multer from 'multer'
 
-@Route("files")
+@Route('files')
 export class FilesController {
-  @Post("uploadFile")
+  @Post('uploadFile')
   public async uploadFile(@Request() request: express.Request): Promise<any> {
-    await this.handleFile(request);
+    await this.handleFile(request)
     // file will be in request.randomFileIsHere, it is a buffer
-    return {};
+    return {}
   }
 
   private handleFile(request: express.Request): Promise<any> {
-    const multerSingle = multer().single("file");
+    const multerSingle = multer().single('file')
     return new Promise((resolve, reject) => {
-      multerSingle(request, undefined, async (error) => {
+      multerSingle(request, undefined, async error => {
         if (error) {
-          reject(error);
+          reject(error)
         }
-        resolve();
-      });
-    });
+        resolve()
+      })
+    })
   }
 }
 ```
@@ -89,19 +78,19 @@ export class FilesController {
 To use it with Koa, pass Koa's Request context object to resolve 'file'. This also handles multipart/form-data. A quick sample:
 
 ```ts
-import { Post, Request, Route } from "tsoa-next";
-import { Request as KoaRequest } from "koa";
-import multer from "multer";
+import { Post, Request, Route } from 'tsoa-next'
+import { Request as KoaRequest } from 'koa'
+import multer from 'multer'
 
-@Route("files")
+@Route('files')
 export class FilesController {
-  @Post("uploadFile")
+  @Post('uploadFile')
   public async uploadFile(@Request() request: KoaRequest): Promise<any> {
-    const multer = multer().single("file");
-    await multer(request.ctx, async () => null);
-    const multerSingle = multer().single("randomFileIsHere");
+    const multer = multer().single('file')
+    await multer(request.ctx, async () => null)
+    const multerSingle = multer().single('randomFileIsHere')
     // file will be in request.randomFileIsHere, it is a buffer
-    return {};
+    return {}
   }
 }
 ```

@@ -8,7 +8,7 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using [Yarn](https://yarnpkg.com/en/), npm should work but was not tested.
+We currently recommend using `npm`, `yarn` should work but was not tested.
 This guide assumes you followed the [getting started guide](./getting-started) or have a similar setup.
 :::
 
@@ -29,35 +29,26 @@ Let's first make sure that, whenever the Client triggers a Validation Error, ins
 At the end of our `app.ts`, after the call to `RegisterRoutes(app)`, we'll add a global express error handler:
 
 ```ts
-import express, {
-  Response as ExResponse,
-  Request as ExRequest,
-  NextFunction,
-} from "express";
-import { ValidateError } from "tsoa-next";
+import express, { Response as ExResponse, Request as ExRequest, NextFunction } from 'express'
+import { ValidateError } from 'tsoa-next'
 // ...
 
-app.use(function errorHandler(
-  err: unknown,
-  req: ExRequest,
-  res: ExResponse,
-  next: NextFunction
-): ExResponse | void {
+app.use(function errorHandler(err: unknown, req: ExRequest, res: ExResponse, next: NextFunction): ExResponse | void {
   if (err instanceof ValidateError) {
-    console.warn(`Caught Validation Error for ${req.path}:`, err.fields);
+    console.warn(`Caught Validation Error for ${req.path}:`, err.fields)
     return res.status(422).json({
-      message: "Validation Failed",
+      message: 'Validation Failed',
       details: err?.fields,
-    });
+    })
   }
   if (err instanceof Error) {
     return res.status(500).json({
-      message: "Internal Server Error",
-    });
+      message: 'Internal Server Error',
+    })
   }
 
-  next();
-});
+  next()
+})
 ```
 
 Now, the same request will respond like this:
@@ -108,28 +99,26 @@ Please note that `@Response` has to be the tsoa import and can not currently be 
 However, we have a way for you to manually specify these returns:
 
 ```ts
-import { Body, Controller, Post, Route, Response, SuccessResponse } from "tsoa-next";
-import { User } from "./user";
-import { UsersService, UserCreationParams } from "./usersService";
+import { Body, Controller, Post, Route, Response, SuccessResponse } from 'tsoa-next'
+import { User } from './user'
+import { UsersService, UserCreationParams } from './usersService'
 
 interface ValidateErrorJSON {
-  message: "Validation failed";
-  details: { [name: string]: unknown };
+  message: 'Validation failed'
+  details: { [name: string]: unknown }
 }
 
-@Route("users")
+@Route('users')
 export class UsersController extends Controller {
   // more code here
 
-  @Response<ValidateErrorJSON>(422, "Validation Failed")
-  @SuccessResponse("201", "Created") // Custom success response
+  @Response<ValidateErrorJSON>(422, 'Validation Failed')
+  @SuccessResponse('201', 'Created') // Custom success response
   @Post()
-  public async createUser(
-    @Body() requestBody: UserCreationParams
-  ): Promise<void> {
-    this.setStatus(201); // set return status 201
-    new UsersService().create(requestBody);
-    return;
+  public async createUser(@Body() requestBody: UserCreationParams): Promise<void> {
+    this.setStatus(201) // set return status 201
+    new UsersService().create(requestBody)
+    return
   }
 }
 ```

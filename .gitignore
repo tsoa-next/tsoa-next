@@ -6,7 +6,6 @@ customRoutes.ts
 **/custom-route-generator/routes/*
 .idea/
 *.swp
-yarn-error.log
 tsconfig.tsbuildinfo
 .typedoc
 codealike.json

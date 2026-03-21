@@ -12,7 +12,7 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using [Yarn](https://yarnpkg.com/en/), npm should work but was not tested.
+We currently recommend using `npm`, `yarn` should work but was not tested.
 :::
 
 ## Initializing our project
@@ -24,17 +24,19 @@ cd tsoa-project
 
 # Create a package.json and initialize git
 git init
-yarn init -y
+npm init
 
 # Add our dependencies
-yarn add tsoa-next express reflect-metadata
-yarn add -D typescript @types/node @types/express
+npm i tsoa-next express reflect-metadata
+npm i -D typescript @types/node @types/express
 
 # Initialize tsconfig.json
-yarn run tsc --init
+npm run tsc --init
 ```
-When using pnpm, you will also need to explicitly add the @tsoa-next/runtime as a dependency for generated routes.
-This is inherent to the way pnpm manages node_modules (see [pnpm symlinked node_modules structure](https://pnpm.io/symlinked-node-modules-structure)).
+
+When using `pnpm`, you will also need to explicitly add the `@tsoa-next/runtime` as a dependency for generated routes.
+This is inherent to the way `pnpm` manages node_modules (see [pnpm symlinked node_modules structure](https://pnpm.io/symlinked-node-modules-structure)).
+
 ```shell
 
 # Explicitly add @tsoa-next/runtime with pnpm as it will be needed by generated routes
@@ -112,8 +114,8 @@ While the default ts config will work for this guide, an improved tsconfig.json 
     // emitDecoratorMetadata is not needed by tsoa (unless you are using Custom Middlewares)
 
     /* Advanced Options */
-    "forceConsistentCasingInFileNames": true
-  }
+    "forceConsistentCasingInFileNames": true,
+  },
 }
 ```
 
@@ -126,11 +128,11 @@ Otherwise, let's define a `User` Interface in `src/users/user.ts`.
 
 ```typescript
 export interface User {
-  id: number;
-  email: string;
-  name: string;
-  status?: "Happy" | "Sad";
-  phoneNumbers: string[];
+  id: number
+  email: string
+  name: string
+  status?: 'Happy' | 'Sad'
+  phoneNumbers: string[]
 }
 ```
 
@@ -138,28 +140,28 @@ Before we start defining our Controller, it's usually a good idea to create a Se
 
 ```ts
 // src/users/usersService.ts
-import { User } from "./user";
+import { User } from './user'
 
 // A post request should not contain an id.
-export type UserCreationParams = Pick<User, "email" | "name" | "phoneNumbers">;
+export type UserCreationParams = Pick<User, 'email' | 'name' | 'phoneNumbers'>
 
 export class UsersService {
   public get(id: number, name?: string): User {
     return {
       id,
-      email: "jane@doe.com",
-      name: name ?? "Jane Doe",
-      status: "Happy",
+      email: 'jane@doe.com',
+      name: name ?? 'Jane Doe',
+      status: 'Happy',
       phoneNumbers: [],
-    };
+    }
   }
 
   public create(userCreationParams: UserCreationParams): User {
     return {
       id: Math.floor(Math.random() * 10000), // Random
-      status: "Happy",
+      status: 'Happy',
       ...userCreationParams,
-    };
+    }
   }
 }
 ```
@@ -168,37 +170,23 @@ export class UsersService {
 
 ```typescript {15,17,19,20,25,26,28}
 // src/users/usersController.ts
-import {
-  Body,
-  Controller,
-  Get,
-  Path,
-  Post,
-  Query,
-  Route,
-  SuccessResponse,
-} from "tsoa-next";
-import { User } from "./user";
-import { UsersService, UserCreationParams } from "./usersService";
+import { Body, Controller, Get, Path, Post, Query, Route, SuccessResponse } from 'tsoa-next'
+import { User } from './user'
+import { UsersService, UserCreationParams } from './usersService'
 
-@Route("users")
+@Route('users')
 export class UsersController extends Controller {
-  @Get("{userId}")
-  public async getUser(
-    @Path() userId: number,
-    @Query() name?: string
-  ): Promise<User> {
-    return new UsersService().get(userId, name);
+  @Get('{userId}')
+  public async getUser(@Path() userId: number, @Query() name?: string): Promise<User> {
+    return new UsersService().get(userId, name)
   }
 
-  @SuccessResponse("201", "Created") // Custom success response
+  @SuccessResponse('201', 'Created') // Custom success response
   @Post()
-  public async createUser(
-    @Body() requestBody: UserCreationParams
-  ): Promise<void> {
-    this.setStatus(201); // set return status 201
-    new UsersService().create(requestBody);
-    return;
+  public async createUser(@Body() requestBody: UserCreationParams): Promise<void> {
+    this.setStatus(201) // set return status 201
+    new UsersService().create(requestBody)
+    return
   }
 }
 ```
@@ -243,31 +231,29 @@ Let's now create an `app.ts` and a `server.ts` file in our source directory like
 
 ```ts
 // src/app.ts
-import express, {json, urlencoded} from "express";
-import { RegisterRoutes } from "../build/routes";
+import express, { json, urlencoded } from 'express'
+import { RegisterRoutes } from '../build/routes'
 
-export const app = express();
+export const app = express()
 
 // Use body parser to read sent json payloads
 app.use(
   urlencoded({
     extended: true,
-  })
-);
-app.use(json());
+  }),
+)
+app.use(json())
 
-RegisterRoutes(app);
+RegisterRoutes(app)
 ```
 
 ```ts
 // src/server.ts
-import { app } from "./app";
+import { app } from './app'
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000
 
-app.listen(port, () =>
-  console.log(`Example app listening at http://localhost:${port}`)
-);
+app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
 ```
 
 ## Building the routes file
@@ -277,13 +263,13 @@ Let's do that now:
 
 ```shell
 mkdir -p build # Create the build directory if it doesn't exist
-yarn run tsoa routes
+npm run tsoa routes
 ```
 
 Now your routes.ts file should've been created and you can compile TypeScript and start your server:
 
 ```shell
-yarn run tsc --outDir build --experimentalDecorators
+npm run tsc --outDir build --experimentalDecorators
 node build/src/server.js
 ```
 
