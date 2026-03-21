@@ -6,6 +6,8 @@ sidebarDepth: 1
 
 [Jump to the breaking changes](#breaking-changes)
 
+> Historical note: the pull request links in this guide intentionally point to [`lukeautry/tsoa`](https://github.com/lukeautry/tsoa), where these changes originally landed.
+
 ## New Features
 
 ### Support for type aliases

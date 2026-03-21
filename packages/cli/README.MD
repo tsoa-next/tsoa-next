@@ -1,4 +1,6 @@
-This package contains the tsoa build time components.
+This package contains the `tsoa-next` build-time components.
+
+`tsoa-next` continues the original [`tsoa`](https://github.com/lukeautry/tsoa) project, and this package carries forward the CLI and code generation foundation established there.
 
 For the main README and API reference, see:
 

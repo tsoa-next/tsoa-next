@@ -11,6 +11,12 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 
 </div>
 
+## Project Lineage
+
+`tsoa-next` continues the original [`tsoa`](https://github.com/lukeautry/tsoa) project.
+The original repository and its contributors established the stable TypeScript-first and OpenAPI-first foundation this work builds on.
+Where historical release notes or migration references still point upstream, they are kept intentionally for provenance.
+
 ## Goal
 
 - TypeScript controllers and models as the single source of truth for your API
@@ -46,9 +52,9 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 
 Check out the [guides](https://vannadii.github.io/tsoa-next/docs/)
 
-See example controllers in [the tests](tests/fixtures/controllers)
+See example controllers in [the tests](https://github.com/VannaDii/tsoa-next/tree/main/tests/fixtures/controllers)
 
-See example models in [the tests](tests/fixtures/testModel.ts)
+See example models in [the tests](https://github.com/VannaDii/tsoa-next/blob/main/tests/fixtures/testModel.ts)
 
 ## Help wanted
 

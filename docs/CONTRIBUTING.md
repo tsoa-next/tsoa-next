@@ -2,7 +2,7 @@
 
 ## 1. Search for Duplicates
 
-[Search the existing issues](https://github.com/lukeautry/tsoa/search?type=Issues) before logging a new one.
+[Search the existing issues](https://github.com/VannaDii/tsoa-next/issues?q=is%3Aissue) before logging a new one.
 
 Some search tips:
 
@@ -20,14 +20,16 @@ Please follow the issue template and include as much information as you can. Thi
 
 We also accept suggestions in the issue tracker.
 
-- Be sure to [search](https://github.com/lukeautry/tsoa/search?type=Issues) first for a duplicate.
-- Please ensure that your suggestion adheres to the [goals](https://github.com/lukeautry/tsoa#goal) and [philosophy](https://github.com/lukeautry/tsoa#philosophy) of the project
+- Be sure to [search](https://github.com/VannaDii/tsoa-next/issues?q=is%3Aissue) first for a duplicate.
+- Please ensure that your suggestion adheres to the [goals](https://github.com/VannaDii/tsoa-next#goal) and [philosophy](https://github.com/VannaDii/tsoa-next#philosophy) of the project
 
 # Instructions for Contributing Code
 
 ## General
 
-If you have a bugfix or new feature that you would like to contribute to tsoa, please find or open an issue about it first. Talk about what you would like to do. It may be that somebody is already working on it, or that there are particular issues that you should know about before implementing the change.
+If you have a bugfix or new feature that you would like to contribute to `tsoa-next`, please find or open an issue about it first. Talk about what you would like to do. It may be that somebody is already working on it, or that there are particular issues that you should know about before implementing the change.
+
+`tsoa-next` continues the original [`tsoa`](https://github.com/lukeautry/tsoa) project. Historical upstream links may still appear in upgrade notes or source-level references where they document where behavior originally landed, but active issues and pull requests should go to this repository.
 
 We enjoy working with contributors to get their code accepted. There are many approaches to fixing a problem and it is important to find the best approach before writing too much code.
 
@@ -39,26 +41,26 @@ Your pull request should include a link to the bug that you are fixing. If you'v
 
 ## Contributing features
 
-Features (things that add new or improved functionality to tsoa) may be accepted, but will need to **first** be approved by having the (["help wanted" label](https://github.com/lukeautry/tsoa/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) by a tsoa project maintainer) in the suggestion issue.
+Features (things that add new or improved functionality to `tsoa-next`) may be accepted, but they should **first** be approved by a maintainer through the [`help wanted` label](https://github.com/VannaDii/tsoa-next/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) on the suggestion issue.
 
 Design changes will not be accepted at this time. If you have a design change proposal, please log a suggestion issue.
 
-## Information on the types of tests in tsoa
+## Information on the types of tests in tsoa-next
 
 ### unit tests
 
-You will find tests in `tests\unit` that test specific functions or classes within tsoa. If possible, it's ideal to add test coverage to these files since you can provide more detailed assertions about specific scenarios. These also run much more quickly. However, in some cases the only way to test tsoa (like in the case of reading a controller file) is run an integrative test. Read below:
+You will find tests in `tests\unit` that test specific functions or classes within `tsoa-next`. If possible, it's ideal to add test coverage to these files since you can provide more detailed assertions about specific scenarios. These also run much more quickly. However, in some cases the only way to test `tsoa-next` (like in the case of reading a controller file) is to run an integrative test. Read below:
 
 ### integrative tests
 
-These tests read controller files (just like tsoa does for real tsoa users) (via the `tests\prepare.ts` file) and then execute API tests against the generated routes. This allows tsoa contributors to validate that all of the code is connected well and is performing the desired function. These tests take longer to run but achieve higher levels of quality assurance. A good mix of integrative tests and unit tests will surely result in a faster review process for any contribution.
+These tests read controller files (just like `tsoa-next` does for real users) via the `tests\prepare.ts` file and then execute API tests against the generated routes. This allows contributors to validate that all of the code is connected well and is performing the desired function. These tests take longer to run but achieve higher levels of quality assurance. A good mix of integrative tests and unit tests will surely result in a faster review process for any contribution.
 
 ## Housekeeping
 
 Your pull request should:
 
 - Include a description of what your change intends to do
-- Be a child commit of a reasonably recent commit in the **master** branch
+- Be a child commit of a reasonably recent commit in the **main** branch
   - Requests need not be a single commit, but should be a linear sequence of commits (i.e. no merge commits in your PR)
 - It is desirable, but not necessary, for the tests to pass at each commit
 - Have clear commit messages

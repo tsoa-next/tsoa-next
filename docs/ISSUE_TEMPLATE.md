@@ -9,7 +9,7 @@
   - [ ] support request
 
 - I confirm that I
-  - [ ] used the [search](https://github.com/lukeautry/tsoa/search?type=Issues) to make sure that a similar issue hasn't already been submit
+  - [ ] used the [search](https://github.com/VannaDii/tsoa-next/issues?q=is%3Aissue) to make sure that a similar issue hasn't already been submitted
 
 ## Expected Behavior
 

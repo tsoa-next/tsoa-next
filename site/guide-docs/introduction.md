@@ -1,8 +1,11 @@
 # Introduction
 
-tsoa is a framework with integrated OpenAPI compiler to build Node.js serve-side applications using TypeScript.
+`tsoa-next` is the continuation of the original [`tsoa`](https://github.com/lukeautry/tsoa) project, building on the stable foundation established there by Luke Autry and contributors.
+It is a framework with an integrated OpenAPI compiler to build Node.js server-side applications using TypeScript.
 It can target express, hapi, koa and more frameworks at runtime.
-tsoa applications are type-safe by default and handle runtime validation seamlessly.
+`tsoa-next` applications are type-safe by default and handle runtime validation seamlessly.
+
+In the guides below, `tsoa` usually refers to the CLI command and underlying architecture that `tsoa-next` continues.
 
 ## Goal
 
@@ -23,5 +26,5 @@ tsoa applications are type-safe by default and handle runtime validation seamles
 - Use jsdoc for pure text metadata (e.g. endpoint descriptions)
 - Minimize boilerplate
 - Models are best represented by interfaces (pure data structures), but can also be represented by classes
-- Runtime validation of tsoa should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
+- Runtime validation of `tsoa-next` should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
   - Please note that by enabling OpenAPI 3 you minimize the chances of divergent validation logic since OpenAPI 3 has a more expressive schema syntax.
