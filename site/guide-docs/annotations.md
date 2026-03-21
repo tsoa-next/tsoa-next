@@ -78,11 +78,11 @@ Formats will generally not be validated, except for `format: date(time)`, which 
 
 ### Array
 
-- `isArray <errMsg>` for setting custom error messages
-- `minItems <number> <errMsg>`
-- `maxItems <number> <errMsg>`
-- `uniqueItems <errMsg>`
+- `@isArray <errMsg>` for setting custom error messages
+- `@minItems <number> <errMsg>`
+- `@maxItems <number> <errMsg>`
+- `@uniqueItems <errMsg>`
 
 ### Boolean
 
-- `isBoolean <errMsg>` for setting custom error messages
+- `@isBoolean <errMsg>` for setting custom error messages

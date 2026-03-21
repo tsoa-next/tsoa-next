@@ -23,7 +23,7 @@ by defining it in your tsoa.json configuration. Route paths are generated based 
   "routes": {
     "routesDir": "...",
     "middleware": "express",
-    "middlewareTemplate": "custom-template.ts"
+    "middlewareTemplate": "custom-template.ts",
     ...
   }
 }

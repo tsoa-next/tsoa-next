@@ -18,7 +18,7 @@ They can range from simple scenarios
 
 ```ts
 /**
- * A Word shall be a non-empty sting
+ * A Word shall be a non-empty string
  * @minLength 1
  */
 type Word = string;
@@ -42,7 +42,7 @@ type ForwardGenericAlias<T, U> = GenericAlias<U> | T;
 
 Please note that this means that tsoa does not only generate the specification (OpenAPI v3 and Swagger2\*), but will also validate the input against the types including the jsDoc annotations.
 
-\* There may be certain scenarios where we may not be able to generate Swagger 2 from your TypeScript, tsoa will log warnings to infor you about any issues we are aware of.
+\* There may be certain scenarios where we may not be able to generate Swagger 2 from your TypeScript, tsoa will log warnings to inform you about any issues we are aware of.
 
 ### Support for mapped types
 
@@ -119,7 +119,7 @@ The combination of mapped and conditional types allow for powerful utility types
 type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
 ```
 
-### Support for `Record<>` [\#662](https://github.com/lukeautry/tsoa/pull/662) ([Eywek](https://github.com/Eywek))`
+### Support for `Record<>` [\#662](https://github.com/lukeautry/tsoa/pull/662) ([Eywek](https://github.com/Eywek))
 
 ### Enums: See [\#594](https://github.com/lukeautry/tsoa/pull/594) for the Spec and [\#599](https://github.com/lukeautry/tsoa/pull/599) and [\#593](https://github.com/lukeautry/tsoa/pull/593)
 

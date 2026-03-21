@@ -119,7 +119,7 @@ Now, when we navigate to <a href="http://localhost:3000/docs" target="_blank" re
 
 ### Sending Request through SwaggerUI
 
-We can select Endponts, click the "Try it out" button and submit some data by filling out the form.
+We can select Endpoints, click the "Try it out" button and submit some data by filling out the form.
 When we hit "Execute", that request will be sent to our server and the response will be displayed below the form.
 
 ![SwaggerUI Response](./assets/SwUi-Response.png)

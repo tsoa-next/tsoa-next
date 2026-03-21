@@ -40,15 +40,27 @@ type IocContainerFactory = (request: unknown) => IocContainer;
 
 ### Example
 
+Container instance:
+
 ```ts
 // src/ioc.ts
-import { IocContainer, IocContainerFactory } from "@tsoa-next/runtime";
 import { Container } from "di-package";
 
 // Assign a container to `iocContainer`.
 const iocContainer = new Container();
 
-// Or assign a function with to `iocContainer`.
+// export according to convention
+export { iocContainer };
+```
+
+Factory function:
+
+```ts
+// src/ioc.ts
+import { IocContainer, IocContainerFactory } from "@tsoa-next/runtime";
+import { Container } from "di-package";
+
+// Or assign a factory function to `iocContainer`.
 const iocContainer: IocContainerFactory = function (
   request: Request
 ): IocContainer {

@@ -41,7 +41,7 @@ Pros:
 
 Cons:
 
-- New developers on your team might add a controller and not understand why the new controller was not exposed to the router or to the OpenAPI generation. If this is a problem for you, please us the automatic controller discovery option described above.
+- New developers on your team might add a controller and not understand why the new controller was not exposed to the router or to the OpenAPI generation. If this is a problem for you, please use the automatic controller discovery option described above.
 
 ```typescript
 import * as methodOverride from "method-override";
