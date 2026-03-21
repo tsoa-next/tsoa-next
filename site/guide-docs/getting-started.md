@@ -24,7 +24,7 @@ cd tsoa-project
 
 # Create a package.json and initialize git
 git init
-npm init
+npm init -y
 
 # Add our dependencies
 npm i tsoa-next express reflect-metadata
