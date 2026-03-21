@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://vannadii.github.io/tsoa-next/" target="blank">
+  <a href="https://vannadii.github.io/tsoa-next/" target="_blank" rel="noreferrer">
     <h1>tsoa-next</h1>
   </a>
 Pronounced so·uh
@@ -42,8 +42,9 @@ Where historical release notes or migration references still point upstream, the
 ## Getting Started
 
 - Requirements:
-  - Node.js 24.14 or newer
-  - npm 11 or newer
+  - Node.js 22 or newer
+  - npm 10 or newer
+  - We verify support across the previous LTS, current LTS, and Node vNext in CI
 - [Documentation](https://vannadii.github.io/tsoa-next/docs/)
 - [API Reference](https://vannadii.github.io/tsoa-next/reference/)
 - [Getting started guide](https://vannadii.github.io/tsoa-next/docs/getting-started)

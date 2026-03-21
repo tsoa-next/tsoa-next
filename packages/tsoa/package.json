@@ -43,8 +43,8 @@
     "url": "https://github.com/VannaDii/tsoa-next.git"
   },
   "engines": {
-    "node": ">=24.14.0",
-    "npm": ">=11.0.0"
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   },
   "engineStrict": true,
   "publishConfig": {

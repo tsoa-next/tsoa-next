@@ -10,7 +10,8 @@ lang: en-US
 [[toc]]
 
 ::: warning COMPATIBILITY NOTE
-This guide requires Node.js >= 8 and will target [express](https://expressjs.com).
+This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
+We verify support across the previous LTS, current LTS, and Node vNext in CI.
 We currently recommend using [Yarn](https://yarnpkg.com/en/), npm should work but was not tested.
 :::
 
