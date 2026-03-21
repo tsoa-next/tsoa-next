@@ -3671,19 +3671,18 @@ describe('Definition generation', () => {
 
   describe('methods', () => {
     describe('deprecation', () => {
-      it('marks deprecated methods as deprecated', () => {
-        const metadata = new MetadataGenerator('./fixtures/controllers/deprecatedController.ts').Generate()
-        const deprecatedSpec = new SpecGenerator2(metadata, defaultOptions).GetSpec()
+      const deprecatedMetadata = new MetadataGenerator('./fixtures/controllers/deprecatedController.ts').Generate()
+      const deprecatedSpec = new SpecGenerator2(deprecatedMetadata, defaultOptions).GetSpec()
+      const parameterMetadata = new MetadataGenerator('./fixtures/controllers/parameterController.ts').Generate()
+      const parameterSpec = new SpecGenerator2(parameterMetadata, defaultOptions).GetSpec()
 
+      it('marks deprecated methods as deprecated', () => {
         expect(deprecatedSpec.paths['/Controller/deprecatedGetMethod']?.get?.deprecated).to.eql(true)
         expect(deprecatedSpec.paths['/Controller/deprecatedGetMethod2']?.get?.deprecated).to.eql(true)
       })
 
       it('mark deprecated parameters as x-deprecated', () => {
-        const metadata = new MetadataGenerator('./fixtures/controllers/parameterController.ts').Generate()
-        const deprecatedSpec = new SpecGenerator2(metadata, defaultOptions).GetSpec()
-
-        const parameters = deprecatedSpec.paths['/ParameterTest/ParameterDeprecated']?.post?.parameters ?? []
+        const parameters = parameterSpec.paths['/ParameterTest/ParameterDeprecated']?.post?.parameters ?? []
         expect(parameters.map(param => (param as unknown as Record<string, unknown>)['x-deprecated'])).to.eql([undefined, true, true])
       })
     })
