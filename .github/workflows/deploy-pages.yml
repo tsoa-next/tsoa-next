@@ -41,9 +41,9 @@ jobs:
       - name: Build guides
         run: npm run docs:build
         env:
-          BASE_URL: /${{ github.event.repository.name }}/docs/
-          SITE_ROOT: /${{ github.event.repository.name }}/
-          API_REFERENCE_URL: /${{ github.event.repository.name }}/reference/
+          BASE_URL: /docs/
+          SITE_ROOT: ../
+          API_REFERENCE_URL: ../reference/
 
       - name: Build API reference
         run: npm run typedocs
