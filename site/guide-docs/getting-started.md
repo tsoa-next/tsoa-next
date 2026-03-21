@@ -31,7 +31,7 @@ npm i tsoa-next express reflect-metadata
 npm i -D typescript @types/node @types/express
 
 # Initialize tsconfig.json
-npm run tsc --init
+npm exec tsc -- --init
 ```
 
 When using `pnpm`, you will also need to explicitly add the `@tsoa-next/runtime` as a dependency for generated routes.
