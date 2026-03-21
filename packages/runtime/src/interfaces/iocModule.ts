@@ -1,6 +1,6 @@
 export type Newable<
   T = unknown,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   TArgs extends unknown[] = any[],
 > = new (...args: TArgs) => T
 
@@ -8,7 +8,7 @@ export type ServiceIdentifier<T = unknown> =
   | string
   | symbol
   | Newable<T>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+   
   | Function
 
 export interface IocContainer {
@@ -16,5 +16,5 @@ export interface IocContainer {
   get<T>(controller: ServiceIdentifier<T>): Promise<T>
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type IocContainerFactory<T = any> = (request: T) => IocContainer

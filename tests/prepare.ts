@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+ 
 import { dim, green } from 'chalk'
 import { generateSpecAndRoutes, generateRoutes } from '@tsoa-next/cli'
 import { Timer } from './utils/timer'

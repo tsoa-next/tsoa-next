@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
+ 
 import * as fs from 'fs'
 import * as handlebars from 'handlebars'
 import { ExtendedRoutesConfig } from '@tsoa-next/cli/src/cli'

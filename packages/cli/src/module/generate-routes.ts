@@ -48,7 +48,7 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
         // try as a module import
         const module = (await import(routeGenerator)) as RouteGeneratorModule<Config>
         return new module.default(metadata, routesConfig)
-      } catch (_err) {
+      } catch (_) {
         // try to find a relative import path
         const relativePath = path.relative(__dirname, routeGenerator)
         const module = (await import(relativePath)) as RouteGeneratorModule<Config>

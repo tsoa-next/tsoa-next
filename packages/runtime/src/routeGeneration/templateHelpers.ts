@@ -1,8 +1,8 @@
 import validator from 'validator'
+import { Tsoa } from '../metadataGeneration/tsoa'
 import { assertNever } from '../utils/assertNever'
 import { AdditionalProps } from './additionalProps'
 import { TsoaRoute, isDefaultForAdditionalPropertiesAllowed } from './tsoa-route'
-import { Tsoa } from '../metadataGeneration/tsoa'
 import ValidatorKey = Tsoa.ValidatorKey
 
 // for backwards compatibility with custom templates

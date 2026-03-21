@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "command": "yarn",
+  "command": "npm",
   "type": "shell",
   "tasks": [
     {
@@ -11,13 +11,15 @@
     {
       "label": "test",
       "group": "test",
-      "args": ["test"]
+      "args": ["run", "test"]
     },
     {
       "label": "prepareFiles",
       "group": "none",
       "args": ["run", "pretest"],
-      "options": { "cwd": "${workspaceFolder}/tests" }
+      "options": {
+        "cwd": "${workspaceFolder}/tests"
+      }
     },
     {
       "label": "watch",

@@ -8,7 +8,7 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using [Yarn](https://yarnpkg.com/en/), npm should work but was not tested.
+We currently recommend using `npm`, `yarn` should work but was not tested.
 This guide assumes you followed the [getting started guide](./getting-started) or have a similar setup.
 :::
 
@@ -29,35 +29,26 @@ Let's first make sure that, whenever the Client triggers a Validation Error, ins
 At the end of our `app.ts`, after the call to `RegisterRoutes(app)`, we'll add a global express error handler:
 
 ```ts
-import express, {
-  Response as ExResponse,
-  Request as ExRequest,
-  NextFunction,
-} from "express";
-import { ValidateError } from "tsoa-next";
+import express, { Response as ExResponse, Request as ExRequest, NextFunction } from 'express'
+import { ValidateError } from 'tsoa-next'
 // ...
 
-app.use(function errorHandler(
-  err: unknown,
-  req: ExRequest,
-  res: ExResponse,
-  next: NextFunction
-): ExResponse | void {
+app.use(function errorHandler(err: unknown, req: ExRequest, res: ExResponse, next: NextFunction): ExResponse | void {
   if (err instanceof ValidateError) {
-    console.warn(`Caught Validation Error for ${req.path}:`, err.fields);
+    console.warn(`Caught Validation Error for ${req.path}:`, err.fields)
     return res.status(422).json({
-      message: "Validation Failed",
+      message: 'Validation Failed',
       details: err?.fields,
-    });
+    })
   }
   if (err instanceof Error) {
     return res.status(500).json({
-      message: "Internal Server Error",
-    });
+      message: 'Internal Server Error',
+    })
   }
 
-  next();
-});
+  next()
+})
 ```
 
 Now, the same request will respond like this:
@@ -74,11 +65,7 @@ In order to handle missing urls more gracefully, we can add a "catch-all" route 
 
 ```ts
 // app.ts
-import express, {
-  Response as ExResponse,
-  Request as ExRequest,
-  NextFunction,
-} from "express";
+import express, { Response as ExResponse, Request as ExRequest, NextFunction } from 'express'
 
 // ...
 
@@ -86,10 +73,9 @@ RegisterRoutes(app)
 
 app.use(function notFoundHandler(_req, res: ExResponse) {
   res.status(404).send({
-    message: "Not Found",
-  });
-});
-
+    message: 'Not Found',
+  })
+})
 
 app.use(function errorHandler(
 // ...
@@ -102,34 +88,32 @@ Since TypeScript does not check throwing Errors, tsoa can't infer the type of re
 
 ::: warning
 Please note that `@Response` has to be the tsoa import and can not currently be renamed
-(i.e. `import {Response as TsoaResponse} from "tsoa-next"`)
+(i.e. `import { Response as TsoaResponse } from 'tsoa-next'`)
 :::
 
 However, we have a way for you to manually specify these returns:
 
 ```ts
-import { Body, Controller, Post, Route, Response, SuccessResponse } from "tsoa-next";
-import { User } from "./user";
-import { UsersService, UserCreationParams } from "./usersService";
+import { Body, Controller, Post, Route, Response, SuccessResponse } from 'tsoa-next'
+import { User } from './user'
+import { UsersService, UserCreationParams } from './usersService'
 
 interface ValidateErrorJSON {
-  message: "Validation failed";
-  details: { [name: string]: unknown };
+  message: string
+  details: { [name: string]: unknown }
 }
 
-@Route("users")
+@Route('users')
 export class UsersController extends Controller {
   // more code here
 
-  @Response<ValidateErrorJSON>(422, "Validation Failed")
-  @SuccessResponse("201", "Created") // Custom success response
+  @Response<ValidateErrorJSON>(422, 'Validation Failed')
+  @SuccessResponse('201', 'Created') // Custom success response
   @Post()
-  public async createUser(
-    @Body() requestBody: UserCreationParams
-  ): Promise<void> {
-    this.setStatus(201); // set return status 201
-    new UsersService().create(requestBody);
-    return;
+  public async createUser(@Body() requestBody: UserCreationParams): Promise<void> {
+    this.setStatus(201) // set return status 201
+    new UsersService().create(requestBody)
+    return
   }
 }
 ```
@@ -145,7 +129,7 @@ OpenAPI allows matching status codes such as '2xx' or matching all codes using '
 @Response<ErrorResponse>('default', 'Unexpected error')
 @Get('Response')
 public async getResponse(): Promise<TestModel> {
-  return new ModelService().getModel();
+  return new ModelService().getModel()
 }
 ```
 
@@ -172,9 +156,9 @@ export class GreetingsController extends Controller {
   @Get('/')
   public async greet(@Query() name?: string, @Res() notFoundResponse: TsoaResponse<404, { reason: string }>): Promise<string> {
     if (!name) {
-      return notFoundResponse(404, { reason: "We don't know you yet. Please provide a name" });
+      return notFoundResponse(404, { reason: 'We don\'t know you yet. Please provide a name' })
     }
 
-    return `Hello, ${name}`;
+    return `Hello, ${name}`
   }
 ```

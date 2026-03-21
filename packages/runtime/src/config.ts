@@ -1,5 +1,5 @@
-import { Swagger } from './swagger/swagger'
 import { Options as MulterOpts } from 'multer'
+import { Swagger } from './swagger/swagger'
 
 export interface Config {
   /**

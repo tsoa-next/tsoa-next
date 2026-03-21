@@ -131,7 +131,7 @@ export class ParameterGenerator {
     const statusArgumentTypes = statusArguments.map(a => this.current.typeChecker.getTypeAtLocation(a))
 
     const isNumberLiteralType = (tsType: ts.Type): tsType is ts.NumberLiteralType => {
-      // eslint-disable-next-line no-bitwise
+       
       return (tsType.getFlags() & ts.TypeFlags.NumberLiteral) !== 0
     }
 

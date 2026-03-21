@@ -767,7 +767,7 @@ export interface HeritageBaseModel {
   value: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+ 
 export interface HeritageTestModel2 extends HeritageBaseModel {}
 
 export interface DefaultTestModel<T = Word, U = Omit<ErrorResponseModel, 'status'>> {

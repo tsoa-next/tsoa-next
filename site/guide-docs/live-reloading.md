@@ -8,7 +8,7 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using [Yarn](https://yarnpkg.com/en/), npm should work but was not tested.
+We currently recommend using `npm`, `yarn` should work but was not tested.
 We assume your setup is similar to the one recommended for [getting started](/getting-started)
 :::
 
@@ -25,7 +25,7 @@ We will use [nodemon](https://nodemon.io/) and [ts-node](https://github.com/Type
 ### Installing nodemon and ts-node
 
 ```bash
-yarn add -D nodemon ts-node concurrently
+npm i -D nodemon ts-node concurrently
 ```
 
 ### Creating a nodemon config
@@ -42,7 +42,7 @@ Now, let's create a `nodemon.json` inside the root folder of our project that lo
 
 ### Adding a dev script
 
-Let's automatically start this setup with `yarn run dev`, and, while we're at it, a `build` and a `start` command in our `package.json`:
+Let's automatically start this setup with `npm run dev`, and, while we're at it, a `build` and a `start` command in our `package.json`:
 
 ```diff
 {
@@ -75,27 +75,25 @@ For performance reasons, importing the contents of the OAS file only once after 
 This module allows you to serve auto-generated swagger-ui generated API docs from express, based on our OAS file. The result is living documentation for your API hosted from your API server via a route.
 
 ```bash
-yarn add swagger-ui-express
-yarn add -D @types/swagger-ui-express
+npm i swagger-ui-express
+npm i -D @types/swagger-ui-express
 ```
 
-### Exposing a `/doc` endpoint
+### Exposing a `/docs` endpoint
 
 Below the body-parser, let's add another handler **before the call to `RegisterRoutes(app)`**
 
 ```ts
 // src/app.ts
 
-import express, { Response as ExResponse, Request as ExRequest } from "express";
-import swaggerUi from "swagger-ui-express";
+import express, { Response as ExResponse, Request as ExRequest } from 'express'
+import swaggerUi from 'swagger-ui-express'
 
 // ...
 
-app.use("/docs", swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
-  return res.send(
-    swaggerUi.generateHTML(await import("../build/swagger.json"))
-  );
-});
+app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
+  return res.send(swaggerUi.generateHTML(await import('../build/swagger.json')))
+})
 ```
 
 ::: tip

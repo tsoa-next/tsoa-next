@@ -366,7 +366,7 @@ export class SpecGenerator3 extends SpecGenerator {
             return { ...acc, [exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel]: { value: ex } }
           }, {})
           for (const p of produces) {
-            /* eslint-disable @typescript-eslint/dot-notation */
+             
             ;(swaggerResponses[res.name].content || {})[p]['examples'] = examples
           }
         }

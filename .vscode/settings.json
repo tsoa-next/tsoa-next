@@ -2,5 +2,8 @@
   "editor.codeActionsOnSave": {
     "eslint.autoFixOnSave": "explicit"
   },
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cSpell.words": [
+    "tsoa"
+  ]
 }

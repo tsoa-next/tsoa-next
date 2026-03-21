@@ -19,7 +19,7 @@ const getPackageJsonValue = async (key: string, defaultValue = ''): Promise<stri
     try {
       const packageJsonRaw = await fsReadFile(`${workingDir}/package.json`)
       packageJson = JSON.parse(packageJsonRaw.toString('utf8'))
-    } catch (err) {
+    } catch (_) {
       return defaultValue
     }
   }
@@ -120,7 +120,6 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   }
 
   if (config.spec.spec && !['immediate', 'recursive', 'deepmerge', undefined].includes(config.spec.specMerging)) {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     throw new Error(`Invalid specMerging config: ${config.spec.specMerging}`)
   }
 
@@ -314,7 +313,6 @@ if (require.main === module) {
     try {
       await runCLI()
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('tsoa cli error:\n', err)
       process.exit(1)
     }
@@ -342,7 +340,6 @@ async function SpecGenerator(args: SwaggerArgs) {
 
     await generateSpec(swaggerConfig, compilerOptions, config.ignore)
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('Generate swagger error.\n', err)
     process.exit(1)
   }
@@ -360,7 +357,6 @@ async function routeGenerator(args: ConfigArgs) {
 
     await generateRoutes(routesConfig, compilerOptions, config.ignore)
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('Generate routes error.\n', err)
     process.exit(1)
   }
@@ -393,7 +389,6 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
     await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
     return metadata
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('Generate routes error.\n', err)
     process.exit(1)
     throw err

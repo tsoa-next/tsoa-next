@@ -156,7 +156,7 @@ export abstract class SpecGenerator {
   protected getSwaggerTypeForPrimitiveType(dataType: Tsoa.PrimitiveTypeLiteral): Swagger.BaseSchema {
     if (dataType === 'object') {
       if (process.env.NODE_ENV !== 'tsoa_test') {
-        // eslint-disable-next-line no-console
+         
         console.warn(`The type Object is discouraged. Please consider using an interface such as:
           export interface IStringToStringDictionary {
             [key: string]: string;

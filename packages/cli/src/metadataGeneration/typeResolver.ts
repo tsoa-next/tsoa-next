@@ -879,7 +879,6 @@ export class TypeResolver {
         this.addToLocalReferenceTypeCache(name, referenceType)
         return referenceType
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error(`There was a problem resolving type of '${name}'.`)
         throw err
       }
@@ -1083,7 +1082,7 @@ export class TypeResolver {
     let declarations
     try {
       declarations = this.getModelTypeDeclarations(targetEntity)
-    } catch (error) {
+    } catch (_) {
       // If we can't get declarations (e.g., inline object type),
       // we can't process type parameters, so return empty context
       return newContext
