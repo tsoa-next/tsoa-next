@@ -47,7 +47,7 @@ export default defineConfig({
     nav: [
       {
         text: 'Home',
-        link: process.env.SITE_ROOT || '/',
+        link: process.env.SITE_ROOT || '../',
       },
       {
         text: 'Guides',

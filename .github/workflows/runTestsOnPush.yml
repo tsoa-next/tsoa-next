@@ -1,6 +1,12 @@
 name: Build and Test
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,7 +34,6 @@ jobs:
   build:
     name: Build
     needs: detect-package-impact
-    if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -37,9 +42,12 @@ jobs:
         typescript-version: ["^5.0.0"]
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         uses: actions/setup-node@v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -47,22 +55,29 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Set override for matrix TypeScript version
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm pkg set 'overrides.typescript=${{ matrix.typescript-version }}'
 
       - name: Install
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm install --ignore-scripts
 
       - name: Output ts version
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm exec -- tsc --version
 
       - name: Output packages version
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm ls --workspaces --depth=0
 
       - name: Build
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm run build
 
       - name: Lint
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm run lint
 
       - name: Test
+        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
         run: npm run test

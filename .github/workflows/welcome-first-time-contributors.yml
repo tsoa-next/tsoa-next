@@ -14,25 +14,64 @@ concurrency:
 
 permissions:
   issues: write
-  pull-requests: write
 
 jobs:
   welcome:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/first-interaction@v3.1.0
+      - uses: actions/github-script@v7
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          issue_message: |
-            Hello there ${{ github.actor }} 👋
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const actor = context.payload.sender?.login;
+            const issueNumber = context.issue.number;
+            const isPullRequest = Boolean(context.payload.pull_request);
+            const isIssue = Boolean(context.payload.issue) && !isPullRequest;
 
-            Thank you for opening your very first issue in this project.
+            if (!actor || !issueNumber || (!isIssue && !isPullRequest)) {
+              core.setFailed('Unsupported event payload for first-time welcome workflow.');
+              return;
+            }
 
-            We will try to get back to you as soon as we can.👀
+            const authoredItems = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: actor,
+              state: 'all',
+              per_page: 100,
+            });
 
-          pr_message: |
-            Hello there ${{ github.actor }} 👋
+            const hasPreviousMatch = authoredItems.some(item => {
+              const isPriorItem = item.number < issueNumber;
+              const itemIsPullRequest = Boolean(item.pull_request);
 
-            Thank you and congrats 🎉 for opening your first PR on this project.✨
+              return isPriorItem && (isPullRequest ? itemIsPullRequest : !itemIsPullRequest);
+            });
 
-            We will review the following PR soon! 👀
+            if (hasPreviousMatch) {
+              core.info(`Skipping welcome comment for ${actor}; prior matching contribution found.`);
+              return;
+            }
+
+            const body = isPullRequest
+              ? [
+                  `Hello there @${actor} 👋`,
+                  '',
+                  'Thank you and congrats 🎉 for opening your first PR on this project.✨',
+                  '',
+                  'We will review the following PR soon! 👀',
+                ].join('\n')
+              : [
+                  `Hello there @${actor} 👋`,
+                  '',
+                  'Thank you for opening your very first issue in this project.',
+                  '',
+                  'We will try to get back to you as soon as we can. 👀',
+                ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
