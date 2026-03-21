@@ -22,15 +22,15 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3.1.0
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             Hello there ${{ github.actor }} 👋
 
             Thank you for opening your very first issue in this project.
 
             We will try to get back to you as soon as we can.👀
 
-          pr-message: |
+          pr_message: |
             Hello there ${{ github.actor }} 👋
 
             Thank you and congrats 🎉 for opening your first PR on this project.✨
