@@ -45,6 +45,37 @@ merge_base_or_empty() {
   git merge-base "$left" "$right" 2>/dev/null || true
 }
 
+log_detection_result() {
+  local has_impact="$1"
+  local diff_range="$2"
+  shift 2
+  local impactful=("$@")
+
+  echo "::group::Package impact detection"
+  echo "Event: $event_name"
+  echo "Evaluated diff: ${diff_range:-unknown}"
+  echo "Package/build impact: $has_impact"
+  if ((${#impactful[@]} > 0)); then
+    echo "Impactful files:"
+    printf ' - %s\n' "${impactful[@]}"
+  else
+    echo "Impactful files: none"
+  fi
+  echo "::endgroup::"
+
+  if [[ "$has_impact" == 'true' ]]; then
+    echo "::notice::Package/build impact detected."
+  else
+    echo "::notice::No package/build impact detected. Skipping heavy test matrix."
+  fi
+}
+
+log_detection_fallback() {
+  local reason="$1"
+
+  echo "::warning::Package impact detection defaulted to impact=true: $reason"
+}
+
 file_has_impact() {
   local path="$1"
 
@@ -100,6 +131,7 @@ case "$event_name" in
     printf 'has-impact=true\n' >> "$GITHUB_OUTPUT"
     set_multiline_output changed-files
     set_multiline_output impactful-files
+    log_detection_fallback "unsupported event '$event_name'"
     exit 0
     ;;
 esac
@@ -108,6 +140,7 @@ if [[ -z "$diff_base" ]]; then
   printf 'has-impact=true\n' >> "$GITHUB_OUTPUT"
   set_multiline_output changed-files
   set_multiline_output impactful-files
+  log_detection_fallback 'unable to determine a diff base'
   exit 0
 fi
 
@@ -127,6 +160,7 @@ fi
 printf 'has-impact=%s\n' "$has_impact" >> "$GITHUB_OUTPUT"
 set_multiline_output changed-files "${changed_files[@]}"
 set_multiline_output impactful-files "${impactful_files[@]}"
+log_detection_result "$has_impact" "$diff_base..$head_sha" "${impactful_files[@]}"
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
