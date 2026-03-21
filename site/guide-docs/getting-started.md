@@ -263,7 +263,7 @@ Let's do that now:
 
 ```shell
 mkdir -p build # Create the build directory if it doesn't exist
-npm run tsoa routes
+npm exec tsoa -- routes
 ```
 
 Now your routes.ts file should've been created and you can compile TypeScript and start your server:
