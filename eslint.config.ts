@@ -17,9 +17,9 @@ export default defineConfig([
     ignorePatterns: [
       'node_modules',
       'dist',
+      'commitlint.config.cjs',
       'eslint.config.ts',
       'prettier.config.ts',
-      'scripts/**/*.mjs',
       'tests/fixtures/**/routes.ts',
       'tests/fixtures/**/customRoutes.ts',
       'tests/fixtures/custom/custom-route-generator/routes/**/*.ts',

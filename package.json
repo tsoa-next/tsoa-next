@@ -5,7 +5,6 @@
   "scripts": {
     "build": "turbo run build --output-logs=full",
     "changeset": "changeset",
-    "check:commit-message": "node scripts/check-commit-message.mjs",
     "clean": "turbo run clean --output-logs=full",
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
@@ -42,6 +41,8 @@
   "license": "MIT",
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",

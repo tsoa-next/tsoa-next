@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-npm exec -- node scripts/check-commit-message.mjs "$1"
+npm exec -- commitlint --edit "$1"
