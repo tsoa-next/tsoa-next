@@ -10,6 +10,10 @@ import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } fro
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
 
 export class SpecGenerator2 extends SpecGenerator {
+  protected buildAdditionalProperties(type: Tsoa.Type) {
+    return this.toSwagger2Schema(this.getSwaggerType(type))
+  }
+
   constructor(
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
@@ -299,7 +303,7 @@ export class SpecGenerator2 extends SpecGenerator {
       return
     }
 
-    const parameter: Swagger.Swagger2BodyParameter = {
+    const parameter: Swagger.BodyParameter = {
       in: 'body',
       name: 'body',
       schema: {
@@ -350,7 +354,7 @@ export class SpecGenerator2 extends SpecGenerator {
       const schema: Swagger.Schema2 =
         source.type.dataType === 'array'
           ? {
-              items: parameterType.items,
+              ...(parameterType.items && this.isSwaggerBaseSchema(parameterType.items) ? { items: this.toSwagger2Schema(parameterType.items) } : {}),
               type: 'array',
               ...schemaValidators,
             }

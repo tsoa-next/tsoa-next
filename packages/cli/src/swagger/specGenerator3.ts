@@ -19,6 +19,10 @@ import { SpecGenerator } from './specGenerator'
  * Also accept OpenAPI 3.0.0 metadata, like components/securitySchemes instead of securityDefinitions
  */
 export class SpecGenerator3 extends SpecGenerator {
+  protected buildAdditionalProperties(type: Tsoa.Type) {
+    return this.toOpenApi3Schema(this.getSwaggerType(type))
+  }
+
   constructor(
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
@@ -509,7 +513,9 @@ export class SpecGenerator3 extends SpecGenerator {
       if (parameterType.type) {
         parameter.schema.type = this.throwIfNotDataType(parameterType.type)
       }
-      parameter.schema.items = parameterType.items
+      if (parameterType.items && this.isSwaggerBaseSchema(parameterType.items)) {
+        parameter.schema.items = this.toOpenApi3Schema(parameterType.items)
+      }
       parameter.schema.enum = parameterType.enum
     }
 
@@ -582,6 +588,40 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected getSwaggerTypeForReferenceType(referenceType: Tsoa.ReferenceType): Swagger.BaseSchema {
     return { $ref: `#/components/schemas/${encodeURIComponent(referenceType.refName)}` }
+  }
+
+  private toOpenApi3Schema(schema: Swagger.BaseSchema): Swagger.Schema3 {
+    const { additionalProperties, items, properties, type, ...schemaWithoutNestedValues } = schema
+    const converted: Swagger.Schema3 = {
+      ...schemaWithoutNestedValues,
+      ...(type ? { type: this.throwIfNotDataType(type) } : {}),
+    }
+
+    if (items && this.isSwaggerBaseSchema(items)) {
+      converted.items = this.toOpenApi3Schema(items)
+    }
+
+    if (typeof additionalProperties === 'boolean') {
+      converted.additionalProperties = additionalProperties
+    } else if (additionalProperties && this.isSwaggerBaseSchema(additionalProperties)) {
+      converted.additionalProperties = this.toOpenApi3Schema(additionalProperties)
+    }
+
+    if (properties) {
+      const convertedProperties: { [propertyName: string]: Swagger.Schema3 } = {}
+      Object.entries(properties).forEach(([propertyName, propertySchema]) => {
+        if (this.isSwaggerBaseSchema(propertySchema)) {
+          convertedProperties[propertyName] = this.toOpenApi3Schema(propertySchema)
+        }
+      })
+      converted.properties = convertedProperties
+    }
+
+    return converted
+  }
+
+  private isSwaggerBaseSchema(value: unknown): value is Swagger.BaseSchema {
+    return typeof value === 'object' && value !== null
   }
 
   protected getSwaggerTypeForPrimitiveType(dataType: Tsoa.PrimitiveTypeLiteral): Swagger.BaseSchema {

@@ -130,7 +130,7 @@ export namespace Swagger {
     description?: string
   }
 
-  export type BaseParameter = {
+  type ParameterCommonFields = {
     name: string
     required?: boolean
     description?: string
@@ -143,29 +143,29 @@ export namespace Swagger {
     default?: unknown
   }
 
-  export type BodyParameter = BaseParameter & {
+  export type BodyParameter = ParameterCommonFields & {
     in: 'body'
     schema: Schema2
   }
 
-  export type FormDataParameter = BaseParameter &
+  export type FormDataParameter = ParameterCommonFields &
     Swagger2ParameterValue & {
       in: 'formData'
       collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
     }
 
-  type QueryParameter = BaseParameter &
+  type QueryParameter = ParameterCommonFields &
     Swagger2ParameterValue & {
       in: 'query'
       collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
     }
 
-  type PathParameter = BaseParameter &
+  type PathParameter = ParameterCommonFields &
     Swagger2ParameterValue & {
       in: 'path'
     }
 
-  type HeaderParameter = BaseParameter &
+  type HeaderParameter = ParameterCommonFields &
     Swagger2ParameterValue & {
       in: 'header'
     }
@@ -175,23 +175,22 @@ export namespace Swagger {
     exclusiveMinimum?: boolean
   }
 
-  export type Swagger2BodyParameter = BodyParameter
   export type Swagger2FormDataParameter = FormDataParameter & Swagger2NonBodyParameter
   export type Swagger2QueryParameter = QueryParameter & Swagger2NonBodyParameter
   export type Swagger2PathParameter = PathParameter & Swagger2NonBodyParameter
   export type Swagger2HeaderParameter = HeaderParameter & Swagger2NonBodyParameter
 
-  export type Parameter2 = Swagger2BodyParameter | Swagger2FormDataParameter | Swagger2QueryParameter | Swagger2PathParameter | Swagger2HeaderParameter
+  export type Parameter2 = BodyParameter | Swagger2FormDataParameter | Swagger2QueryParameter | Swagger2PathParameter | Swagger2HeaderParameter
 
   export function isQueryParameter(parameter: unknown): parameter is Swagger2QueryParameter {
     return typeof parameter === 'object' && parameter !== null && 'in' in parameter && parameter.in === 'query'
   }
 
-  export function isBodyParameter(parameter: unknown): parameter is Swagger2BodyParameter {
+  export function isBodyParameter(parameter: unknown): parameter is BodyParameter {
     return typeof parameter === 'object' && parameter !== null && 'in' in parameter && parameter.in === 'body'
   }
 
-  export interface Parameter3 extends BaseParameter {
+  export interface Parameter3 extends ParameterCommonFields {
     in: 'query' | 'header' | 'path' | 'cookie'
     deprecated?: boolean
     schema: Schema3
@@ -205,6 +204,9 @@ export namespace Swagger {
   export interface Parameter31 extends Omit<Parameter3, 'schema'> {
     schema: Schema31
   }
+
+  // Backward-compatible export for consumers that referenced the public BaseParameter type.
+  export type BaseParameter = Parameter2 | Parameter3 | Parameter31
 
   export interface Path {
     $ref?: string
@@ -393,18 +395,22 @@ export namespace Swagger {
     }
   }
 
-  export interface Schema3 extends Omit<BaseSchema, 'type'> {
+  export interface Schema3 extends Omit<BaseSchema, 'additionalProperties' | 'items' | 'properties' | 'type'> {
     type?: DataType
     nullable?: boolean
-    anyOf?: BaseSchema[]
-    allOf?: BaseSchema[]
+    additionalProperties?: boolean | Schema3
+    items?: Schema3
+    anyOf?: Schema3[]
+    allOf?: Schema3[]
     deprecated?: boolean
     exclusiveMaximum?: boolean
     exclusiveMinimum?: boolean
     properties?: { [propertyName: string]: Schema3 }
   }
 
-  export interface Schema2 extends BaseSchema {
+  export interface Schema2 extends Omit<BaseSchema, 'additionalProperties' | 'items' | 'properties'> {
+    additionalProperties?: boolean | Schema2
+    items?: Schema2
     type?: DataType
     exclusiveMaximum?: boolean
     exclusiveMinimum?: boolean
