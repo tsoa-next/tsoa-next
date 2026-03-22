@@ -159,7 +159,7 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
       const headerValue = headers[name]
       if (headerValue !== undefined) {
         if (Array.isArray(headerValue)) {
-          Reflect.apply(setHeader, response, [name, headerValue, { append: name === 'set-cookie' }])
+          Reflect.apply(setHeader, response, [name, headerValue, { append: name.toLowerCase() === 'set-cookie' }])
         } else {
           setHeader(name, headerValue)
         }

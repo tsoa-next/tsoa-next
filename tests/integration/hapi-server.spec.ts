@@ -453,6 +453,18 @@ describe('Hapi Server', () => {
       )
     })
 
+    it('should append set-cookie arrays regardless of header casing', () => {
+      return verifyGetRequest(
+        app,
+        basePath + `/Controller/customHeaderCaseInsensitive`,
+        (_err, res) => {
+          expect(res.status).to.equal(204)
+          expect(res.header['set-cookie']).to.eql(['token=MY_AUTH_TOKEN;', 'refreshToken=MY_REFRESH_TOKEN;'])
+        },
+        204,
+      )
+    })
+
     it('should unavailable for legal reasons status code', () => {
       return verifyGetRequest(
         app,

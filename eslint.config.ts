@@ -83,7 +83,14 @@ export default defineConfig([
       {
         files: ['./packages/runtime/src/decorators/*.ts'],
         rules: {
-          '@typescript-eslint/no-unused-vars': 'error',
+          '@typescript-eslint/no-unused-vars': [
+            'error',
+            {
+              argsIgnorePattern: '^_',
+              caughtErrorsIgnorePattern: '^_',
+              varsIgnorePattern: '^_',
+            },
+          ],
         },
       },
       {
