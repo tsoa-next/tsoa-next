@@ -58,7 +58,6 @@ jobs:
         run: npm run coverage
 
       - name: Sonar Scan
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
