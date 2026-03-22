@@ -42,10 +42,30 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "express": "^4.21.0 || ^5.0.0"
+    "express": "^4.21.0 || ^5.0.0",
+    "io-ts": "^2.2.21",
+    "joi": "^17.13.3",
+    "superstruct": "^2.0.2",
+    "yup": "^1.7.1",
+    "zod": "^4.1.11"
   },
   "peerDependenciesMeta": {
     "express": {
+      "optional": true
+    },
+    "io-ts": {
+      "optional": true
+    },
+    "joi": {
+      "optional": true
+    },
+    "superstruct": {
+      "optional": true
+    },
+    "yup": {
+      "optional": true
+    },
+    "zod": {
       "optional": true
     }
   },

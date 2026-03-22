@@ -1,0 +1,26 @@
+{
+  "all": true,
+  "report-dir": "coverage",
+  "reporter": [
+    "lcovonly",
+    "text-summary"
+  ],
+  "include": [
+    "packages/cli/src/**/*.ts",
+    "packages/runtime/src/**/*.ts",
+    "packages/tsoa/src/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.d.ts",
+    "**/*.spec.ts",
+    "**/dist/**",
+    "**/fixtures/**",
+    "**/routes.ts",
+    "**/customRoutes.ts",
+    ".changeset/**",
+    ".github/**",
+    "coverage/**",
+    "site/**",
+    "tests/**"
+  ]
+}

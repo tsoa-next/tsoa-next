@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import { fetchMiddlewares, HapiTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -44,19 +44,22 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     {{/each}}
 };
-const templateService = new HapiTemplateService(
-  models,
-  {{{ json minimalSwaggerConfig }}},
-  { boomify, isBoom },
-);
-
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
-export function RegisterRoutes(server: any) {
+export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.ValidationContext }) {
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
+    const additionalProps: AdditionalProps = {
+      ...{{{ json minimalSwaggerConfig }}},
+      validation: opts?.validation,
+    };
+    const templateService = new HapiTemplateService(
+      models,
+      additionalProps,
+      { boomify, isBoom },
+    );
     {{#each controllers}}
     {{#each actions}}
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
@@ -100,7 +103,7 @@ export function RegisterRoutes(server: any) {
 
                     let validatedArgs: any[] = [];
                     try {
-                        validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, request, h });
+                        validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', request, h });
                     } catch (err) {
                         const error = err as any;
                         if (isBoom(error)) {

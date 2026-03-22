@@ -4,6 +4,36 @@ import { Validator } from '..'
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Tsoa {
+  export type ExternalValidatorKind = 'zod' | 'joi' | 'yup' | 'superstruct' | 'io-ts'
+  export type ValidationStrategy = 'standard' | 'external'
+
+  export interface ExternalValidatorDescriptor {
+    kind: ExternalValidatorKind
+    strategy: 'external'
+  }
+
+  export interface ValidationIssue {
+    path: string
+    code: string
+    message?: string
+    messageKey?: string
+    messageParams?: Record<string, unknown>
+    source: 'tsoa' | ExternalValidatorKind
+    raw?: unknown
+  }
+
+  export interface ValidationFailure {
+    summaryMessage: string
+    issues: ValidationIssue[]
+    source: ValidationIssue['source']
+  }
+
+  export interface ValidationContext {
+    locale?: string
+    translate?: (key: string, params?: Record<string, unknown>) => string
+    errorFormatter?: (failure: ValidationFailure) => ValidationFailure
+  }
+
   export type Example = string | number | boolean | null | undefined | Date | Example[] | { [exampleName: string]: Example }
 
   export interface Metadata {
@@ -40,6 +70,7 @@ export namespace Tsoa {
   }
 
   export interface Parameter {
+    parameterIndex?: number
     parameterName: string
     example?: Example[]
     description?: string
@@ -49,6 +80,8 @@ export namespace Tsoa {
     type: Type
     default?: unknown
     validators: Validators
+    validationStrategy?: ValidationStrategy
+    externalValidator?: ExternalValidatorDescriptor
     deprecated: boolean
     exampleLabels?: Array<string | undefined>
     title?: string

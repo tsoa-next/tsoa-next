@@ -509,6 +509,33 @@ export class TypeResolver {
   private resolveTypeReferenceNode(typeNode: ts.TypeReferenceNode, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type {
     const { typeName, typeArguments } = typeNode
 
+    const typeNameText = ts.isIdentifier(typeName) ? typeName.text : typeName.right.text
+    const resolvedTypeArguments = typeArguments ? [...typeArguments] : undefined
+
+    if (typeNameText === 'TypeOf' && resolvedTypeArguments && resolvedTypeArguments.length === 1) {
+      const [codecTypeArgument] = resolvedTypeArguments
+      const codecType = current.typeChecker.getTypeFromTypeNode(codecTypeArgument)
+      const decodedSymbol = current.typeChecker.getPropertyOfType(codecType, '_A')
+      if (decodedSymbol) {
+        const decodedType = current.typeChecker.getTypeOfSymbolAtLocation(decodedSymbol, codecTypeArgument)
+        const decodedNode = current.typeChecker.typeToTypeNode(decodedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+        if (decodedNode) {
+          return new TypeResolver(decodedNode, current, parentNode, context, decodedType).resolve()
+        }
+      }
+
+      const resolvedType = current.typeChecker.getTypeFromTypeNode(typeNode)
+      const resolvedNode = current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+      if (resolvedNode && !ts.isTypeReferenceNode(resolvedNode)) {
+        return new TypeResolver(resolvedNode, current, parentNode, context, resolvedType).resolve()
+      }
+    }
+
+    if (typeNameText === 'Branded' && resolvedTypeArguments && resolvedTypeArguments.length >= 1) {
+      const [valueTypeArgument] = resolvedTypeArguments
+      return new TypeResolver(valueTypeArgument, current, parentNode, context).resolve()
+    }
+
     if (typeName.kind !== ts.SyntaxKind.Identifier) {
       return this.getReferenceType(typeNode)
     }

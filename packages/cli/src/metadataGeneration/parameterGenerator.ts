@@ -8,6 +8,7 @@ import { MetadataGenerator } from './metadataGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
 import { TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
+import { getParameterExternalValidator } from '../utils/validateDecoratorUtils'
 import type { InitializerValue } from './initializer-value'
 
 const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
@@ -50,6 +51,7 @@ export class ParameterGenerator {
       (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName),
       this.current.typeChecker,
     )
+    this.assertValidateDecoratorCompatibility(decoratorName)
 
     switch (decoratorName) {
       case 'Request':
@@ -93,6 +95,7 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type: { dataType: 'object' },
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -116,6 +119,7 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -192,6 +196,7 @@ export class ParameterGenerator {
         exampleLabels,
         schema: type,
         validators: {},
+        parameterIndex: this.getParameterIndex(parameter),
         headers,
         deprecated: this.getParameterDeprecation(parameter),
       }
@@ -230,6 +235,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'body-prop'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -254,6 +261,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'body'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -279,6 +288,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'header'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -313,6 +324,7 @@ export class ParameterGenerator {
       type,
       parameterName,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -336,6 +348,8 @@ export class ParameterGenerator {
       type,
       parameterName,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'formData'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -381,6 +395,8 @@ export class ParameterGenerator {
               required: !parameter.questionToken && !parameter.initializer,
               type: resolvedType,
               validators: getParameterValidators(this.parameter, parameterName),
+              parameterIndex: this.getParameterIndex(parameter),
+              ...this.getExternalValidationMetadata(parameter, 'queries'),
               deprecated: this.getParameterDeprecation(parameter),
             }
           }
@@ -411,6 +427,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'queries'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -458,6 +476,8 @@ export class ParameterGenerator {
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'query'),
       deprecated: this.getParameterDeprecation(parameter),
     }
 
@@ -518,6 +538,8 @@ export class ParameterGenerator {
       required: true,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'path'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -575,6 +597,32 @@ export class ParameterGenerator {
 
   private supportBodyMethod(method: string) {
     return ['post', 'put', 'patch', 'delete'].some(m => m === method.toLowerCase())
+  }
+
+  private assertValidateDecoratorCompatibility(decoratorName?: string) {
+    const hasValidateDecorator = getDecorators(this.parameter, (_identifier, canonicalName) => canonicalName === 'Validate', this.current.typeChecker).length > 0
+    if (!hasValidateDecorator) {
+      return
+    }
+
+    const resolvedLocation = decoratorName ? decoratorName.toLowerCase() : 'path'
+    if (!['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'].includes(resolvedLocation)) {
+      throw new GenerateMetadataError(`@Validate is not supported on '${resolvedLocation}' parameters in this release.`, this.parameter)
+    }
+  }
+
+  private getParameterIndex(parameter: ts.ParameterDeclaration) {
+    const parameters = parameter.parent && ts.isFunctionLike(parameter.parent) ? parameter.parent.parameters : undefined
+    if (!parameters) {
+      return undefined
+    }
+
+    const index = parameters.indexOf(parameter)
+    return index >= 0 ? index : undefined
+  }
+
+  private getExternalValidationMetadata(parameter: ts.ParameterDeclaration, parameterIn: Tsoa.Parameter['in']) {
+    return getParameterExternalValidator(parameter, parameterIn, this.current.typeChecker)
   }
 
   private supportParameterDecorator(decoratorName?: string) {

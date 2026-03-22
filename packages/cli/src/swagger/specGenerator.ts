@@ -265,8 +265,13 @@ export abstract class SpecGenerator {
       type: property.type,
       default: property.default,
       validators: property.validators,
+      parameterIndex: undefined,
       deprecated: property.deprecated,
     }
+  }
+
+  protected getExternalValidatorExtension(source: Pick<Tsoa.Parameter, 'externalValidator'>): { 'x-schema-validator'?: Tsoa.ExternalValidatorKind } {
+    return source.externalValidator ? { 'x-schema-validator': source.externalValidator.kind } : {}
   }
 
   protected isRequiredWithoutDefault(prop: Tsoa.Property | Tsoa.Parameter): boolean | undefined {

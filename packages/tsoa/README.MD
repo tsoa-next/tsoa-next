@@ -6,7 +6,7 @@ Pronounced so·uh
 
 OpenAPI-compliant REST APIs using TypeScript and Node
 
-![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)
+[![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml)
 [![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
 
 </div>
@@ -38,6 +38,54 @@ Where historical release notes or migration references still point upstream, the
 - Models are best represented by interfaces (pure data structures), but can also be represented by classes
 - Runtime validation of tsoa-next should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
   - Please note that by enabling OpenAPI 3 you minimize the chances of divergent validation logic since OpenAPI 3 has a more expressive schema syntax.
+
+## External Validators
+
+`@Validate(...)` adds opt-in runtime authority for external schemas on controller parameters.
+
+- Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
+- Supported libraries: `zod`, `joi`, `yup`, `superstruct`, `io-ts`
+- Scope: parameter-level only in this release
+- Behavior: TypeScript metadata still drives OpenAPI generation, while the external schema replaces built-in runtime validation for the decorated parameter subtree
+- Compatibility: routes without `@Validate(...)` keep their current behavior
+
+```ts
+import * as t from 'io-ts'
+import { withMessage } from 'io-ts-types'
+import { Body, Controller, Post, Route, Validate } from '@tsoa-next/runtime'
+
+interface PositiveFloatBrand {
+  readonly PositiveFloat: unique symbol
+}
+
+const PositiveFloat = withMessage(
+  t.brand(t.number, (n): n is t.Branded<number, PositiveFloatBrand> => Number.isFinite(n) && n > 0, 'PositiveFloat'),
+  () => 'validation.wager.amount.mustBePositiveFloat',
+)
+
+const WagerCodec = t.type({
+  amount: PositiveFloat,
+  outcome: t.Int,
+})
+
+type Wager = t.TypeOf<typeof WagerCodec>
+
+@Route('wagers')
+export class WagersController extends Controller {
+  @Post()
+  public createWager(
+    @Body()
+    @Validate('io-ts', WagerCodec)
+    wager: Wager,
+  ): Wager {
+    return wager
+  }
+}
+```
+
+## Migration Note
+
+This feature is fully opt-in. If you do not use `@Validate(...)`, existing interface/class models, generated routes, validation behavior, and error responses are unchanged.
 
 ## Getting Started
 

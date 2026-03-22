@@ -13,3 +13,4 @@ codealike.json
 **/.turbo
 site/guide-docs/.vitepress/.temp
 site/guide-docs/.vitepress/dist
+coverage/

@@ -455,6 +455,7 @@ export class SpecGenerator3 extends SpecGenerator {
         ...(this.getSwaggerType(parameter.type, this.config.useTitleTagsForInlineObjects ? this.getOperationId(controllerName, method) + 'RequestBody' : undefined) as Swagger.Schema3),
         ...validators,
         ...(parameter.description && { description: parameter.description }),
+        ...this.getExternalValidatorExtension(parameter),
       },
     }
 
@@ -494,6 +495,7 @@ export class SpecGenerator3 extends SpecGenerator {
       schema: {
         default: source.default,
         format: undefined,
+        ...this.getExternalValidatorExtension(source),
       },
     } as Swagger.Parameter3
     if (source.deprecated) {

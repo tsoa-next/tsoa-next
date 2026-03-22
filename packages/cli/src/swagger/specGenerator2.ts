@@ -358,12 +358,14 @@ export class SpecGenerator2 extends SpecGenerator {
               ...(parameterType.items && this.isSwaggerBaseSchema(parameterType.items) ? { items: this.toSwagger2Schema(parameterType.items) } : {}),
               type: 'array',
               ...schemaValidators,
+              ...this.getExternalValidatorExtension(source),
             }
           : source.type.dataType === 'any'
-            ? { type: 'object', ...schemaValidators }
+            ? { type: 'object', ...schemaValidators, ...this.getExternalValidatorExtension(source) }
             : {
                 ...this.toSwagger2Schema(parameterType),
                 ...schemaValidators,
+                ...this.getExternalValidatorExtension(source),
               }
 
       return {
@@ -395,6 +397,7 @@ export class SpecGenerator2 extends SpecGenerator {
       ...(parameterType.format ? { format: this.throwIfNotDataFormat(parameterType.format) } : {}),
       ...(parameterType.items ? { items: parameterType.items } : {}),
       ...(parameterType.enum ? { enum: parameterType.enum } : {}),
+      ...this.getExternalValidatorExtension(source),
       ...parameterValidators,
     }
     const resolvedType = source.type.dataType === 'any' ? 'string' : parameterType.type ? this.throwIfNotDataType(parameterType.type) : undefined

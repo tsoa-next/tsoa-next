@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import { fetchMiddlewares, KoaTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -55,15 +55,10 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     {{/each}}
 };
-const templateService = new KoaTemplateService(models, {{{ json minimalSwaggerConfig }}});
-
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-
 {{#if useFileUploads}}
-export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>}) {
+export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
 {{else}}
-export function RegisterRoutes(router: KoaRouter) {
+export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.ValidationContext}) {
 {{/if}}
 
     // ###########################################################################################################
@@ -74,6 +69,11 @@ export function RegisterRoutes(router: KoaRouter) {
     {{#if useFileUploads}}
     const upload = opts?.multer ||  multer({{{json multerOpts}}});
     {{/if}}
+    const additionalProps: AdditionalProps = {
+      ...{{{ json minimalSwaggerConfig }}},
+      validation: opts?.validation,
+    };
+    const templateService = new KoaTemplateService(models, additionalProps);
 
     {{#each controllers}}
     {{#each actions}}
@@ -105,7 +105,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             let validatedArgs: any[] = [];
             try {
-              validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, context, next });
+              validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', context, next });
             } catch (err) {
               const error = err as any;
               error.message ||= JSON.stringify({ fields: error.fields });

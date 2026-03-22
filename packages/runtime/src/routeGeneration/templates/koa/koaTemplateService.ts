@@ -22,6 +22,8 @@ type KoaApiHandlerParameters = {
 
 type KoaValidationArgsParameters = {
   args: Record<string, TsoaRoute.ParameterSchema>
+  controllerClass?: object
+  methodName?: string
   context: Context
   next: Next
 }
@@ -60,10 +62,11 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
   }
 
   getValidatedArgs(params: KoaValidationArgsParameters): unknown[] {
-    const { args, context, next } = params
+    const { args, controllerClass, methodName, context, next } = params
 
     const errorFields: FieldErrors = {}
     const values = Object.values(args).map(param => {
+      const metadata = { controllerClass, methodName, parameterIndex: param.parameterIndex }
       const name = param.name
       switch (param.in) {
         case 'request':
@@ -71,20 +74,20 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
         case 'request-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(context.request, name)
           const value: unknown = descriptor ? descriptor.value : undefined
-          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined, metadata)
         }
         case 'query':
-          return this.validationService.ValidateParam(param, context.request.query[name], name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, context.request.query[name], name, errorFields, false, undefined, metadata)
         case 'queries':
-          return this.validationService.ValidateParam(param, context.request.query, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, context.request.query, name, errorFields, false, undefined, metadata)
         case 'path':
-          return this.validationService.ValidateParam(param, this.getPathValue(context.params, name), name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, this.getPathValue(context.params, name), name, errorFields, false, undefined, metadata)
         case 'header':
-          return this.validationService.ValidateParam(param, this.getHeaderValue(context.request.headers, name), name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, this.getHeaderValue(context.request.headers, name), name, errorFields, false, undefined, metadata)
         case 'body': {
           const value = this.normalizeRequestBody(this.getRequestBody(context.request), context.request.headers)
           const bodyFieldErrors: FieldErrors = {}
-          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, undefined)
+          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, undefined, metadata)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
@@ -93,7 +96,7 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
         case 'body-prop': {
           const value = this.getBodyProperty(this.getRequestBody(context.request), context.request.headers, name)
           const bodyFieldErrors: FieldErrors = {}
-          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.')
+          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.', metadata)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
@@ -103,7 +106,7 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
           const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array && p.array.dataType === 'file'))
           const contextRequest = context.request as KoaRequestWithBody
           if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
-            const fileArgs = this.validationService.ValidateParam(param, contextRequest.files?.[name], name, errorFields, false, undefined)
+            const fileArgs = this.validationService.ValidateParam(param, contextRequest.files?.[name], name, errorFields, false, undefined, metadata)
             if (param.dataType === 'array') {
               return fileArgs
             }
@@ -114,7 +117,7 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
             return fileArgs
           }
           const bodyValue = this.isRecord(contextRequest.body) ? contextRequest.body[name] : undefined
-          return this.validationService.ValidateParam(param, bodyValue, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, bodyValue, name, errorFields, false, undefined, metadata)
         }
         case 'res':
           return (async (status: number | undefined, data: unknown, headers: HeaderRecord): Promise<void> => {

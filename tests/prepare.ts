@@ -117,6 +117,16 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
         rootSecurity: [{ api_key: [] }],
       }),
     ),
+    log('Express Route Generation, external validation', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/express-external-validation/server.ts',
+        middleware: 'express',
+        routesDir: './fixtures/express-external-validation',
+      }),
+    ),
     log('Koa Route Generation', () =>
       generateRoutes({
         noImplicitAdditionalProperties: 'silently-remove-extras',

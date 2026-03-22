@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -56,17 +56,11 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     {{/each}}
 };
-const templateService = new ExpressTemplateService(models, {{{ json minimalSwaggerConfig}}});
-
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-
-
 
 {{#if useFileUploads}}
-export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof multer>}) {
+export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
 {{else}}
-export function RegisterRoutes(app: Router) {
+export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationContext}) {
 {{/if}}
 
     // ###########################################################################################################
@@ -77,6 +71,11 @@ export function RegisterRoutes(app: Router) {
     {{#if useFileUploads}}
     const upload = opts?.multer ||  multer({{{json multerOpts}}});
     {{/if}}
+    const additionalProps: AdditionalProps = {
+      ...{{{ json minimalSwaggerConfig}}},
+      validation: opts?.validation,
+    };
+    const templateService = new ExpressTemplateService(models, additionalProps);
 
     
     {{#each controllers}}
@@ -111,7 +110,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', request, response });
 
               {{#if ../../iocModule}}
                 const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
