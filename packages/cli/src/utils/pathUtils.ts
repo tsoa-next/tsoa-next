@@ -48,23 +48,23 @@ function trimPathDelimiters(path: string) {
 }
 
 function collapsePathDelimiters(path: string) {
-  let normalised = ''
+  const normalisedChars: string[] = []
   let previousWasDelimiter = false
 
   for (const character of path) {
     if (isPathDelimiter(character)) {
       if (!previousWasDelimiter) {
-        normalised += '/'
+        normalisedChars.push('/')
         previousWasDelimiter = true
       }
       continue
     }
 
-    normalised += character
+    normalisedChars.push(character)
     previousWasDelimiter = false
   }
 
-  return normalised
+  return normalisedChars.join('')
 }
 
 function isPathDelimiter(character: string) {
