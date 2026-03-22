@@ -256,7 +256,8 @@ export class TypeResolver {
               return {
                 name: property.getName(),
                 required,
-                deprecated: parent ? isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, identifier => identifier.text === 'Deprecated') : false,
+                deprecated:
+                  parent ? isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker) : false,
                 type,
                 default: def,
                 // validators are disjunct via types, so it is now OK.
@@ -670,11 +671,10 @@ export class TypeResolver {
       // The second was implemented, it not changes the usual type name formats.
 
       const oneDeclaration = declarations[0] //Every declarations should be in the same namespace hierarchy
-      const identifiers = name.split('.')
       if (oneDeclaration && ts.isEnumMember(oneDeclaration)) {
-        name = identifiers.slice(identifiers.length - 2).join('.')
+        name = `${oneDeclaration.parent.name.getText()}.${oneDeclaration.name.getText()}`
       } else {
-        name = identifiers.slice(identifiers.length - 1).join('.')
+        name = oneDeclaration.name?.getText() || name
       }
 
       let actNode = oneDeclaration.parent
@@ -708,7 +708,7 @@ export class TypeResolver {
 
   private calcMemberJsDocProperties(arg: ts.PropertySignature): string {
     const def = TypeResolver.getDefault(arg)
-    const isDeprecated = isExistJSDocTag(arg, tag => tag.tagName.text === 'deprecated') || isDecorator(arg, identifier => identifier.text === 'Deprecated')
+    const isDeprecated = isExistJSDocTag(arg, tag => tag.tagName.text === 'deprecated') || isDecorator(arg, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
 
     const symbol = this.getSymbolAtLocation(arg.name as ts.Node)
     const comments = symbol ? symbol.getDocumentationComment(this.current.typeChecker) : []
@@ -916,7 +916,7 @@ export class TypeResolver {
   private getModelReference(modelType: ts.InterfaceDeclaration | ts.ClassDeclaration, refTypeName: string) {
     const example = this.getNodeExample(modelType)
     const description = this.getNodeDescription(modelType)
-    const deprecated = isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, identifier => identifier.text === 'Deprecated')
+    const deprecated = isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
     const title = this.getNodeTitle(modelType)
 
     // Handle toJSON methods
@@ -1229,7 +1229,7 @@ export class TypeResolver {
       return safeFromJson(exampleJSDoc)
     }
 
-    return getNodeFirstDecoratorValue(node, this.current.typeChecker, dec => dec.text === 'Example')
+    return getNodeFirstDecoratorValue(node, this.current.typeChecker, (_dec, canonicalName) => canonicalName === 'Example')
   }
 
   public getNodeExtension(node: ts.Node) {
@@ -1243,7 +1243,7 @@ export class TypeResolver {
   }
 
   private getDecoratorsByIdentifier(node: ts.Node, id: string) {
-    return getDecorators(node, identifier => identifier.text === id)
+    return getDecorators(node, (_identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
   }
 
   public static getDefault(node: ts.Node): unknown {

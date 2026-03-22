@@ -107,7 +107,9 @@ export class PropertyTransformer extends Transformer {
       type,
       validators: getPropertyValidators(propertyDeclaration) || {},
       // class properties and constructor parameters may be deprecated either via jsdoc annotation or decorator
-      deprecated: isExistJSDocTag(propertyDeclaration, tag => tag.tagName.text === 'deprecated') || isDecorator(propertyDeclaration, identifier => identifier.text === 'Deprecated'),
+      deprecated:
+        isExistJSDocTag(propertyDeclaration, tag => tag.tagName.text === 'deprecated') ||
+        isDecorator(propertyDeclaration, (_identifier, canonicalName) => canonicalName === 'Deprecated', resolver.current.typeChecker),
       title: resolver.getNodeTitle(propertyDeclaration),
       extensions: resolver.getNodeExtension(propertyDeclaration),
     }
