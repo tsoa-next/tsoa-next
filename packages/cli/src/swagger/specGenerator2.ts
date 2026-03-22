@@ -8,9 +8,12 @@ import { convertColonPathParams, normalisePath } from '../utils/pathUtils'
 import { recursiveMerge } from '../utils/specMerge'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from '../utils/swaggerUtils'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
-import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 
 export class SpecGenerator2 extends SpecGenerator {
+  protected buildAdditionalProperties(type: Tsoa.Type) {
+    return this.toSwagger2Schema(this.getSwaggerType(type))
+  }
+
   constructor(
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
@@ -129,14 +132,7 @@ export class SpecGenerator2 extends SpecGenerator {
       } else if (referenceType.dataType === 'refAlias') {
         const swaggerType = this.getSwaggerType(referenceType.type)
         const format = referenceType.format as Swagger.DataFormat
-        const validators = Object.keys(referenceType.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .reduce((acc, key) => {
-            return {
-              ...acc,
-              [key]: referenceType.validators[key]!.value,
-            }
-          }, {})
+        const validators = this.getSchemaValidators(referenceType.validators) as Partial<Swagger.Schema2>
 
         definitions[referenceType.refName] = {
           ...(swaggerType as Swagger.Schema2),
@@ -216,7 +212,7 @@ export class SpecGenerator2 extends SpecGenerator {
     if (bodyPropParameter) {
       pathMethod.parameters.push(bodyPropParameter)
     }
-    if (pathMethod.parameters.filter((p: Swagger.BaseParameter) => p.in === 'body').length > 1) {
+    if (pathMethod.parameters.filter(p => p.in === 'body').length > 1) {
       throw new Error('Only one body parameter allowed per controller method.')
     }
 
@@ -307,7 +303,7 @@ export class SpecGenerator2 extends SpecGenerator {
       return
     }
 
-    const parameter = {
+    const parameter: Swagger.BodyParameter = {
       in: 'body',
       name: 'body',
       schema: {
@@ -315,7 +311,7 @@ export class SpecGenerator2 extends SpecGenerator {
         title: `${this.getOperationId(controllerName, method)}Body`,
         type: 'object',
       },
-    } as Swagger.Parameter2
+    }
     if (required.length) {
       parameter.schema.required = required
     }
@@ -334,72 +330,137 @@ export class SpecGenerator2 extends SpecGenerator {
   private buildParameter(source: Tsoa.Parameter): Swagger.Parameter2 {
     let type = source.type
 
-    if (source.in !== 'body' && source.type.dataType === 'refEnum') {
+    if (source.in !== 'body') {
+      while (type.dataType === 'refAlias') {
+        type = type.type
+      }
+    }
+
+    if (source.in !== 'body' && type.dataType === 'refEnum') {
       // swagger does not support referencing enums
       // (except for body parameters), so we have to inline it
 
       type = {
         dataType: 'enum',
-        enums: source.type.enums,
+        enums: type.enums,
       }
     }
 
     const parameterType = this.getSwaggerType(type)
 
-    let parameter = {
+    if (source.in === 'body') {
+      const schemaValidators = this.getSchemaValidators(source.validators) as Partial<Swagger.Schema2>
+
+      const schema: Swagger.Schema2 =
+        source.type.dataType === 'array'
+          ? {
+              ...(parameterType.items && this.isSwaggerBaseSchema(parameterType.items) ? { items: this.toSwagger2Schema(parameterType.items) } : {}),
+              type: 'array',
+              ...schemaValidators,
+            }
+          : source.type.dataType === 'any'
+            ? { type: 'object', ...schemaValidators }
+            : {
+                ...this.toSwagger2Schema(parameterType),
+                ...schemaValidators,
+              }
+
+      return {
+        description: source.description,
+        in: 'body',
+        name: source.name,
+        required: this.isRequiredWithoutDefault(source),
+        ...(source.deprecated ? { 'x-deprecated': true } : {}),
+        schema,
+      }
+    }
+
+    if (parameterType.$ref) {
+      throw new Error(`Swagger 2.0 does not support schema references for '${source.in}' parameters. Only body parameters may use schema.`)
+    }
+
+    const parameterValidators = this.getSchemaValidators(source.validators) as Partial<
+      Pick<
+        Swagger.Swagger2QueryParameter,
+        'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'
+      >
+    >
+    const baseParameter = {
       default: source.default,
       description: source.description,
-      in: source.in,
       name: source.name,
       required: this.isRequiredWithoutDefault(source),
       ...(source.deprecated ? { 'x-deprecated': true } : {}),
-      ...(parameterType.$ref ? { schema: parameterType } : {}),
       ...(parameterType.format ? { format: this.throwIfNotDataFormat(parameterType.format) } : {}),
-    } as Swagger.Parameter2
+      ...(parameterType.items ? { items: parameterType.items } : {}),
+      ...(parameterType.enum ? { enum: parameterType.enum } : {}),
+      ...parameterValidators,
+    }
+    const resolvedType = source.type.dataType === 'any' ? 'string' : parameterType.type ? this.throwIfNotDataType(parameterType.type) : undefined
 
-    if (Swagger.isQueryParameter(parameter) && parameterType.type === 'array') {
-      parameter.collectionFormat = 'multi'
+    switch (source.in) {
+      case 'query':
+        return {
+          ...baseParameter,
+          in: 'query',
+          type: resolvedType ?? 'string',
+          ...(resolvedType === 'array' ? { collectionFormat: 'multi' } : {}),
+        }
+      case 'formData':
+        return {
+          ...baseParameter,
+          in: 'formData',
+          type: resolvedType ?? 'string',
+        }
+      case 'header':
+        return {
+          ...baseParameter,
+          in: 'header',
+          type: resolvedType ?? 'string',
+        }
+      case 'path':
+        return {
+          ...baseParameter,
+          in: 'path',
+          type: resolvedType ?? 'string',
+        }
+      default:
+        throw new Error(`Unsupported Swagger 2.0 parameter location '${source.in}'.`)
+    }
+  }
+
+  private toSwagger2Schema(schema: Swagger.BaseSchema): Swagger.Schema2 {
+    const { additionalProperties, items, properties, type, ...schemaWithoutNestedValues } = schema
+    const converted: Swagger.Schema2 = {
+      ...schemaWithoutNestedValues,
+      ...(type ? { type: this.throwIfNotDataType(type) } : {}),
     }
 
-    if (parameter.schema) {
-      return parameter
+    if (items && this.isSwaggerBaseSchema(items)) {
+      converted.items = this.toSwagger2Schema(items)
     }
 
-    const validatorObjs: Partial<Record<Tsoa.SchemaValidatorKey, unknown>> = {}
-    Object.keys(source.validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .forEach(key => {
-        validatorObjs[key] = source.validators[key]!.value
+    if (typeof additionalProperties === 'boolean') {
+      converted.additionalProperties = additionalProperties
+    } else if (additionalProperties && this.isSwaggerBaseSchema(additionalProperties)) {
+      converted.additionalProperties = this.toSwagger2Schema(additionalProperties)
+    }
+
+    if (properties) {
+      const convertedProperties: { [propertyName: string]: Swagger.Schema2 } = {}
+      Object.entries(properties).forEach(([propertyName, propertySchema]) => {
+        if (this.isSwaggerBaseSchema(propertySchema)) {
+          convertedProperties[propertyName] = this.toSwagger2Schema(propertySchema)
+        }
       })
-
-    if (source.in === 'body' && source.type.dataType === 'array') {
-      parameter.schema = {
-        items: parameterType.items,
-        type: 'array',
-      }
-    } else {
-      if (source.type.dataType === 'any') {
-        if (source.in === 'body') {
-          parameter.schema = { type: 'object' }
-        } else {
-          parameter.type = 'string'
-        }
-      } else {
-        if (parameterType.type) {
-          parameter.type = this.throwIfNotDataType(parameterType.type)
-        }
-        parameter.items = parameterType.items
-        parameter.enum = parameterType.enum
-      }
+      converted.properties = convertedProperties
     }
 
-    if (parameter.schema) {
-      parameter.schema = Object.assign({}, parameter.schema, validatorObjs)
-    } else {
-      parameter = Object.assign({}, parameter, validatorObjs)
-    }
+    return converted
+  }
 
-    return parameter
+  private isSwaggerBaseSchema(value: unknown): value is Swagger.BaseSchema {
+    return typeof value === 'object' && value !== null
   }
 
   protected buildProperties(source: Tsoa.Property[]) {
@@ -414,11 +475,7 @@ export class SpecGenerator2 extends SpecGenerator {
       if (!swaggerType.$ref) {
         swaggerType.default = property.default
 
-        Object.keys(property.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .forEach(key => {
-            swaggerType = { ...swaggerType, [key]: property.validators[key]!.value }
-          })
+        swaggerType = { ...swaggerType, ...(this.getSchemaValidators(property.validators) as Partial<Swagger.Schema2>) }
       }
       if (property.deprecated) {
         swaggerType['x-deprecated'] = true
@@ -523,6 +580,10 @@ export class SpecGenerator2 extends SpecGenerator {
     const type = types.size === 1 ? (types.values().next().value as SetTypes<typeof types>) : 'string'
     const nullable = enumType.enums.includes(null) ? true : false
     return { type, enum: enumType.enums.map(member => getValue(type, member)), ['x-nullable']: nullable }
+  }
+
+  protected transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    return this.transformExclusiveNumericValidatorsForLegacySpec(validators)
   }
 }
 

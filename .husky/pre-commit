@@ -1,2 +1,5 @@
 #!/usr/bin/env sh
+set -e
+
 npm exec lint-staged
+npm run check:pre-commit

@@ -105,6 +105,7 @@ export interface TestModel extends Model {
   typeAliases?: {
     word: Word
     fourtyTwo: FourtyTwo
+    exclusiveWindow: ExclusiveWindow
     dateAlias?: DateAlias
     unionAlias: UnionAlias
     intersectionAlias: IntersectionAlias
@@ -656,6 +657,15 @@ type Word = string
 type FourtyTwo = number
 
 /**
+ * A number strictly between 1 and 100
+ * @isInt
+ * @exclusiveMinimum 1
+ * @exclusiveMaximum 100
+ * @example 42
+ */
+type ExclusiveWindow = number
+
+/**
  * @isDate invalid ISO 8601 date format, i.e. YYYY-MM-DD
  */
 type DateAlias = Date
@@ -873,6 +883,21 @@ export class ValidateModel {
    */
   public numberMin5!: number
   /**
+   * @isInt
+   * @exclusiveMinimum 5
+   */
+  public numberExclusiveMin5!: number
+  /**
+   * @isInt
+   * @exclusiveMaximum 10
+   */
+  public numberExclusiveMax10!: number
+  /**
+   * @exclusiveMinimum 1.5
+   * @exclusiveMaximum 3.5
+   */
+  public numberExclusiveRange!: number
+  /**
    * @maxLength 10
    */
   public stringMax10Lenght!: string
@@ -915,6 +940,7 @@ export class ValidateModel {
   public typeAliases?: {
     word: Word
     fourtyTwo: FourtyTwo
+    exclusiveWindow: ExclusiveWindow
     unionAlias: UnionAlias
     intersectionAlias: IntersectionAlias
     intersectionAlias2?: TypeAliasModelCase2
@@ -982,6 +1008,21 @@ export class ValidateModel {
      * @minimum 5
      */
     numberMin5: number
+    /**
+     * @isInt
+     * @exclusiveMinimum 5
+     */
+    numberExclusiveMin5: number
+    /**
+     * @isInt
+     * @exclusiveMaximum 10
+     */
+    numberExclusiveMax10: number
+    /**
+     * @exclusiveMinimum 1.5
+     * @exclusiveMaximum 3.5
+     */
+    numberExclusiveRange: number
     /**
      * @maxLength 10
      */

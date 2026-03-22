@@ -3,6 +3,7 @@ import 'mocha'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'
 import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
+import { Swagger } from '@tsoa-next/runtime'
 import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions'
 import { VerifyPathableNumberParameter, VerifyPathableParameter, VerifyPathableStringParameter } from '../../utilities/verifyParameter'
 import { VerifyPath } from '../../utilities/verifyPath'
@@ -56,6 +57,9 @@ describe('GET route generation', () => {
     const parameter = parameters[0]
     if (!parameter) {
       throw new Error('Should have one parameter.')
+    }
+    if (Swagger.isBodyParameter(parameter)) {
+      throw new Error('Should have generated a non-body Swagger 2.0 parameter.')
     }
 
     expect(parameter.type).to.equal('string')

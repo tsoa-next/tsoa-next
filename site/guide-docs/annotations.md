@@ -68,6 +68,10 @@ Formats will generally not be validated, except for `format: date(time)`, which 
 - `@isDouble <errMsg>`
 - `@minimum <number> <errMsg>`
 - `@maximum <number> <errMsg>`
+- `@exclusiveMinimum <number> <errMsg>`
+- `@exclusiveMaximum <number> <errMsg>`
+
+For generated specs, Swagger 2.0 and OpenAPI 3.0 emit boolean `exclusiveMinimum` / `exclusiveMaximum` modifiers alongside `minimum` / `maximum`, while OpenAPI 3.1 emits numeric `exclusiveMinimum` / `exclusiveMaximum` values directly.
 
 ### String
 

@@ -855,6 +855,7 @@ describe('Definition generation', () => {
               properties: {
                 word: { $ref: '#/definitions/Word', description: undefined, format: undefined, example: undefined },
                 fourtyTwo: { $ref: '#/definitions/FourtyTwo', description: undefined, format: undefined, example: undefined },
+                exclusiveWindow: { $ref: '#/definitions/ExclusiveWindow', description: undefined, format: undefined, example: undefined },
                 dateAlias: { $ref: '#/definitions/DateAlias', description: undefined, format: undefined, example: undefined },
                 unionAlias: { $ref: '#/definitions/UnionAlias', description: undefined, format: undefined, example: undefined },
                 intersectionAlias: { $ref: '#/definitions/IntersectionAlias', description: undefined, format: undefined, example: undefined },
@@ -863,7 +864,7 @@ describe('Definition generation', () => {
                 genericAlias2: { $ref: '#/definitions/GenericAlias_Model_', description: undefined, format: undefined, example: undefined },
                 forwardGenericAlias: { $ref: '#/definitions/ForwardGenericAlias_boolean.TypeAliasModel1_', description: undefined, format: undefined, example: undefined },
               },
-              required: ['forwardGenericAlias', 'genericAlias2', 'genericAlias', 'nOLAlias', 'intersectionAlias', 'unionAlias', 'fourtyTwo', 'word'],
+              required: ['forwardGenericAlias', 'genericAlias2', 'genericAlias', 'nOLAlias', 'intersectionAlias', 'unionAlias', 'exclusiveWindow', 'fourtyTwo', 'word'],
               type: 'object',
             })
 
@@ -879,6 +880,19 @@ describe('Definition generation', () => {
               minimum: 42,
               maximum: 42,
               default: 42,
+            })
+
+            const exclusiveWindowSchema = getValidatedDefinition('ExclusiveWindow', currentSpec)
+            expect(exclusiveWindowSchema).to.deep.eq({
+              type: 'integer',
+              format: 'int32',
+              description: 'A number strictly between 1 and 100',
+              example: 42,
+              minimum: 1,
+              exclusiveMinimum: true,
+              maximum: 100,
+              exclusiveMaximum: true,
+              default: undefined,
             })
 
             const dateAliasSchema = getValidatedDefinition('DateAlias', currentSpec)

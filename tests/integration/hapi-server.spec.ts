@@ -676,6 +676,9 @@ describe('Hapi Server', () => {
 
       bodyModel.numberMax10 = 10
       bodyModel.numberMin5 = 5
+      bodyModel.numberExclusiveMin5 = 6
+      bodyModel.numberExclusiveMax10 = 9
+      bodyModel.numberExclusiveRange = 2.5
       bodyModel.stringMax10Lenght = 'abcdef'
       bodyModel.stringMin5Lenght = 'abcdef'
       bodyModel.stringPatternAZaz = 'aBcD'
@@ -701,6 +704,9 @@ describe('Hapi Server', () => {
 
         numberMax10: 10,
         numberMin5: 5,
+        numberExclusiveMin5: 6,
+        numberExclusiveMax10: 9,
+        numberExclusiveRange: 2.5,
         stringMax10Lenght: 'abcdef',
         stringMin5Lenght: 'abcdef',
         stringPatternAZaz: 'aBcD',
@@ -717,6 +723,7 @@ describe('Hapi Server', () => {
       bodyModel.typeAliases = {
         word: 'word',
         fourtyTwo: 42,
+        exclusiveWindow: 42,
         intersectionAlias: { value1: 'value1', value2: 'value2' },
         unionAlias: { value2: 'value2' },
         nOLAlias: { value1: 'value1', value2: 'value2' },
@@ -754,6 +761,9 @@ describe('Hapi Server', () => {
 
           expect(body.numberMax10).to.equal(bodyModel.numberMax10)
           expect(body.numberMin5).to.equal(bodyModel.numberMin5)
+          expect(body.numberExclusiveMin5).to.equal(bodyModel.numberExclusiveMin5)
+          expect(body.numberExclusiveMax10).to.equal(bodyModel.numberExclusiveMax10)
+          expect(body.numberExclusiveRange).to.equal(bodyModel.numberExclusiveRange)
           expect(body.stringMax10Lenght).to.equal(bodyModel.stringMax10Lenght)
           expect(body.stringMin5Lenght).to.equal(bodyModel.stringMin5Lenght)
           expect(body.stringPatternAZaz).to.equal(bodyModel.stringPatternAZaz)
@@ -779,6 +789,9 @@ describe('Hapi Server', () => {
 
           expect(body.nestedObject.numberMax10).to.equal(bodyModel.nestedObject.numberMax10)
           expect(body.nestedObject.numberMin5).to.equal(bodyModel.nestedObject.numberMin5)
+          expect(body.nestedObject.numberExclusiveMin5).to.equal(bodyModel.nestedObject.numberExclusiveMin5)
+          expect(body.nestedObject.numberExclusiveMax10).to.equal(bodyModel.nestedObject.numberExclusiveMax10)
+          expect(body.nestedObject.numberExclusiveRange).to.equal(bodyModel.nestedObject.numberExclusiveRange)
           expect(body.nestedObject.stringMax10Lenght).to.equal(bodyModel.nestedObject.stringMax10Lenght)
           expect(body.nestedObject.stringMin5Lenght).to.equal(bodyModel.nestedObject.stringMin5Lenght)
           expect(body.nestedObject.stringPatternAZaz).to.equal(bodyModel.nestedObject.stringPatternAZaz)
@@ -814,6 +827,9 @@ describe('Hapi Server', () => {
 
       bodyModel.numberMax10 = 20
       bodyModel.numberMin5 = 0
+      bodyModel.numberExclusiveMin5 = 5
+      bodyModel.numberExclusiveMax10 = 10
+      bodyModel.numberExclusiveRange = 1.5
       bodyModel.stringMax10Lenght = 'abcdefghijk'
       bodyModel.stringMin5Lenght = 'abcd'
       bodyModel.stringPatternAZaz = 'ab01234'
@@ -838,6 +854,9 @@ describe('Hapi Server', () => {
 
         numberMax10: 20,
         numberMin5: 0,
+        numberExclusiveMin5: 5,
+        numberExclusiveMax10: 10,
+        numberExclusiveRange: 3.5,
         stringMax10Lenght: 'abcdefghijk',
         stringMin5Lenght: 'abcd',
         stringPatternAZaz: 'ab01234',
@@ -854,6 +873,7 @@ describe('Hapi Server', () => {
       bodyModel.typeAliases = {
         word: '',
         fourtyTwo: 41,
+        exclusiveWindow: 1,
         intersectionAlias: { value2: 'value2' },
         unionAlias: {},
         nOLAlias: true,
@@ -898,6 +918,12 @@ describe('Hapi Server', () => {
           expect(body.fields['body.numberMax10'].value).to.be.undefined
           expect(body.fields['body.numberMin5'].message).to.equal('min 5')
           expect(body.fields['body.numberMin5'].value).to.be.undefined
+          expect(body.fields['body.numberExclusiveMin5'].message).to.equal('exclusiveMin 5')
+          expect(body.fields['body.numberExclusiveMin5'].value).to.be.undefined
+          expect(body.fields['body.numberExclusiveMax10'].message).to.equal('exclusiveMax 10')
+          expect(body.fields['body.numberExclusiveMax10'].value).to.be.undefined
+          expect(body.fields['body.numberExclusiveRange'].message).to.equal('exclusiveMin 1.5')
+          expect(body.fields['body.numberExclusiveRange'].value).to.be.undefined
           expect(body.fields['body.stringMax10Lenght'].message).to.equal('maxLength 10')
           expect(body.fields['body.stringMax10Lenght'].value).to.be.undefined
           expect(body.fields['body.stringMin5Lenght'].message).to.equal('minLength 5')
@@ -941,6 +967,12 @@ describe('Hapi Server', () => {
           expect(body.fields['body.nestedObject.numberMax10'].value).to.be.undefined
           expect(body.fields['body.nestedObject.numberMin5'].message).to.equal('min 5')
           expect(body.fields['body.nestedObject.numberMin5'].value).to.be.undefined
+          expect(body.fields['body.nestedObject.numberExclusiveMin5'].message).to.equal('exclusiveMin 5')
+          expect(body.fields['body.nestedObject.numberExclusiveMin5'].value).to.be.undefined
+          expect(body.fields['body.nestedObject.numberExclusiveMax10'].message).to.equal('exclusiveMax 10')
+          expect(body.fields['body.nestedObject.numberExclusiveMax10'].value).to.be.undefined
+          expect(body.fields['body.nestedObject.numberExclusiveRange'].message).to.equal('exclusiveMax 3.5')
+          expect(body.fields['body.nestedObject.numberExclusiveRange'].value).to.be.undefined
           expect(body.fields['body.nestedObject.stringMax10Lenght'].message).to.equal('maxLength 10')
           expect(body.fields['body.nestedObject.stringMax10Lenght'].value).to.be.undefined
           expect(body.fields['body.nestedObject.stringMin5Lenght'].message).to.equal('minLength 5')
@@ -966,6 +998,7 @@ describe('Hapi Server', () => {
           )
           expect(body.fields['body.typeAliases.word'].message).to.equal('minLength 1')
           expect(body.fields['body.typeAliases.fourtyTwo'].message).to.equal('min 42')
+          expect(body.fields['body.typeAliases.exclusiveWindow'].message).to.equal('exclusiveMin 1')
           expect(body.fields['body.typeAliases.unionAlias'].message).to.contain('Could not match the union against any of the items')
           expect(body.fields['body.typeAliases.intersectionAlias'].message).to.equal(
             `Could not match the intersection against every type. Issues: [{"body.typeAliases.intersectionAlias.value1":{"message":"'value1' is required"}},{"body.typeAliases.intersectionAlias.value1":{"message":"'value1' is required"}}]`,

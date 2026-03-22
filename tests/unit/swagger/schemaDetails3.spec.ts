@@ -1892,6 +1892,7 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
               properties: {
                 word: { $ref: '#/components/schemas/Word', description: undefined, format: undefined, example: undefined },
                 fourtyTwo: { $ref: '#/components/schemas/FourtyTwo', description: undefined, format: undefined, example: undefined },
+                exclusiveWindow: { $ref: '#/components/schemas/ExclusiveWindow', description: undefined, format: undefined, example: undefined },
                 dateAlias: { $ref: '#/components/schemas/DateAlias', description: undefined, format: undefined, example: undefined },
                 unionAlias: { $ref: '#/components/schemas/UnionAlias', description: undefined, format: undefined, example: undefined },
                 intersectionAlias: { $ref: '#/components/schemas/IntersectionAlias', description: undefined, format: undefined, example: undefined },
@@ -1900,7 +1901,7 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
                 genericAlias2: { $ref: '#/components/schemas/GenericAlias_Model_', description: undefined, format: undefined, example: undefined },
                 forwardGenericAlias: { $ref: '#/components/schemas/ForwardGenericAlias_boolean.TypeAliasModel1_', description: undefined, format: undefined, example: undefined },
               },
-              required: ['forwardGenericAlias', 'genericAlias2', 'genericAlias', 'nOLAlias', 'intersectionAlias', 'unionAlias', 'fourtyTwo', 'word'],
+              required: ['forwardGenericAlias', 'genericAlias2', 'genericAlias', 'nOLAlias', 'intersectionAlias', 'unionAlias', 'exclusiveWindow', 'fourtyTwo', 'word'],
               type: 'object',
             })
 
@@ -1916,6 +1917,19 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
               minimum: 42,
               maximum: 42,
               default: 42,
+            })
+
+            const exclusiveWindowSchema = getComponentSchema('ExclusiveWindow', currentSpec)
+            expect(exclusiveWindowSchema).to.deep.eq({
+              type: 'integer',
+              format: 'int32',
+              description: 'A number strictly between 1 and 100',
+              example: 42,
+              minimum: 1,
+              exclusiveMinimum: true,
+              maximum: 100,
+              exclusiveMaximum: true,
+              default: undefined,
             })
 
             const dateAliasSchema = getComponentSchema('DateAlias', currentSpec)

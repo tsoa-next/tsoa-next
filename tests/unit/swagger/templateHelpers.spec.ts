@@ -438,6 +438,37 @@ describe('ValidationService', () => {
       expect(error[name].message).to.equal(`max 10`)
     })
 
+    it('should enforce exclusive integer bounds', () => {
+      const validator = { exclusiveMinimum: { value: 10 }, exclusiveMaximum: { value: 12 } }
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          bodyCoercion: true,
+        },
+      )
+
+      const belowError: FieldErrors = {}
+      expect(service.validateInt('value', '9', belowError, true, validator)).to.equal(undefined)
+      expect(belowError.value.message).to.equal('exclusiveMin 10')
+
+      const lowerEdgeError: FieldErrors = {}
+      expect(service.validateInt('value', '10', lowerEdgeError, true, validator)).to.equal(undefined)
+      expect(lowerEdgeError.value.message).to.equal('exclusiveMin 10')
+
+      const validError: FieldErrors = {}
+      expect(service.validateInt('value', '11', validError, true, validator)).to.equal(11)
+      expect(validError).to.deep.equal({})
+
+      const upperEdgeError: FieldErrors = {}
+      expect(service.validateInt('value', '12', upperEdgeError, true, validator)).to.equal(undefined)
+      expect(upperEdgeError.value.message).to.equal('exclusiveMax 12')
+
+      const aboveError: FieldErrors = {}
+      expect(service.validateInt('value', '13', aboveError, true, validator)).to.equal(undefined)
+      expect(aboveError.value.message).to.equal('exclusiveMax 12')
+    })
+
     it('should return an error if bodyCoercion is false and a non-number value is provided', () => {
       const name = 'name'
       const value: any = '10'
@@ -522,6 +553,37 @@ describe('ValidationService', () => {
       ).validateFloat(name, value, error, true, validator)
       expect(result).to.equal(undefined)
       expect(error[name].message).to.equal(`max 10.5`)
+    })
+
+    it('should enforce exclusive float bounds', () => {
+      const validator = { exclusiveMinimum: { value: 10.5 }, exclusiveMaximum: { value: 12.5 } }
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          bodyCoercion: true,
+        },
+      )
+
+      const belowError: FieldErrors = {}
+      expect(service.validateFloat('value', '10.4', belowError, true, validator)).to.equal(undefined)
+      expect(belowError.value.message).to.equal('exclusiveMin 10.5')
+
+      const lowerEdgeError: FieldErrors = {}
+      expect(service.validateFloat('value', '10.5', lowerEdgeError, true, validator)).to.equal(undefined)
+      expect(lowerEdgeError.value.message).to.equal('exclusiveMin 10.5')
+
+      const validError: FieldErrors = {}
+      expect(service.validateFloat('value', '11.5', validError, true, validator)).to.equal(11.5)
+      expect(validError).to.deep.equal({})
+
+      const upperEdgeError: FieldErrors = {}
+      expect(service.validateFloat('value', '12.5', upperEdgeError, true, validator)).to.equal(undefined)
+      expect(upperEdgeError.value.message).to.equal('exclusiveMax 12.5')
+
+      const aboveError: FieldErrors = {}
+      expect(service.validateFloat('value', '12.6', aboveError, true, validator)).to.equal(undefined)
+      expect(aboveError.value.message).to.equal('exclusiveMax 12.5')
     })
 
     it('should return an error if bodyCoercion is false and a non-number value is provided', () => {

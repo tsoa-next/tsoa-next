@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../.."
+  },
+  "exclude": [],
+  "include": ["./invalid-swagger2-body-root-constraints.ts"]
+}

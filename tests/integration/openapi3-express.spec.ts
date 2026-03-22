@@ -20,6 +20,9 @@ describe('OpenAPI3 Express Server', () => {
 
     bodyModel.numberMax10 = 10
     bodyModel.numberMin5 = 5
+    bodyModel.numberExclusiveMin5 = 6
+    bodyModel.numberExclusiveMax10 = 9
+    bodyModel.numberExclusiveRange = 2.5
     bodyModel.stringMax10Lenght = 'abcdef'
     bodyModel.stringMin5Lenght = 'abcdef'
     bodyModel.stringPatternAZaz = 'aBcD'
@@ -45,6 +48,9 @@ describe('OpenAPI3 Express Server', () => {
 
       numberMax10: 10,
       numberMin5: 5,
+      numberExclusiveMin5: 6,
+      numberExclusiveMax10: 9,
+      numberExclusiveRange: 2.5,
       stringMax10Lenght: 'abcdef',
       stringMin5Lenght: 'abcdef',
       stringPatternAZaz: 'aBcD',
@@ -61,6 +67,7 @@ describe('OpenAPI3 Express Server', () => {
     bodyModel.typeAliases = {
       word: 'word',
       fourtyTwo: 42,
+      exclusiveWindow: 42,
       intersectionAlias: { value1: 'value1', value2: 'value2' },
       intersectionAlias2: { value1: 'value1', value2: 'value2', value3: 'string' },
       unionIntersectionAlias1: { value1: 'one', value3: 'three' },
@@ -165,6 +172,9 @@ describe('OpenAPI3 Express Server', () => {
 
     bodyModel.numberMax10 = 20
     bodyModel.numberMin5 = 0
+    bodyModel.numberExclusiveMin5 = 6
+    bodyModel.numberExclusiveMax10 = 9
+    bodyModel.numberExclusiveRange = 2.5
     bodyModel.stringMax10Lenght = 'abcdefghijk'
     bodyModel.stringMin5Lenght = 'abcd'
     bodyModel.stringPatternAZaz = 'ab01234'
@@ -191,6 +201,9 @@ describe('OpenAPI3 Express Server', () => {
 
       numberMax10: 20,
       numberMin5: 0,
+      numberExclusiveMin5: 6,
+      numberExclusiveMax10: 9,
+      numberExclusiveRange: 2.5,
       stringMax10Lenght: 'abcdefghijk',
       stringMin5Lenght: 'abcd',
       stringPatternAZaz: 'ab01234',
@@ -207,6 +220,7 @@ describe('OpenAPI3 Express Server', () => {
     bodyModel.typeAliases = {
       word: '',
       fourtyTwo: 41,
+      exclusiveWindow: 42,
       intersectionAlias: { value2: 'value2' },
       intersectionAlias2: { value1: 'value1', value2: 'value2', value4: 'test' },
       unionIntersectionAlias1: { value1: 'one', value2: 'two', value3: 'three' },

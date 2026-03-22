@@ -213,6 +213,9 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
 
       bodyModel.numberMax10 = 10
       bodyModel.numberMin5 = 5
+      bodyModel.numberExclusiveMin5 = 6
+      bodyModel.numberExclusiveMax10 = 9
+      bodyModel.numberExclusiveRange = 2.5
       bodyModel.stringMax10Lenght = 'abcdef'
       bodyModel.stringMin5Lenght = 'abcdef'
       bodyModel.stringPatternAZaz = 'aBcD'
@@ -238,6 +241,9 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
 
         numberMax10: 10,
         numberMin5: 5,
+        numberExclusiveMin5: 6,
+        numberExclusiveMax10: 9,
+        numberExclusiveRange: 2.5,
         stringMax10Lenght: 'abcdef',
         stringMin5Lenght: 'abcdef',
         stringPatternAZaz: 'aBcD',
@@ -254,6 +260,7 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
       bodyModel.typeAliases = {
         word: 'word',
         fourtyTwo: 42,
+        exclusiveWindow: 42,
         intersectionAlias: { value1: 'value1', value2: 'value2' },
         unionAlias: { value2: 'value2' },
         nOLAlias: { value1: 'value1', value2: 'value2' },

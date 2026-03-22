@@ -1,6 +1,7 @@
 import { ExtendedSpecConfig } from '../cli'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
+import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 
 export abstract class SpecGenerator {
   constructor(
@@ -235,5 +236,46 @@ export abstract class SpecGenerator {
 
   protected isRequiredWithoutDefault(prop: Tsoa.Property | Tsoa.Parameter): boolean | undefined {
     return prop.required && prop.default == null
+  }
+
+  protected getSchemaValidators(validators: Tsoa.Validators): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    const schemaValidators = Object.keys(validators)
+      .filter(shouldIncludeValidatorInSchema)
+      .reduce((acc, key) => {
+        acc[key] = validators[key]!.value
+        return acc
+      }, {} as Partial<Record<Tsoa.SchemaValidatorKey, unknown>>)
+
+    return this.transformSchemaValidators(schemaValidators)
+  }
+
+  protected transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    return validators
+  }
+
+  protected transformExclusiveNumericValidatorsForLegacySpec(
+    validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>,
+  ): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    const transformed = { ...validators }
+
+    if (transformed.exclusiveMinimum !== undefined) {
+      if (transformed.minimum !== undefined) {
+        throw new Error('Cannot combine minimum and exclusiveMinimum in OpenAPI 2.0/3.0 schemas. Use only one lower-bound annotation or switch to OpenAPI 3.1.')
+      }
+
+      transformed.minimum = transformed.exclusiveMinimum
+      transformed.exclusiveMinimum = true
+    }
+
+    if (transformed.exclusiveMaximum !== undefined) {
+      if (transformed.maximum !== undefined) {
+        throw new Error('Cannot combine maximum and exclusiveMaximum in OpenAPI 2.0/3.0 schemas. Use only one upper-bound annotation or switch to OpenAPI 3.1.')
+      }
+
+      transformed.maximum = transformed.exclusiveMaximum
+      transformed.exclusiveMaximum = true
+    }
+
+    return transformed
   }
 }

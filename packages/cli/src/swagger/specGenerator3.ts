@@ -5,7 +5,6 @@ import { ExtendedSpecConfig } from '../cli'
 import { isVoidType } from '../utils/isVoidType'
 import { recursiveMerge } from '../utils/specMerge'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
-import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 import { convertColonPathParams, normalisePath } from './../utils/pathUtils'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from './../utils/swaggerUtils'
 import { SpecGenerator } from './specGenerator'
@@ -20,6 +19,10 @@ import { SpecGenerator } from './specGenerator'
  * Also accept OpenAPI 3.0.0 metadata, like components/securitySchemes instead of securityDefinitions
  */
 export class SpecGenerator3 extends SpecGenerator {
+  protected buildAdditionalProperties(type: Tsoa.Type) {
+    return this.toOpenApi3Schema(this.getSwaggerType(type))
+  }
+
   constructor(
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
@@ -214,14 +217,7 @@ export class SpecGenerator3 extends SpecGenerator {
       } else if (referenceType.dataType === 'refAlias') {
         const swaggerType = this.getSwaggerType(referenceType.type)
         const format = referenceType.format as Swagger.DataFormat
-        const validators = Object.keys(referenceType.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .reduce((acc, key) => {
-            return {
-              ...acc,
-              [key]: referenceType.validators[key]!.value,
-            }
-          }, {})
+        const validators = this.getSchemaValidators(referenceType.validators) as Partial<Swagger.Schema3>
 
         schema[referenceType.refName] = {
           ...(swaggerType as Swagger.Schema3),
@@ -448,14 +444,7 @@ export class SpecGenerator3 extends SpecGenerator {
   }
 
   protected buildMediaType(controllerName: string, method: Tsoa.Method, parameter: Tsoa.Parameter): Swagger.MediaType {
-    const validators = Object.keys(parameter.validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .reduce((acc, key) => {
-        return {
-          ...acc,
-          [key]: parameter.validators[key]!.value,
-        }
-      }, {})
+    const validators = this.getSchemaValidators(parameter.validators) as Partial<Swagger.Schema3>
 
     const mediaType: Swagger.MediaType = {
       schema: {
@@ -516,12 +505,7 @@ export class SpecGenerator3 extends SpecGenerator {
       return Object.assign(parameter, this.buildExamples(source))
     }
 
-    const validatorObjs: { [key in Tsoa.SchemaValidatorKey]?: unknown } = {}
-    Object.keys(source.validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .forEach(key => {
-        validatorObjs[key] = source.validators[key]!.value
-      })
+    const validatorObjs = this.getSchemaValidators(source.validators) as Partial<Swagger.Schema3>
 
     if (source.type.dataType === 'any') {
       parameter.schema.type = 'string'
@@ -529,7 +513,9 @@ export class SpecGenerator3 extends SpecGenerator {
       if (parameterType.type) {
         parameter.schema.type = this.throwIfNotDataType(parameterType.type)
       }
-      parameter.schema.items = parameterType.items
+      if (parameterType.items && this.isSwaggerBaseSchema(parameterType.items)) {
+        parameter.schema.items = this.toOpenApi3Schema(parameterType.items)
+      }
       parameter.schema.enum = parameterType.enum
     }
 
@@ -578,11 +564,7 @@ export class SpecGenerator3 extends SpecGenerator {
       if (!swaggerType.$ref) {
         swaggerType.default = property.default
 
-        Object.keys(property.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .forEach(key => {
-            swaggerType = { ...swaggerType, [key]: property.validators[key]!.value }
-          })
+        swaggerType = { ...swaggerType, ...(this.getSchemaValidators(property.validators) as Partial<Swagger.Schema3>) }
       }
       if (property.deprecated) {
         swaggerType.deprecated = true
@@ -606,6 +588,40 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected getSwaggerTypeForReferenceType(referenceType: Tsoa.ReferenceType): Swagger.BaseSchema {
     return { $ref: `#/components/schemas/${encodeURIComponent(referenceType.refName)}` }
+  }
+
+  private toOpenApi3Schema(schema: Swagger.BaseSchema): Swagger.Schema3 {
+    const { additionalProperties, items, properties, type, ...schemaWithoutNestedValues } = schema
+    const converted: Swagger.Schema3 = {
+      ...schemaWithoutNestedValues,
+      ...(type ? { type: this.throwIfNotDataType(type) } : {}),
+    }
+
+    if (items && this.isSwaggerBaseSchema(items)) {
+      converted.items = this.toOpenApi3Schema(items)
+    }
+
+    if (typeof additionalProperties === 'boolean') {
+      converted.additionalProperties = additionalProperties
+    } else if (additionalProperties && this.isSwaggerBaseSchema(additionalProperties)) {
+      converted.additionalProperties = this.toOpenApi3Schema(additionalProperties)
+    }
+
+    if (properties) {
+      const convertedProperties: { [propertyName: string]: Swagger.Schema3 } = {}
+      Object.entries(properties).forEach(([propertyName, propertySchema]) => {
+        if (this.isSwaggerBaseSchema(propertySchema)) {
+          convertedProperties[propertyName] = this.toOpenApi3Schema(propertySchema)
+        }
+      })
+      converted.properties = convertedProperties
+    }
+
+    return converted
+  }
+
+  private isSwaggerBaseSchema(value: unknown): value is Swagger.BaseSchema {
+    return typeof value === 'object' && value !== null
   }
 
   protected getSwaggerTypeForPrimitiveType(dataType: Tsoa.PrimitiveTypeLiteral): Swagger.BaseSchema {
@@ -725,5 +741,9 @@ export class SpecGenerator3 extends SpecGenerator {
       const valuesDelimited = Array.from(types).join(',')
       throw new Error(`Enums can only have string or number values, but enum had ${valuesDelimited}`)
     }
+  }
+
+  protected transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    return this.transformExclusiveNumericValidatorsForLegacySpec(validators)
   }
 }

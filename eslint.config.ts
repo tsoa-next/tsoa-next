@@ -17,9 +17,11 @@ export default defineConfig([
     ignorePatterns: [
       'node_modules',
       'dist',
+      'commitlint.config.cjs',
       'eslint.config.ts',
       'prettier.config.ts',
       'tests/fixtures/**/routes.ts',
+      'tests/fixtures/swagger-typing/**/*.ts',
       'tests/fixtures/**/customRoutes.ts',
       'tests/fixtures/custom/custom-route-generator/routes/**/*.ts',
     ],
@@ -61,6 +63,8 @@ export default defineConfig([
         'warn',
         {
           argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
         },
       ],
       semi: ['error', 'never'],

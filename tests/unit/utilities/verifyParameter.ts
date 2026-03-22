@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { Swagger } from '@tsoa-next/runtime'
 
 export function VerifyPathableParameter(params: Swagger.Parameter2[], paramValue: string, paramType: string, paramIn: string, formatType?: string) {
-  const parameter = verifyParameter(params, paramValue, paramIn)
+  const parameter = verifyNonBodyParameter(params, paramValue, paramIn)
   expect(parameter.type).to.equal(paramType)
   if (formatType) {
     expect(parameter.format).to.equal(formatType)
@@ -10,7 +10,7 @@ export function VerifyPathableParameter(params: Swagger.Parameter2[], paramValue
 }
 
 export function VerifyPathableStringParameter(params: Swagger.Parameter2[], paramValue: string, paramType: string, paramIn: string, min?: number, max?: number, pattern?: string) {
-  const parameter = verifyParameter(params, paramValue, paramIn)
+  const parameter = verifyNonBodyParameter(params, paramValue, paramIn)
   expect(parameter.type).to.equal(paramType)
   if (min) {
     expect(parameter.minLength).to.equal(min)
@@ -24,7 +24,7 @@ export function VerifyPathableStringParameter(params: Swagger.Parameter2[], para
 }
 
 export function VerifyPathableNumberParameter(params: Swagger.Parameter2[], paramValue: string, paramType: string, paramIn: string, formatType?: string, min?: number, max?: number) {
-  const parameter = verifyParameter(params, paramValue, paramIn)
+  const parameter = verifyNonBodyParameter(params, paramValue, paramIn)
   expect(parameter.type).to.equal(paramType)
   if (formatType) {
     expect(parameter.format).to.equal(formatType)
@@ -39,6 +39,9 @@ export function VerifyPathableNumberParameter(params: Swagger.Parameter2[], para
 
 export function VerifyBodyParameter(params: Swagger.Parameter2[], paramValue: string, paramType: string, paramIn: string) {
   const parameter = verifyParameter(params, paramValue, paramIn)
+  if (!Swagger.isBodyParameter(parameter)) {
+    throw new Error(`Expected '${paramValue}' to be a Swagger 2.0 body parameter.`)
+  }
   expect(parameter.schema.$ref).to.equal(paramType)
 }
 
@@ -46,6 +49,15 @@ function verifyParameter(params: Swagger.Parameter2[], paramValue: string, param
   const parameter = params.filter(p => p.name === paramValue)[0]
   expect(parameter, `Path parameter '${paramValue}' wasn't generated.`).to.exist
   expect(parameter.in).to.equal(paramIn)
+
+  return parameter
+}
+
+function verifyNonBodyParameter(params: Swagger.Parameter2[], paramValue: string, paramIn: string) {
+  const parameter = verifyParameter(params, paramValue, paramIn)
+  if (Swagger.isBodyParameter(parameter)) {
+    throw new Error(`Expected '${paramValue}' to be a non-body Swagger 2.0 parameter.`)
+  }
 
   return parameter
 }

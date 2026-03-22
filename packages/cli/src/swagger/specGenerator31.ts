@@ -77,6 +77,10 @@ export class SpecGenerator31 extends SpecGenerator3 {
     return super.getSwaggerType(type, title)
   }
 
+  protected override transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    return validators
+  }
+
   private isTupleType(type: Tsoa.Type): type is Tsoa.TupleType {
     return type.dataType === 'tuple'
   }
