@@ -54,6 +54,12 @@ jobs:
       - name: Generate coverage
         run: npm run coverage
 
+      - name: Sonar Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v7
