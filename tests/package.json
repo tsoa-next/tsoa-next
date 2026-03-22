@@ -1,6 +1,6 @@
 {
   "name": "tsoa-tests",
-  "version": "7.0.0-alpha.0",
+  "version": "7.0.0",
   "private": true,
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "scripts": {
