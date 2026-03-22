@@ -33,7 +33,15 @@ export interface Config {
   noImplicitAdditionalProperties?: 'throw-on-extras' | 'silently-remove-extras' | 'ignore'
 
   /**
-   * Typescript CompilerOptions to be used during generation
+   * Path to a tsconfig file used as an input source for compiler options during generation.
+   * If omitted, tsoa-next will look for tsconfig.json starting from the loaded tsoa config directory.
+   * Explicit compilerOptions in tsoa-next config still take precedence over tsconfig values.
+   */
+  tsconfig?: string
+
+  /**
+   * TypeScript CompilerOptions to be used during generation.
+   * These are merged over compiler options resolved from tsconfig.
    *
    * @type {Record<string, unknown>}
    * @memberof RoutesConfig
