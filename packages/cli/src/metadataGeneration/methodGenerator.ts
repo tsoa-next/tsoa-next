@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import * as path from 'path'
 import { isVoidType } from '../utils/isVoidType'
-import { getDecorators, getDecoratorValues, getPath, getProduces, getSecurites } from './../utils/decoratorUtils'
+import { getCanonicalDecoratorName, getDecorators, getDecoratorValues, getPath, getProduces, getSecurites } from './../utils/decoratorUtils'
 import { getJSDocComment, getJSDocDescription, isExistJSDocTag } from './../utils/jsDocUtils'
 import { getExtensions } from './extension'
 import { GenerateMetadataError } from './exceptions'
@@ -170,7 +170,7 @@ export class MethodGenerator {
   }
 
   private processMethodDecorators() {
-    const pathDecorators = getDecorators(this.node, identifier => this.supportsPathMethod(identifier.text))
+    const pathDecorators = getDecorators(this.node, (_identifier, canonicalName) => this.supportsPathMethod(canonicalName), this.current.typeChecker)
 
     if (!pathDecorators || !pathDecorators.length) {
       return
@@ -180,8 +180,12 @@ export class MethodGenerator {
     }
 
     const decorator = pathDecorators[0]
+    const decoratorName = this.getDecoratorName(decorator)
+    if (!decoratorName) {
+      throw new GenerateMetadataError(`Unsupported path decorator in '${this.getCurrentLocation()}' method.`)
+    }
 
-    this.method = decorator.text.toLowerCase() as HttpMethod
+    this.method = decoratorName.toLowerCase() as HttpMethod
     // if you don't pass in a path to the method decorator, we'll just use the base route
     // todo: what if someone has multiple no argument methods of the same type in a single controller?
     // we need to throw an error there
@@ -308,8 +312,8 @@ export class MethodGenerator {
     return examples || undefined
   }
 
-  private supportsPathMethod(method: string) {
-    return ['options', 'get', 'post', 'put', 'patch', 'delete', 'head'].some(m => m === method.toLowerCase())
+  private supportsPathMethod(method?: string) {
+    return !!method && ['options', 'get', 'post', 'put', 'patch', 'delete', 'head'].some(m => m === method.toLowerCase())
   }
 
   private getIsDeprecated() {
@@ -397,7 +401,11 @@ export class MethodGenerator {
   }
 
   private getDecoratorsByIdentifier(node: ts.Node, id: string) {
-    return getDecorators(node, identifier => identifier.text === id)
+    return getDecorators(node, (_identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
+  }
+
+  private getDecoratorName(decorator: ts.Identifier) {
+    return getCanonicalDecoratorName(decorator, this.current.typeChecker)
   }
 
   private getProducesAdapter(produces?: string[] | string): string[] | undefined {

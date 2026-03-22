@@ -45,7 +45,11 @@ export class ParameterGenerator {
   ) {}
 
   public Generate(): Tsoa.Parameter[] {
-    const decoratorName = getNodeFirstDecoratorName(this.parameter, identifier => this.supportParameterDecorator(identifier.text))
+    const decoratorName = getNodeFirstDecoratorName(
+      this.parameter,
+      (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName),
+      this.current.typeChecker,
+    )
 
     switch (decoratorName) {
       case 'Request':
@@ -104,7 +108,10 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'request-prop',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'ParameterProp'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'RequestProp'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -135,7 +142,7 @@ export class ParameterGenerator {
 
   private getResParameters(parameter: ts.ParameterDeclaration): Tsoa.ResParameter[] {
     const parameterName = (parameter.name as ts.Identifier).text
-    const decorator = getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Res') || parameterName
+    const decorator = getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Res') || parameterName
     if (!decorator) {
       throw new GenerateMetadataError('Could not find Decorator', parameter)
     }
@@ -215,7 +222,10 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'body-prop',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'BodyProp'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'BodyProp'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -264,7 +274,7 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'header',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Header'), parameterName),
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Header'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -291,11 +301,11 @@ export class ParameterGenerator {
       description: this.getParameterDescription(parameter),
       in: 'formData',
       name: getDecoratorStringValue(
-        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => {
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => {
           if (isArray) {
-            return ident.text === 'UploadedFiles'
+            return canonicalName === 'UploadedFiles'
           }
-          return ident.text === 'UploadedFile'
+          return canonicalName === 'UploadedFile'
         }),
         parameterName,
       ),
@@ -318,7 +328,10 @@ export class ParameterGenerator {
     return {
       description: this.getParameterDescription(parameter),
       in: 'formData',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'FormField'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'FormField'),
+        parameterName,
+      ),
       required: !parameter.questionToken && !parameter.initializer,
       type,
       parameterName,
@@ -441,7 +454,7 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'query' as const,
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Query'), parameterName),
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Query'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       validators: getParameterValidators(this.parameter, parameterName),
@@ -485,7 +498,7 @@ export class ParameterGenerator {
     const parameterName = (parameter.name as ts.Identifier).text
 
     const type = this.getValidatedType(parameter)
-    const pathName = String(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Path') || parameterName)
+    const pathName = String(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Path') || parameterName)
 
     if (!this.supportPathDataType(type)) {
       throw new GenerateMetadataError(`@Path('${parameterName}') Can't support '${type.dataType}' type.`)
@@ -524,7 +537,7 @@ export class ParameterGenerator {
   }
 
   private getParameterDeprecation(node: ts.ParameterDeclaration) {
-    return isExistJSDocTag(node, tag => tag.tagName.text === 'deprecated') || isDecorator(node, identifier => identifier.text === 'Deprecated')
+    return isExistJSDocTag(node, tag => tag.tagName.text === 'deprecated') || isDecorator(node, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
   }
 
   private getParameterExample(node: ts.ParameterDeclaration, parameterName: string) {
@@ -564,8 +577,8 @@ export class ParameterGenerator {
     return ['post', 'put', 'patch', 'delete'].some(m => m === method.toLowerCase())
   }
 
-  private supportParameterDecorator(decoratorName: string) {
-    return ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
+  private supportParameterDecorator(decoratorName?: string) {
+    return !!decoratorName && ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
       d => d === decoratorName.toLocaleLowerCase(),
     )
   }
@@ -598,7 +611,7 @@ export class ParameterGenerator {
   }
 
   private getQueryParameterIsHidden(parameter: ts.ParameterDeclaration) {
-    const hiddenDecorators = getDecorators(parameter, identifier => identifier.text === 'Hidden')
+    const hiddenDecorators = getDecorators(parameter, (_identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
     if (!hiddenDecorators || !hiddenDecorators.length) {
       return false
     }

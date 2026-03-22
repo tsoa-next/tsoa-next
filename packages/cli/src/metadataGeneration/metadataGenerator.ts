@@ -63,7 +63,7 @@ export class MetadataGenerator {
       }
 
       forEachChild(sf, node => {
-        if (isClassDeclaration(node) && getDecorators(node, identifier => identifier.text === 'Route').length) {
+        if (isClassDeclaration(node) && getDecorators(node, (_identifier, canonicalName) => canonicalName === 'Route', this.typeChecker).length) {
           this.controllerNodes.push(node)
         }
       })

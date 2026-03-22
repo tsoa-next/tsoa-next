@@ -193,7 +193,7 @@ export class ControllerGenerator {
   }
 
   private getPath() {
-    const decorators = getDecorators(this.node, identifier => identifier.text === 'Route')
+    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Route', this.current.typeChecker)
     if (!decorators || !decorators.length) {
       return
     }
@@ -208,7 +208,7 @@ export class ControllerGenerator {
   }
 
   private getCommonResponses(): Tsoa.Response[] {
-    const decorators = getDecorators(this.node, identifier => identifier.text === 'Response')
+    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Response', this.current.typeChecker)
     if (!decorators || !decorators.length) {
       return []
     }
@@ -232,7 +232,7 @@ export class ControllerGenerator {
   }
 
   private getTags() {
-    const decorators = getDecorators(this.node, identifier => identifier.text === 'Tags')
+    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Tags', this.current.typeChecker)
     if (!decorators || !decorators.length) {
       return
     }
@@ -247,8 +247,8 @@ export class ControllerGenerator {
   }
 
   private getSecurity(): Tsoa.Security[] {
-    const noSecurityDecorators = getDecorators(this.node, identifier => identifier.text === 'NoSecurity')
-    const securityDecorators = getDecorators(this.node, identifier => identifier.text === 'Security')
+    const noSecurityDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'NoSecurity', this.current.typeChecker)
+    const securityDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Security', this.current.typeChecker)
 
     if (noSecurityDecorators?.length && securityDecorators?.length) {
       throw new GenerateMetadataError(`NoSecurity decorator cannot be used in conjunction with Security decorator in '${this.node.name!.text}' class.`)
@@ -266,7 +266,7 @@ export class ControllerGenerator {
   }
 
   private getIsHidden(): boolean {
-    const hiddenDecorators = getDecorators(this.node, identifier => identifier.text === 'Hidden')
+    const hiddenDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
     if (!hiddenDecorators || !hiddenDecorators.length) {
       return false
     }
