@@ -1,5 +1,5 @@
 import { normalize } from 'path'
-import { Node, TypeNode } from 'typescript'
+import { Node, TypeNode, isIdentifier } from 'typescript'
 
 export class GenerateMetadataError extends Error {
   constructor(message?: string, node?: Node | TypeNode, onlyCurrent = false) {
@@ -38,9 +38,15 @@ export function prettyLocationOfNode(node: Node | TypeNode) {
 export function prettyTroubleCause(node: Node | TypeNode, onlyCurrent = false) {
   let name: string
   if (onlyCurrent || !node.parent) {
-    name = node.pos !== -1 && node.parent ? node.getText() : (node as any).name?.text || '<unknown name>'
+    name = node.pos !== -1 && node.parent ? node.getText() : getNamedNodeText(node) || '<unknown name>'
   } else {
-    name = node.parent.pos !== -1 ? node.parent.getText() : (node as any).parent.name?.text || '<unknown name>'
+    name = node.parent.pos !== -1 ? node.parent.getText() : getNamedNodeText(node.parent) || '<unknown name>'
   }
   return `This was caused by '${name}'`
+}
+
+function getNamedNodeText(node: Node | TypeNode): string | undefined {
+  const maybeNamedNode = node as Node & { name?: Node }
+  const nameNode = maybeNamedNode.name
+  return nameNode && isIdentifier(nameNode) ? nameNode.text : undefined
 }

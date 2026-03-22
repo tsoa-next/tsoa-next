@@ -28,6 +28,18 @@ interface Context {
   }
 }
 
+type DeclarationWithTypeParameters = ts.Declaration & {
+  typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration>
+}
+
+const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } =>
+  'initializer' in declaration && declaration.initializer !== undefined
+
+const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
+  const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
+  return symbolWithLinks.links?.syntheticOrigin
+}
+
 export class TypeResolver {
   constructor(
     private readonly typeNode: ts.TypeNode,
@@ -186,7 +198,7 @@ export class TypeResolver {
         if (prop.declarations) {
           return prop.declarations[0]
         }
-        const syntheticOrigin: ts.Symbol = (prop as any).links?.syntheticOrigin
+        const syntheticOrigin = getSyntheticOrigin(prop)
         if (syntheticOrigin && syntheticOrigin.name === prop.name) {
           //Otherwise losts jsDoc like in intellisense
           return syntheticOrigin.declarations?.[0]
@@ -237,7 +249,7 @@ export class TypeResolver {
               const comments = property.getDocumentationComment(this.current.typeChecker)
               const description = comments.length ? ts.displayPartsToString(comments) : undefined
 
-              const initializer = (parent as any)?.initializer
+              const initializer = parent && hasInitializer(parent) ? parent.initializer : undefined
               const def = initializer ? getInitializerValue(initializer, this.current.typeChecker) : parent ? TypeResolver.getDefault(parent) : undefined
 
               // Push property
@@ -718,7 +730,7 @@ export class TypeResolver {
       deprecated: isDeprecated ? true : undefined,
       ignored: isIgnored ? true : undefined,
     }
-    const keys: Array<keyof typeof jsonObj> = Object.keys(jsonObj) as any
+    const keys = Object.keys(jsonObj) as Array<keyof typeof jsonObj>
     for (const key of keys) {
       if (jsonObj[key] === undefined) {
         delete jsonObj[key]
@@ -927,8 +939,8 @@ export class TypeResolver {
         type,
         validators: {},
         deprecated,
-        ...(example && { example }),
-        ...(title && { title }),
+        ...(example !== undefined ? { example } : {}),
+        ...(title !== undefined ? { title } : {}),
       }
       return referenceType
     }
@@ -944,8 +956,8 @@ export class TypeResolver {
       properties: inheritedProperties,
       refName: refTypeName,
       deprecated,
-      ...(example && { example }),
-      ...(title && { title }),
+      ...(example !== undefined ? { example } : {}),
+      ...(title !== undefined ? { title } : {}),
     }
 
     referenceType.properties = referenceType.properties.concat(properties)
@@ -986,9 +998,7 @@ export class TypeResolver {
     } as Tsoa.ReferenceType
 
     inProgressTypes[refName].push(realReferenceType => {
-      for (const key of Object.keys(realReferenceType)) {
-        ;(referenceType as any)[key] = (realReferenceType as any)[key]
-      }
+      Object.assign(referenceType, realReferenceType)
     })
     return referenceType
   }
@@ -1006,13 +1016,13 @@ export class TypeResolver {
     }
   }
 
-  private getModelTypeDeclarations(type: ts.EntityName) {
+  private getModelTypeDeclarations(type: ts.EntityName): UsableDeclarationWithoutPropertySignature[] {
     let typeName: string = type.kind === ts.SyntaxKind.Identifier ? type.text : type.right.text
 
     let symbol: ts.Symbol | undefined = this.getSymbolAtLocation(type)
     if (!symbol && type.kind === ts.SyntaxKind.QualifiedName) {
       const fullEnumSymbol = this.getSymbolAtLocation(type.left)
-      symbol = fullEnumSymbol.exports?.get(typeName as any)
+      symbol = fullEnumSymbol?.exports?.get(typeName as ts.__String)
     }
 
     // Handle built-in types that don't have declarations in user code
@@ -1050,8 +1060,9 @@ export class TypeResolver {
     return modelTypes
   }
 
-  private getSymbolAtLocation(type: ts.Node): ts.Symbol {
-    const symbol = this.current.typeChecker.getSymbolAtLocation(type) || ((type as any).symbol as ts.Symbol)
+  private getSymbolAtLocation(type: ts.Node): ts.Symbol | undefined {
+    const fallbackSymbol = (type as ts.Node & { symbol?: ts.Symbol }).symbol
+    const symbol = this.current.typeChecker.getSymbolAtLocation(type) || fallbackSymbol
     // resolve alias if it is an alias, otherwise take symbol directly
     return (symbol && this.hasFlag(symbol, ts.SymbolFlags.Alias) && this.current.typeChecker.getAliasedSymbol(symbol)) || symbol
   }
@@ -1079,7 +1090,7 @@ export class TypeResolver {
 
     // Handle cases where targetEntity might be an inline object type
     // Inline object types don't have declarations, so we need to handle them differently
-    let declarations
+    let declarations: UsableDeclarationWithoutPropertySignature[]
     try {
       declarations = this.getModelTypeDeclarations(targetEntity)
     } catch (_) {
@@ -1088,7 +1099,8 @@ export class TypeResolver {
       return newContext
     }
 
-    const typeParameters = declarations[0] && 'typeParameters' in declarations[0] ? declarations[0].typeParameters : undefined
+    const firstDeclaration = declarations[0] as DeclarationWithTypeParameters | undefined
+    const typeParameters = firstDeclaration?.typeParameters
 
     if (typeParameters) {
       for (let index = 0; index < typeParameters.length; index++) {
@@ -1234,7 +1246,7 @@ export class TypeResolver {
     return getDecorators(node, identifier => identifier.text === id)
   }
 
-  public static getDefault(node: ts.Node) {
+  public static getDefault(node: ts.Node): unknown {
     const defaultStr = getJSDocComment(node, 'default')
     if (typeof defaultStr == 'string' && defaultStr !== 'undefined') {
       let textStartCharacter: `"` | "'" | '`' | undefined = undefined
@@ -1280,10 +1292,11 @@ export class TypeResolver {
         }
       }
       try {
-        const parsed = JSON.parse(formattedStr)
+        const parsed: unknown = JSON.parse(formattedStr)
         return parsed
       } catch (err) {
-        throw new GenerateMetadataError(`JSON could not parse default str: "${defaultStr}", preformatted: "${formattedStr}"\nmessage: "${((err as any)?.message as string) || '-'}"`)
+        const message = err instanceof Error ? err.message : '-'
+        throw new GenerateMetadataError(`JSON could not parse default str: "${defaultStr}", preformatted: "${formattedStr}"\nmessage: "${message}"`)
       }
     }
     return undefined

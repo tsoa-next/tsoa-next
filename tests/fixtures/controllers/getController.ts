@@ -256,6 +256,18 @@ export class GetTestController extends Controller {
     return readable
   }
 
+  @Get('HandleStreamLikeType')
+  public async getStreamLike(): Promise<object> {
+    return {
+      readable: true,
+      pipe(destination: NodeJS.WritableStream) {
+        destination.write(Buffer.from('testbuffer'))
+        destination.end()
+        return destination
+      },
+    }
+  }
+
   @Get('GenericModel')
   public async getGenericModel(): Promise<GenericModel<TestModel>> {
     return {

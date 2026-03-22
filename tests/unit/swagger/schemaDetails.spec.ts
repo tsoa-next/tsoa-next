@@ -364,6 +364,15 @@ describe('Schema details generation', () => {
           const operationId = exampleSpec.paths['/ExampleTest/post_body']?.post?.operationId
           expect(operationId).to.eq('ExampleTest_Post')
         })
+        it('should ignore invalid replace helper search values.', () => {
+          const metadata = new MetadataGenerator('./fixtures/controllers/exampleController.ts').Generate()
+          const optionsWithInvalidReplaceSearch = Object.assign<object, ExtendedSpecConfig, Partial<ExtendedSpecConfig>>({}, getDefaultExtendedOptions(), {
+            operationIdTemplate: "{{replace controllerName method 'X'}}_{{titleCase method.name}}",
+          })
+          const exampleSpec = new SpecGenerator2(metadata, optionsWithInvalidReplaceSearch).GetSpec()
+          const operationId = exampleSpec.paths['/ExampleTest/post_body']?.post?.operationId
+          expect(operationId).to.eq('ExampleTestController_Post')
+        })
       })
 
       describe('responses', () => {

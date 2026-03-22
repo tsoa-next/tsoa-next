@@ -1,6 +1,12 @@
 type Middleware<T extends CallableFunction | object> = T
+type MiddlewareTarget = CallableFunction | object
+type MiddlewareDecoratorArgs = [MiddlewareTarget] | [object, string | symbol, PropertyDescriptor]
 
 const TSOA_MIDDLEWARES = Symbol('@tsoa:middlewares')
+
+function isMiddlewareTarget(value: unknown): value is MiddlewareTarget {
+  return typeof value === 'function' || (typeof value === 'object' && value !== null)
+}
 
 /**
  * Helper function to create a decorator
@@ -11,16 +17,16 @@ const TSOA_MIDDLEWARES = Symbol('@tsoa:middlewares')
  *           method
  * @returns
  */
-function decorator(fn: (value: any) => void) {
-  return (...args: any[]) => {
+function decorator(fn: (value: MiddlewareTarget) => void) {
+  return (...args: MiddlewareDecoratorArgs) => {
     // class decorator
     if (args.length === 1) {
-      fn(args[0])
-       
-    } else if (args.length === 3 && args[2].value) {
+      const [target] = args
+      fn(target)
+    } else if (args.length === 3) {
       // method decorator
-      const descriptor = args[2] as PropertyDescriptor
-      if (descriptor.value) {
+      const [, , descriptor] = args
+      if (isMiddlewareTarget(descriptor.value)) {
         fn(descriptor.value)
       }
     }
@@ -47,6 +53,6 @@ export function Middlewares<T extends CallableFunction | object>(...mws: Array<M
  * @param target
  * @returns list of middlewares
  */
-export function fetchMiddlewares<T extends CallableFunction | object>(target: any): Array<Middleware<T>> {
-  return Reflect.getMetadata(TSOA_MIDDLEWARES, target) || []
+export function fetchMiddlewares<T extends CallableFunction | object>(target: MiddlewareTarget): Array<Middleware<T>> {
+  return (Reflect.getMetadata(TSOA_MIDDLEWARES, target) as Array<Middleware<T>> | undefined) ?? []
 }

@@ -18,6 +18,7 @@ import '../controllers/testController'
 import '../controllers/validateController'
 import '../controllers/noExtendsController'
 import '../controllers/subresourceController'
+import '../controllers/emptyBodyController'
 
 import '../controllers/middlewaresKoaController'
 

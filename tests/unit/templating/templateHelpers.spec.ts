@@ -2,6 +2,58 @@ import { expect } from 'chai'
 import 'mocha'
 import { TsoaRoute, ValidateError, FieldErrors, ValidationService } from '@tsoa-next/runtime'
 import { TypeAliasModel1, TypeAliasModel2 } from '../../fixtures/testModel'
+import { TemplateService } from '../../../packages/runtime/src/routeGeneration/templates/templateService'
+import { AdditionalProps } from '../../../packages/runtime/src/routeGeneration/additionalProps'
+
+class TestTemplateService extends TemplateService<void, void, void> {
+  constructor() {
+    const config: AdditionalProps = {
+      noImplicitAdditionalProperties: 'ignore',
+      bodyCoercion: true,
+    }
+
+    super({}, config)
+  }
+
+  async apiHandler(): Promise<void> {
+    return undefined
+  }
+
+  getValidatedArgs(): any[] {
+    return []
+  }
+
+  protected returnHandler(): void {
+    return undefined
+  }
+
+  public exposedNormalizeRequestBody(body: unknown, headers: Record<string, unknown>): unknown {
+    return this.normalizeRequestBody(body, headers)
+  }
+
+  public exposedGetBodyProperty(body: unknown, headers: Record<string, unknown>, propertyName: string): unknown {
+    return this.getBodyProperty(body, headers, propertyName)
+  }
+}
+
+it('treats chunked transfer encoding as body presence for explicit empty objects', () => {
+  const service = new TestTemplateService()
+
+  expect(service.exposedNormalizeRequestBody({}, { 'transfer-encoding': 'chunked' })).to.deep.equal({})
+})
+
+it('returns undefined for absent bodies without transfer encoding or content length', () => {
+  const service = new TestTemplateService()
+
+  expect(service.exposedNormalizeRequestBody({}, {})).to.equal(undefined)
+})
+
+it('only reads body properties from normalized object payloads', () => {
+  const service = new TestTemplateService()
+
+  expect(service.exposedGetBodyProperty({ name: 'value' }, { 'transfer-encoding': 'chunked' }, 'name')).to.equal('value')
+  expect(service.exposedGetBodyProperty(['value'], { 'transfer-encoding': 'chunked' }, '0')).to.equal(undefined)
+})
 
 it('ValidateError should be an instanceof ValidateError', () => {
   const validateError = new ValidateError({}, '')

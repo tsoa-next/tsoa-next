@@ -7,12 +7,15 @@ import { ValidateError } from '../../templateHelpers'
 import { TemplateService } from '../templateService'
 import { Readable } from 'node:stream'
 
+type HeaderRecord = Record<string, string | string[] | undefined>
+type ExpressResponder = (status: number | undefined, data: unknown, headers: HeaderRecord) => void
+
 type ExpressApiHandlerParameters = {
   methodName: string
   controller: Controller | object
   response: ExResponse
   next: ExNext
-  validatedArgs: any[]
+  validatedArgs: unknown[]
   successStatus?: number
 }
 
@@ -24,9 +27,9 @@ type ExpressValidationArgsParameters = {
 
 type ExpressReturnHandlerParameters = {
   response: ExResponse
-  headers: any
+  headers: HeaderRecord | undefined
   statusCode?: number
-  data?: any
+  data?: unknown
 }
 
 export class ExpressTemplateService extends TemplateService<ExpressApiHandlerParameters, ExpressValidationArgsParameters, ExpressReturnHandlerParameters> {
@@ -36,7 +39,7 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
     try {
       const data = await this.buildPromise(methodName, controller, validatedArgs)
       let statusCode = successStatus
-      let headers
+      let headers: HeaderRecord | undefined
       if (this.isController(controller)) {
         headers = controller.getHeaders()
         statusCode = controller.getStatus() || statusCode
@@ -48,7 +51,7 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
     }
   }
 
-  getValidatedArgs(params: ExpressValidationArgsParameters): any[] {
+  getValidatedArgs(params: ExpressValidationArgsParameters): unknown[] {
     const { args, request, response } = params
 
     const fieldErrors: FieldErrors = {}
@@ -59,7 +62,7 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
           return request
         case 'request-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(request, name)
-          const value = descriptor ? descriptor.value : undefined
+          const value: unknown = descriptor ? descriptor.value : undefined
           return this.validationService.ValidateParam(param, value, name, fieldErrors, false, undefined)
         }
         case 'query':
@@ -72,7 +75,8 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
           return this.validationService.ValidateParam(param, request.header(name), name, fieldErrors, false, undefined)
         case 'body': {
           const bodyFieldErrors: FieldErrors = {}
-          const bodyArgs = this.validationService.ValidateParam(param, request.body, name, bodyFieldErrors, true, undefined)
+          const normalizedBody = this.normalizeRequestBody(request.body, request.headers)
+          const bodyArgs = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined)
           Object.keys(bodyFieldErrors).forEach(key => {
             fieldErrors[key] = { message: bodyFieldErrors[key].message }
           })
@@ -80,7 +84,8 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
         }
         case 'body-prop': {
           const bodyPropFieldErrors: FieldErrors = {}
-          const bodyPropArgs = this.validationService.ValidateParam(param, request.body?.[name], name, bodyPropFieldErrors, true, 'body.')
+          const bodyPropValue = this.getBodyProperty(request.body, request.headers, name)
+          const bodyPropArgs = this.validationService.ValidateParam(param, bodyPropValue, name, bodyPropFieldErrors, true, 'body.')
           Object.keys(bodyPropFieldErrors).forEach(key => {
             fieldErrors[key] = { message: bodyPropFieldErrors[key].message }
           })
@@ -95,14 +100,21 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
             if (param.dataType === 'array') {
               return fileArgs
             }
-            return Array.isArray(fileArgs) && fileArgs.length === 1 ? fileArgs[0] : fileArgs
+            if (Array.isArray(fileArgs) && fileArgs.length === 1) {
+              const firstFile: unknown = fileArgs[0]
+              return firstFile
+            }
+            return fileArgs
           }
-          return this.validationService.ValidateParam(param, request.body?.[name], name, fieldErrors, false, undefined)
+          const bodyValue = this.isRecord(request.body) ? request.body[name] : undefined
+          return this.validationService.ValidateParam(param, bodyValue, name, fieldErrors, false, undefined)
         }
         case 'res':
-          return (status: number | undefined, data: any, headers: any) => {
+          return ((status: number | undefined, data: unknown, headers: HeaderRecord) => {
             this.returnHandler({ response, headers, statusCode: status, data })
-          }
+          }) satisfies ExpressResponder
+        default:
+          return undefined
       }
     })
 
@@ -121,15 +133,18 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
       return
     }
     Object.keys(headers).forEach((name: string) => {
-      response.set(name, headers[name])
+      const headerValue = headers[name]
+      if (headerValue !== undefined) {
+        response.set(name, headerValue)
+      }
     })
 
     // Check if the response is marked to be JSON
     const isJsonResponse = response.get('Content-Type')?.includes('json') || false
 
-    if (data && typeof data.pipe === 'function' && data.readable && typeof data._read === 'function') {
+    if (this.isReadableStream(data)) {
       response.status(statusCode || 200)
-      ;(data as Readable).pipe(response)
+      data.pipe(response)
     } else if (data !== undefined && (data !== null || isJsonResponse)) {
       // allow null response when it is a json response
       if (typeof data === 'number' || isJsonResponse) {
@@ -144,5 +159,13 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
     } else {
       response.status(statusCode || 204).end()
     }
+  }
+
+  private isReadableStream(data: unknown): data is Readable {
+    if (!this.isRecord(data)) {
+      return false
+    }
+
+    return typeof data.pipe === 'function' && (data instanceof Readable || data.readable === true || typeof data._read === 'function')
   }
 }

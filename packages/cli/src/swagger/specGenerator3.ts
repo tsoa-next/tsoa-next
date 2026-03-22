@@ -135,12 +135,12 @@ export class SpecGenerator3 extends SpecGenerator {
     return defs
   }
 
-  protected hasOAuthFlow(definition: any): definition is { flow: string } {
-    return !!definition.flow
+  protected hasOAuthFlow(definition: unknown): definition is { flow: string } {
+    return typeof definition === 'object' && definition !== null && 'flow' in definition && typeof definition.flow === 'string'
   }
 
-  protected hasOAuthFlows(definition: any): definition is { flows: Swagger.OAuthFlow } {
-    return !!definition.flows
+  protected hasOAuthFlows(definition: unknown): definition is { flows: Swagger.OAuthFlow } {
+    return typeof definition === 'object' && definition !== null && 'flows' in definition && typeof definition.flows === 'object' && definition.flows !== null
   }
 
   protected buildServers() {
@@ -259,8 +259,9 @@ export class SpecGenerator3 extends SpecGenerator {
     return paths
   }
 
-  protected buildMethod(controllerName: string, method: Tsoa.Method, pathObject: any, defaultProduces?: string[]) {
-    const pathMethod: Swagger.Operation3 = (pathObject[method.method] = this.buildOperation(controllerName, method, defaultProduces))
+  protected buildMethod(controllerName: string, method: Tsoa.Method, pathObject: Partial<Record<Tsoa.Method['method'], Swagger.Operation3>>, defaultProduces?: string[]) {
+    const pathMethod: Swagger.Operation3 = this.buildOperation(controllerName, method, defaultProduces)
+    pathObject[method.method] = pathMethod
     pathMethod.description = method.description
     pathMethod.summary = method.summary
     pathMethod.tags = method.tags
@@ -357,13 +358,16 @@ export class SpecGenerator3 extends SpecGenerator {
 
         if (res.examples) {
           let exampleCounter = 1
-          const examples = res.examples.reduce((acc, ex, currentIndex) => {
+          const examples = res.examples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
             const exampleLabel = res.exampleLabels?.[currentIndex]
-            return { ...acc, [exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel]: { value: ex } }
+            acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+            return acc
           }, {})
-          for (const p of produces) {
-             
-            ;(swaggerResponses[res.name].content || {})[p]['examples'] = examples
+          const content = swaggerResponses[res.name].content
+          if (content) {
+            for (const p of produces) {
+              content[p].examples = examples
+            }
           }
         }
       }
@@ -462,9 +466,10 @@ export class SpecGenerator3 extends SpecGenerator {
       mediaType.example = parameterExamples[0]
     } else {
       let exampleCounter = 1
-      mediaType.examples = parameterExamples.reduce((acc, ex, currentIndex) => {
+      mediaType.examples = parameterExamples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
         const exampleLabel = parameterExampleLabels?.[currentIndex]
-        return { ...acc, [exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel]: { value: ex } }
+        acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+        return acc
       }, {})
     }
 
@@ -539,7 +544,7 @@ export class SpecGenerator3 extends SpecGenerator {
     }
 
     let exampleCounter = 1
-    const examples = parameterExamples.reduce(
+    const examples = parameterExamples.reduce<Record<string, Swagger.Example3>>(
       (acc, ex, idx) => {
         const label = exampleLabels?.[idx]
         const name = label ?? `Example ${exampleCounter++}`
@@ -681,7 +686,7 @@ export class SpecGenerator3 extends SpecGenerator {
       for (const type of types) {
         typesSet.add(JSON.stringify(type))
       }
-      return Array.from(typesSet).map(typeString => JSON.parse(typeString))
+      return Array.from(typesSet).map(typeString => JSON.parse(typeString) as Swagger.BaseSchema)
     }
   }
 

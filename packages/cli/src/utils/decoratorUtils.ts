@@ -1,14 +1,25 @@
 import * as ts from 'typescript'
-import { getInitializerValue } from '../metadataGeneration/initializer-value'
+import { Tsoa } from '@tsoa-next/runtime'
+import { getInitializerValue, type InitializerValue } from '../metadataGeneration/initializer-value'
 
 function tsHasDecorators(tsNamespace: typeof ts): tsNamespace is typeof ts & {
-  canHaveDecorators(node: ts.Node): node is any
+  canHaveDecorators(node: ts.Node): boolean
   getDecorators(node: ts.Node): readonly ts.Decorator[] | undefined
 } {
   return typeof tsNamespace.canHaveDecorators === 'function'
 }
 
-export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
+function unwrapDecoratorIdentifier(decorator: ts.Decorator): ts.Identifier | undefined {
+  let current: ts.Expression = decorator.expression
+
+  while (ts.isCallExpression(current) || ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current) || ts.isParenthesizedExpression(current)) {
+    current = current.expression
+  }
+
+  return ts.isIdentifier(current) ? current : undefined
+}
+
+export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean): ts.Identifier[] {
   // beginning in ts4.8 node.decorator is undefined, use getDecorators instead.
   const decorators = tsHasDecorators(ts) && ts.canHaveDecorators(node) ? ts.getDecorators(node) : []
 
@@ -17,13 +28,8 @@ export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identif
   }
 
   return decorators
-    .map((e: any) => {
-      while (e.expression !== undefined) {
-        e = e.expression
-      }
-
-      return e as ts.Identifier
-    })
+    .map(unwrapDecoratorIdentifier)
+    .filter((identifier): identifier is ts.Identifier => identifier !== undefined)
     .filter(isMatching)
 }
 
@@ -45,9 +51,12 @@ export function getNodeFirstDecoratorValue(node: ts.Node, typeChecker: ts.TypeCh
   return values && values[0]
 }
 
-export function getDecoratorValues(decorator: ts.Identifier, typeChecker: ts.TypeChecker): any[] {
-  const expression = decorator.parent as ts.CallExpression
-  const expArguments = expression.arguments
+export function getDecoratorValues(decorator: ts.Identifier, typeChecker: ts.TypeChecker): InitializerValue[] {
+  if (!ts.isCallExpression(decorator.parent)) {
+    return []
+  }
+
+  const expArguments = decorator.parent.arguments
   if (!expArguments || !expArguments.length) {
     return []
   }
@@ -57,9 +66,11 @@ export function getDecoratorValues(decorator: ts.Identifier, typeChecker: ts.Typ
 export function getSecurites(decorator: ts.Identifier, typeChecker: ts.TypeChecker) {
   const [first, second] = getDecoratorValues(decorator, typeChecker)
   if (isObject(first)) {
-    return first
+    return toSecurity(first)
   }
-  return { [first]: second || [] }
+  const securityName = typeof first === 'string' ? first : ''
+  const scopes = Array.isArray(second) ? second.filter((scope): scope is string => typeof scope === 'string') : []
+  return { [securityName]: scopes }
 }
 
 export function isDecorator(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
@@ -70,14 +81,14 @@ export function isDecorator(node: ts.Node, isMatching: (identifier: ts.Identifie
   return true
 }
 
-function isObject(v: any) {
+function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
 }
 
 export function getPath(decorator: ts.Identifier, typeChecker: ts.TypeChecker): string {
   const [path] = getDecoratorValues(decorator, typeChecker)
 
-  if (path === undefined) {
+  if (typeof path !== 'string') {
     return ''
   }
 
@@ -91,5 +102,13 @@ export function getProduces(node: ts.Node, typeChecker: ts.TypeChecker): string[
     return []
   }
 
-  return producesDecorators.map(decorator => getDecoratorValues(decorator, typeChecker)[0])
+  return producesDecorators
+    .map(decorator => getDecoratorValues(decorator, typeChecker)[0])
+    .filter((value): value is string => typeof value === 'string')
+}
+
+function toSecurity(value: Record<string, unknown>): Tsoa.Security {
+  return Object.fromEntries(
+    Object.entries(value).map(([key, scopes]) => [key, Array.isArray(scopes) ? scopes.filter((scope): scope is string => typeof scope === 'string') : []]),
+  )
 }

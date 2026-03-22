@@ -4,6 +4,15 @@ import validator from 'validator'
 import { GenerateMetadataError } from './../metadataGeneration/exceptions'
 import { commentToString, getJSDocTags } from './jsDocUtils'
 
+function parseNumericValidatorValue(value: string | undefined, name: string): number {
+  const numericValue = Number(value)
+  if (Number.isNaN(numericValue)) {
+    throw new GenerateMetadataError(`${name} parameter use number.`)
+  }
+
+  return numericValue
+}
+
 export function getParameterValidators(parameter: ts.ParameterDeclaration, parameterName: string): Tsoa.Validators {
   if (!parameter.parent) {
     return {}
@@ -59,12 +68,9 @@ export function getParameterValidators(parameter: ts.ParameterDeclaration, param
         case 'maxItems':
         case 'minLength':
         case 'maxLength':
-          if (isNaN(value as any)) {
-            throw new GenerateMetadataError(`${name} parameter use number.`)
-          }
           validateObj[name] = {
             errorMsg: getErrorMsg(comment),
-            value: Number(value),
+            value: parseNumericValidatorValue(value, name),
           }
           break
         case 'minDate':
@@ -160,12 +166,9 @@ export function getPropertyValidators(property: ts.Node): Tsoa.Validators | unde
         case 'maxItems':
         case 'minLength':
         case 'maxLength':
-          if (isNaN(value as any)) {
-            throw new GenerateMetadataError(`${name} parameter use number.`)
-          }
           validateObj[name] = {
             errorMsg: getErrorMsg(commentToString(comment)),
-            value: Number(value),
+            value: parseNumericValidatorValue(value, name),
           }
           break
         case 'minDate':

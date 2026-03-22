@@ -23,6 +23,7 @@ import '../controllers/exampleController'
 import '../controllers/tagController'
 import '../controllers/noExtendsController'
 import '../controllers/subresourceController'
+import '../controllers/emptyBodyController'
 
 import '../controllers/middlewaresExpressController'
 import '../controllers/middlewaresHierarchyController'

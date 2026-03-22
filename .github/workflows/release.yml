@@ -42,8 +42,8 @@ jobs:
       - name: Create or update release PR
         uses: changesets/action@v1.7.0
         with:
-          title: Version Packages
-          commit: Version Packages
+          title: "chore(release): version and publish packages"
+          commit: "chore(release): version and publish packages"
           version: npm run version-packages
           commitMode: github-api
         env:

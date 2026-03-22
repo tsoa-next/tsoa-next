@@ -3,6 +3,30 @@ import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
 import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 
+const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).every(item => isExampleValue(item, true))
+  }
+
+  return false
+}
+
 export abstract class SpecGenerator {
   constructor(
     protected readonly metadata: Tsoa.Metadata,
@@ -15,7 +39,17 @@ export abstract class SpecGenerator {
 
   protected buildOperationIdTemplate(inlineTemplate: string) {
     handlebars.registerHelper('titleCase', (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value))
-    handlebars.registerHelper('replace', (subject: string, searchValue: string, withValue = '') => (subject ? subject.replace(searchValue, withValue) : subject))
+    handlebars.registerHelper('replace', (...args: unknown[]) => {
+      const [subject, searchValue, withValue] = args
+      const normalizedSubject = typeof subject === 'string' ? subject : ''
+      const isValidSearchValue = typeof searchValue === 'string' || searchValue instanceof RegExp
+      const normalizedWithValue = typeof withValue === 'string' ? withValue : ''
+      if (!normalizedSubject || !isValidSearchValue) {
+        return normalizedSubject
+      }
+
+      return normalizedSubject.replace(searchValue, normalizedWithValue)
+    })
     return handlebars.compile(inlineTemplate, { noEscape: true })
   }
 
@@ -220,9 +254,10 @@ export abstract class SpecGenerator {
   }
 
   protected queriesPropertyToQueryParameter(property: Tsoa.Property): Tsoa.Parameter {
+    const example = property.example
     return {
       parameterName: property.name,
-      example: [property.example as any],
+      example: isExampleValue(example) ? [example] : undefined,
       description: property.description,
       in: 'query',
       name: property.name,

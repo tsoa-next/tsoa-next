@@ -10,11 +10,20 @@ import { AdditionalProps } from '../../additionalProps'
 
 const hapiTsoaResponsed = Symbol('@tsoa:template_service:hapi:responsed')
 
+type HeaderRecord = Record<string, string | string[] | undefined>
+type HapiResponder = (status: number | undefined, data: unknown, headers: HeaderRecord) => void
+type BoomLike = Error & {
+  output: {
+    statusCode: number
+    payload: Payload
+  }
+}
+
 type HapiApiHandlerParameters = {
   methodName: string
   controller: Controller | object
   h: HResponse
-  validatedArgs: any[]
+  validatedArgs: unknown[]
   successStatus?: number
 }
 
@@ -26,9 +35,9 @@ type HapiValidationArgsParameters = {
 
 type HapiReturnHandlerParameters = {
   h: HResponse
-  headers: any
+  headers: HeaderRecord | undefined
   statusCode?: number
-  data?: any
+  data?: unknown
 }
 
 export class HapiTemplateService extends TemplateService<HapiApiHandlerParameters, HapiValidationArgsParameters, HapiReturnHandlerParameters> {
@@ -36,8 +45,8 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
     protected readonly models: TsoaRoute.Models,
     protected readonly config: AdditionalProps,
     private readonly hapi: {
-      boomify: CallableFunction
-      isBoom: CallableFunction
+      boomify(error: Error): BoomLike
+      isBoom(error: unknown): boolean
     },
   ) {
     super(models, config)
@@ -49,29 +58,32 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
     try {
       const data = await this.buildPromise(methodName, controller, validatedArgs)
       let statusCode = successStatus
-      let headers
+      let headers: HeaderRecord | undefined
 
       if (this.isController(controller)) {
         headers = controller.getHeaders()
         statusCode = controller.getStatus() || statusCode
       }
       return this.returnHandler({ h, headers, statusCode, data })
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (this.hapi.isBoom(error)) {
         throw error
       }
 
-      const boomErr = this.hapi.boomify(error instanceof Error ? error : new Error(error.message))
-      boomErr.output.statusCode = error.status || 500
+      const boomErr = this.hapi.boomify(this.toError(error))
+      const statusCode = this.getErrorStatus(error) ?? 500
+      boomErr.output.statusCode = statusCode
       boomErr.output.payload = {
-        name: error.name,
-        message: error.message,
-      } as unknown as Payload
+        statusCode,
+        error: this.getErrorName(error),
+        name: this.getErrorName(error),
+        message: this.getErrorMessage(error),
+      }
       throw boomErr
     }
   }
 
-  getValidatedArgs(params: HapiValidationArgsParameters): any[] {
+  getValidatedArgs(params: HapiValidationArgsParameters): unknown[] {
     const { args, request, h } = params
 
     const errorFields: FieldErrors = {}
@@ -82,7 +94,7 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
           return request
         case 'request-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(request, name)
-          const value = descriptor ? descriptor.value : undefined
+          const value: unknown = descriptor ? descriptor.value : undefined
           return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined)
         }
         case 'query':
@@ -95,15 +107,15 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
           return this.validationService.ValidateParam(param, request.headers[name], name, errorFields, false, undefined)
         case 'body': {
           const bodyFieldErrors: FieldErrors = {}
-          const result = this.validationService.ValidateParam(param, request.payload, name, bodyFieldErrors, true, undefined)
+          const normalizedBody = this.normalizeRequestBody(request.payload, request.headers)
+          const result = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
           return result
         }
         case 'body-prop': {
-          const descriptor = Object.getOwnPropertyDescriptor(request.payload, name)
-          const value = descriptor ? descriptor.value : undefined
+          const value = this.getBodyProperty(request.payload, request.headers, name)
           const bodyFieldErrors: FieldErrors = {}
           const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.')
           Object.keys(bodyFieldErrors).forEach(key => {
@@ -112,14 +124,16 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
           return result
         }
         case 'formData': {
-          const descriptor = Object.getOwnPropertyDescriptor(request.payload, name)
-          const value = descriptor ? descriptor.value : undefined
+          const descriptor = this.isRecord(request.payload) ? Object.getOwnPropertyDescriptor(request.payload, name) : undefined
+          const value: unknown = descriptor ? descriptor.value : undefined
           return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined)
         }
         case 'res':
-          return (status: number | undefined, data: any, headers: any) => {
+          return ((status: number | undefined, data: unknown, headers: HeaderRecord) => {
             this.returnHandler({ h, headers, statusCode: status, data })
-          }
+          }) satisfies HapiResponder
+        default:
+          return undefined
       }
     })
     if (Object.keys(errorFields).length > 0) {
@@ -135,13 +149,21 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
 
     const tsoaResponsed = Object.getOwnPropertyDescriptor(h, hapiTsoaResponsed)
     if (tsoaResponsed) {
-      return tsoaResponsed.value
+      return tsoaResponsed.value as unknown
     }
 
     const response = data !== null && data !== undefined ? h.response(data).code(200) : h.response().code(204)
+    const setHeader = response.header.bind(response)
 
     Object.keys(headers).forEach((name: string) => {
-      response.header(name, headers[name])
+      const headerValue = headers[name]
+      if (headerValue !== undefined) {
+        if (Array.isArray(headerValue)) {
+          Reflect.apply(setHeader, response, [name, headerValue, { append: name.toLowerCase() === 'set-cookie' }])
+        } else {
+          setHeader(name, headerValue)
+        }
+      }
     })
 
     if (statusCode) {
@@ -154,5 +176,49 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
     })
 
     return response
+  }
+
+  private toError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error
+    }
+
+    if (this.isRecord(error) && typeof error.message === 'string') {
+      return new Error(error.message)
+    }
+
+    return new Error('Internal Server Error')
+  }
+
+  private getErrorStatus(error: unknown): number | undefined {
+    if (this.isRecord(error) && typeof error.status === 'number') {
+      return error.status
+    }
+
+    return undefined
+  }
+
+  private getErrorName(error: unknown): string {
+    if (error instanceof Error) {
+      return error.name
+    }
+
+    if (this.isRecord(error) && typeof error.name === 'string') {
+      return error.name
+    }
+
+    return 'Error'
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message
+    }
+
+    if (this.isRecord(error) && typeof error.message === 'string') {
+      return error.message
+    }
+
+    return 'Internal Server Error'
   }
 }

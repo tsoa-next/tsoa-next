@@ -6,6 +6,7 @@ import { EnumTransformer } from './enumTransformer'
 import { TypeResolver } from '../typeResolver'
 import { GenerateMetadataError } from '../exceptions'
 import { getPropertyValidators } from '../../utils/validatorUtils'
+import { isExistJSDocTag } from '../../utils/jsDocUtils'
 
 export class ReferenceTransformer extends Transformer {
   public static merge(referenceTypes: Tsoa.ReferenceType[]): Tsoa.ReferenceType {
@@ -83,11 +84,12 @@ export class ReferenceTransformer extends Transformer {
       default: TypeResolver.getDefault(declaration),
       description: resolver.getNodeDescription(declaration),
       refName: refTypeName,
+      deprecated: isExistJSDocTag(declaration, tag => tag.tagName.text === 'deprecated'),
       format: resolver.getNodeFormat(declaration),
       type: new TypeResolver(declaration.type, resolver.current, declaration, resolver.context, resolver.referencer || referencer).resolve(),
       validators: getPropertyValidators(declaration) || {},
-      ...(example && { example }),
-      ...(title && { title }),
+      ...(example !== undefined ? { example } : {}),
+      ...(title !== undefined ? { title } : {}),
     }
     return referenceType
   }

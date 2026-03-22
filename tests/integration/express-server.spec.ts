@@ -290,6 +290,13 @@ describe('Express Server', () => {
     })
   })
 
+  it('returns stream-like responses across module boundaries', () => {
+    return verifyGetRequest(app, `${basePath}/GetTest/HandleStreamLikeType`, (_err, res) => {
+      expect(res.text).to.equal('testbuffer')
+      return
+    })
+  })
+
   it('should reject invalid additionalProperties', () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 
@@ -361,6 +368,53 @@ describe('Express Server', () => {
       const model = res.body as TestClassModel
       expect(model.id).to.equal(700) // this gets changed on the server
     })
+  })
+
+  it('treats an absent optional body as undefined', () => {
+    return verifyRequest(
+      app,
+      (_err, res) => {
+        expect(res.body).to.deep.equal({ state: 'undefined', body: null })
+      },
+      request => request.post(basePath + '/EmptyBody/optional'),
+      200,
+    )
+  })
+
+  it('keeps an explicit empty object body distinct from an absent body', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', {}, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: {} })
+    })
+  })
+
+  it('preserves non-empty body payloads', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', { value: 'present' }, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: { value: 'present' } })
+    })
+  })
+
+  it('fails validation for a missing required body', () => {
+    return verifyRequest(
+      app,
+      (err, _res) => {
+        const body = JSON.parse(err.text)
+        expect(body.fields.body.message).to.equal(`'body' is required`)
+      },
+      request => request.post(basePath + '/EmptyBody/required'),
+      400,
+    )
+  })
+
+  it('still errors on malformed json', () => {
+    return verifyRequest(
+      app,
+      (err, _res) => {
+        const body = JSON.parse(err.text)
+        expect(body.status).to.equal(400)
+      },
+      request => request.post(basePath + '/EmptyBody/optional').set('Content-Type', 'application/json').send('{"value":'),
+      400,
+    )
   })
 
   it('correctly handles OPTIONS requests', () => {
@@ -572,6 +626,19 @@ describe('Express Server', () => {
           expect(res.header.hero).to.equal('IronMan')
           expect(res.header.name).to.equal('Tony Stark')
           expect(res.header['set-cookie']).to.eql(['token=MY_AUTH_TOKEN;', 'refreshToken=MY_REFRESH_TOKEN;'])
+        },
+        204,
+      )
+    })
+
+    it('should skip undefined headers', () => {
+      return verifyGetRequest(
+        app,
+        basePath + `/Controller/customHeaderUndefined`,
+        (_err, res) => {
+          expect(res.status).to.equal(204)
+          expect(res.header.hero).to.equal(undefined)
+          expect(res.header.name).to.equal('Tony Stark')
         },
         204,
       )

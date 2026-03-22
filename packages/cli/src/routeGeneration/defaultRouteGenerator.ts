@@ -63,7 +63,7 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
   }
 
   public buildContent(middlewareTemplate: string) {
-    handlebars.registerHelper('json', (context: any) => {
+    handlebars.registerHelper('json', (context: unknown) => {
       return JSON.stringify(context)
     })
     const additionalPropsHelper = (additionalProperties: TsoaRoute.RefObjectModelSchema['additionalProperties']) => {

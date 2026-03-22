@@ -17,6 +17,7 @@ import {
   type MethodDeclaration,
   type CallExpression,
   type StringLiteral,
+  isStringLiteralLike,
 } from 'typescript'
 
 export class ControllerGenerator {
@@ -242,7 +243,7 @@ export class ControllerGenerator {
     const decorator = decorators[0]
     const expression = decorator.parent as CallExpression
 
-    return expression.arguments.map((a: any) => a.text as string)
+    return expression.arguments.filter(isStringLiteralLike).map(argument => argument.text)
   }
 
   private getSecurity(): Tsoa.Security[] {

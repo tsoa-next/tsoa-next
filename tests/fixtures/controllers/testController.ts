@@ -50,6 +50,27 @@ export class TestController extends Controller {
     })
   }
 
+  @Get('customHeaderCaseInsensitive')
+  public async customHeaderCaseInsensitive(): Promise<void> {
+    return new Promise<void>(resolve => {
+      setTimeout(() => {
+        this.setHeader('Set-Cookie', ['token=MY_AUTH_TOKEN;', 'refreshToken=MY_REFRESH_TOKEN;'])
+        resolve()
+      }, 1000)
+    })
+  }
+
+  @Get('customHeaderUndefined')
+  public async customHeaderUndefined(): Promise<void> {
+    return new Promise<void>(resolve => {
+      setTimeout(() => {
+        this.setHeader('hero', undefined)
+        this.setHeader('name', 'Tony Stark')
+        resolve()
+      }, 1000)
+    })
+  }
+
   @SuccessResponse(418)
   @Get('successResponse')
   public async getSuccessResponse(): Promise<void> {

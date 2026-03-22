@@ -1,8 +1,14 @@
 import * as ts from 'typescript'
 import { GenerateMetadataError } from '../metadataGeneration/exceptions'
 
+type NodeWithJsDoc = ts.Node & { jsDoc?: ts.JSDoc[] }
+
+function getJsDocs(node: ts.Node): ts.JSDoc[] {
+  return (node as NodeWithJsDoc).jsDoc ?? []
+}
+
 export function getJSDocDescription(node: ts.Node) {
-  const jsDocs = (node as any).jsDoc as ts.JSDoc[]
+  const jsDocs = getJsDocs(node)
   if (!jsDocs || !jsDocs.length) {
     return undefined
   }
@@ -34,9 +40,9 @@ export function getJSDocComments(node: ts.Node, tagName: string) {
 
 export function getJSDocTagNames(node: ts.Node, requireTagName = false) {
   let tags: ts.JSDocTag[]
-  if (node.kind === ts.SyntaxKind.Parameter) {
-    const parameterName = ((node as any).name as ts.Identifier).text
-    tags = getJSDocTags(node.parent as any, tag => {
+  if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+    const parameterName = node.name.text
+    tags = getJSDocTags(node.parent, tag => {
       if (ts.isJSDocParameterTag(tag)) {
         return false
       } else if (tag.comment === undefined) {
@@ -46,7 +52,7 @@ export function getJSDocTagNames(node: ts.Node, requireTagName = false) {
       return commentToString(tag.comment)?.startsWith(parameterName) || false
     })
   } else {
-    tags = getJSDocTags(node as any, tag => {
+    tags = getJSDocTags(node, tag => {
       return requireTagName ? tag.comment !== undefined : true
     })
   }
@@ -56,7 +62,7 @@ export function getJSDocTagNames(node: ts.Node, requireTagName = false) {
 }
 
 export function getJSDocTags(node: ts.Node, isMatching: (tag: ts.JSDocTag) => boolean) {
-  const jsDocs = (node as any).jsDoc as ts.JSDoc[]
+  const jsDocs = getJsDocs(node)
   if (!jsDocs || jsDocs.length === 0) {
     return []
   }

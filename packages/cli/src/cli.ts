@@ -13,19 +13,22 @@ import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { CompilerOptions } from 'typescript'
 
 const workingDir: string = process.cwd()
+const yamlModule = YAML as unknown as { parse(source: string): unknown }
 
-let packageJson: any
+let packageJson: Record<string, unknown> | undefined
 const getPackageJsonValue = async (key: string, defaultValue = ''): Promise<string> => {
   if (!packageJson) {
     try {
       const packageJsonRaw = await fsReadFile(`${workingDir}/package.json`)
-      packageJson = JSON.parse(packageJsonRaw.toString('utf8'))
+      const parsedPackageJson: unknown = JSON.parse(packageJsonRaw.toString('utf8'))
+      packageJson = typeof parsedPackageJson === 'object' && parsedPackageJson !== null ? (parsedPackageJson as Record<string, unknown>) : {}
     } catch (_) {
       return defaultValue
     }
   }
 
-  return packageJson[key] || ''
+  const value = packageJson[key]
+  return typeof value === 'string' ? value : defaultValue
 }
 
 const nameDefault = () => getPackageJsonValue('name', 'TSOA')
@@ -64,12 +67,16 @@ const getConfig = async (configPath = 'tsoa.json'): Promise<ConfigWithContext> =
   try {
     if (isYamlExtension(ext)) {
       const configRaw = await fsReadFile(configFullPath)
-      config = YAML.parse(configRaw.toString('utf8'))
+      config = parseConfigValue(yamlModule.parse(configRaw.toString('utf8')))
     } else if (isJsExtension(ext)) {
-      config = await import(configFullPath)
+      const importedConfig: unknown = await import(configFullPath)
+      if (typeof importedConfig !== 'object' || importedConfig === null) {
+        throw new Error(`Invalid JS config export at '${configPath}'`)
+      }
+      config = parseConfigModule(importedConfig as Record<string, unknown>)
     } else {
       const configRaw = await fsReadFile(configFullPath)
-      config = JSON.parse(configRaw.toString('utf8'))
+      config = parseConfigValue(JSON.parse(configRaw.toString('utf8')))
     }
   } catch (err) {
     if (!(err instanceof Error)) {
@@ -150,6 +157,19 @@ const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): Com
 
 const isConfig = (value: Config | Record<string, unknown> | undefined): value is Config => {
   return typeof value === 'object' && value !== null && ('entryFile' in value || 'routes' in value || 'spec' in value || 'tsconfig' in value)
+}
+
+const parseConfigValue = (value: unknown): Config => {
+  if (isConfig(value as Record<string, unknown> | undefined)) {
+    return value as Config
+  }
+
+  throw new Error('Invalid tsoa-next config shape')
+}
+
+const parseConfigModule = (moduleExports: Record<string, unknown>): Config => {
+  const defaultExport = 'default' in moduleExports ? moduleExports.default : moduleExports
+  return parseConfigValue(defaultExport)
 }
 
 export function validateCompilerOptions(config: Config, configBaseDir?: string): CompilerOptions
@@ -254,7 +274,7 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   }
 }
 
-type RouteGeneratorImpl = new (metadata: Tsoa.Metadata, options: ExtendedRoutesConfig) => AbstractRouteGenerator<any>
+type RouteGeneratorImpl = new (metadata: Tsoa.Metadata, options: ExtendedRoutesConfig) => AbstractRouteGenerator<ExtendedRoutesConfig>
 
 export interface ExtendedRoutesConfig extends RoutesConfig {
   entryFile: Config['entryFile']

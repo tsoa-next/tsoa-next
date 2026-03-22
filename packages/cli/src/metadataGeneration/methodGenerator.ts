@@ -11,8 +11,30 @@ import { ParameterGenerator } from './parameterGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
 import { TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
+import type { InitializerValue } from './initializer-value'
 
 type HttpMethod = 'options' | 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head'
+const toExampleLabel = (value: InitializerValue | undefined): string | undefined => (typeof value === 'string' ? value : undefined)
+const isResponseName = (value: InitializerValue | undefined): value is Tsoa.Response['name'] => typeof value === 'string' || typeof value === 'number'
+const isExampleValue = (value: InitializerValue | undefined, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  return Object.values(value).every(item => isExampleValue(item, true))
+}
 
 export class MethodGenerator {
   protected method?: HttpMethod
@@ -159,7 +181,7 @@ export class MethodGenerator {
 
     const decorator = pathDecorators[0]
 
-    this.method = decorator.text.toLowerCase() as any
+    this.method = decorator.text.toLowerCase() as HttpMethod
     // if you don't pass in a path to the method decorator, we'll just use the base route
     // todo: what if someone has multiple no argument methods of the same type in a single controller?
     // we need to throw an error there
@@ -185,11 +207,11 @@ export class MethodGenerator {
 
     const [decorator] = consumesDecorators
     const [consumes] = getDecoratorValues(decorator, this.current.typeChecker)
-    return consumes
+    return typeof consumes === 'string' ? consumes : undefined
   }
 
   private getMethodResponses(): Tsoa.Response[] {
-    const responseExamplesByName: Record<string, any> = {}
+    const responseExamplesByName: Record<string, Tsoa.Example[]> = {}
     const decorators = this.getDecoratorsByIdentifier(this.node, 'Response')
     if (!decorators || !decorators.length) {
       return []
@@ -197,16 +219,20 @@ export class MethodGenerator {
 
     return decorators.map(decorator => {
       const [name, description, example, produces] = getDecoratorValues(decorator, this.current.typeChecker)
+      const responseName = isResponseName(name) ? name : '200'
+      const responseDescription = typeof description === 'string' ? description : ''
 
-      if (example !== undefined) {
-        responseExamplesByName[name] = responseExamplesByName[name] ? [...responseExamplesByName[name], example] : [example]
+      if (isExampleValue(example) && isResponseName(name)) {
+        const responseKey = String(responseName)
+        const currentExamples = responseExamplesByName[responseKey] ?? []
+        responseExamplesByName[responseKey] = [...currentExamples, example]
       }
 
       return {
-        description: description || '',
-        examples: responseExamplesByName[name] || undefined,
-        name: name || '200',
-        produces: this.getProducesAdapter(produces),
+        description: responseDescription,
+        examples: responseExamplesByName[String(responseName)] || undefined,
+        name: responseName,
+        produces: this.getProducesAdapter(this.getProducesValue(produces)),
         schema: this.getSchemaFromDecorator(decorator, 0),
         headers: this.getHeadersFromDecorator(decorator, 1),
       } as Tsoa.Response
@@ -222,7 +248,7 @@ export class MethodGenerator {
       return {
         response: {
           description: isVoidType(type) ? 'No content' : returnsDescription,
-          examples: examplesWithLabels?.map(ex => ex.example),
+          examples: examplesWithLabels ? examplesWithLabels.map(ex => ex.example) : undefined,
           exampleLabels: examplesWithLabels?.map(ex => ex.label),
           name: isVoidType(type) ? '204' : '200',
           produces: this.produces,
@@ -237,18 +263,20 @@ export class MethodGenerator {
     const [firstDecorator] = decorators
     const [name, description, produces] = getDecoratorValues(firstDecorator, this.current.typeChecker)
     const headers = this.getHeadersFromDecorator(firstDecorator, 0)
+    const responseName = isResponseName(name) ? name : '200'
+    const responseDescription = typeof description === 'string' ? description : ''
 
     return {
       response: {
-        description: description || '',
-        examples: examplesWithLabels?.map(ex => ex.example),
+        description: responseDescription,
+        examples: examplesWithLabels ? examplesWithLabels.map(ex => ex.example) : undefined,
         exampleLabels: examplesWithLabels?.map(ex => ex.label),
-        name: name || '200',
-        produces: this.getProducesAdapter(produces),
+        name: responseName,
+        produces: this.getProducesAdapter(this.getProducesValue(produces)),
         schema: type,
         headers,
       },
-      status: name && /^\d+$/.test(name) ? parseInt(name, 10) : undefined,
+      status: typeof name === 'number' ? name : typeof name === 'string' && /^\d+$/.test(name) ? parseInt(name, 10) : undefined,
     }
   }
 
@@ -274,8 +302,8 @@ export class MethodGenerator {
 
     const examples = exampleDecorators.map(exampleDecorator => {
       const [example, label] = getDecoratorValues(exampleDecorator, this.current.typeChecker)
-      return { example, label }
-    })
+      return { example, label: toExampleLabel(label) }
+    }).filter((entry): entry is { example: Tsoa.Example; label: string | undefined } => isExampleValue(entry.example))
 
     return examples || undefined
   }
@@ -309,7 +337,7 @@ export class MethodGenerator {
     }
 
     const values = getDecoratorValues(opDecorators[0], this.current.typeChecker)
-    return values && values[0]
+    return typeof values[0] === 'string' ? values[0] : undefined
   }
 
   private getTags() {
@@ -325,7 +353,7 @@ export class MethodGenerator {
     if (tags && this.parentTags) {
       tags.push(...this.parentTags)
     }
-    return tags
+    return tags.filter((tag): tag is string => typeof tag === 'string')
   }
 
   private getSecurity(): Tsoa.Security[] {
@@ -379,5 +407,17 @@ export class MethodGenerator {
       return [produces]
     }
     return
+  }
+
+  private getProducesValue(value: InitializerValue | undefined): string[] | string | undefined {
+    if (typeof value === 'string') {
+      return value
+    }
+
+    if (Array.isArray(value)) {
+      return value.filter((entry): entry is string => typeof entry === 'string')
+    }
+
+    return undefined
   }
 }

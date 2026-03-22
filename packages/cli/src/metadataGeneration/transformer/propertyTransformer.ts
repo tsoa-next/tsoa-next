@@ -92,7 +92,7 @@ export class PropertyTransformer extends Transformer {
     } else if (overrideToken && overrideToken.kind === SyntaxKind.QuestionToken) {
       required = false
     }
-    let def = getInitializerValue(propertyDeclaration.initializer, resolver.current.typeChecker)
+    let def: unknown = getInitializerValue(propertyDeclaration.initializer, resolver.current.typeChecker)
     if (def === undefined) {
       def = TypeResolver.getDefault(propertyDeclaration)
     }

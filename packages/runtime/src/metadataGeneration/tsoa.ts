@@ -4,6 +4,8 @@ import { Validator } from '..'
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Tsoa {
+  export type Example = string | number | boolean | null | undefined | Date | Example[] | { [exampleName: string]: Example }
+
   export interface Metadata {
     controllers: Controller[]
     referenceTypeMap: ReferenceTypeMap
@@ -39,7 +41,7 @@ export namespace Tsoa {
 
   export interface Parameter {
     parameterName: string
-    example?: Array<{ [exampleName: string]: Swagger.Example3 }>
+    example?: Example[]
     description?: string
     in: 'query' | 'queries' | 'header' | 'path' | 'formData' | 'body' | 'body-prop' | 'request' | 'request-prop' | 'res'
     name: string
@@ -53,9 +55,14 @@ export namespace Tsoa {
     $ref?: Swagger.BaseSchema
   }
 
-  export interface ResParameter extends Response, Parameter {
+  export interface ResParameter extends Parameter {
     in: 'res'
     description: string
+    produces?: string[]
+    schema?: Type
+    examples?: Example[]
+    exampleLabels?: Array<string | undefined>
+    headers?: HeaderType
   }
 
   export interface ArrayParameter extends Parameter {
@@ -63,7 +70,7 @@ export namespace Tsoa {
     collectionFormat?: 'csv' | 'multi' | 'pipes' | 'ssv' | 'tsv'
   }
 
-  type AllKeys<T> = T extends any ? keyof T : never
+  type AllKeys<T> = T extends unknown ? keyof T : never
 
   export type ValidatorKey = AllKeys<Validator>
   export type SchemaValidatorKey = Exclude<ValidatorKey, `is${string}` | 'minDate' | 'maxDate'>
@@ -81,10 +88,10 @@ export namespace Tsoa {
 
   export interface Response {
     description: string
-    name: string
+    name: string | number
     produces?: string[]
     schema?: Type
-    examples?: Array<{ [exampleName: string]: Swagger.Example3 }>
+    examples?: Example[]
     exampleLabels?: Array<string | undefined>
     headers?: HeaderType
   }

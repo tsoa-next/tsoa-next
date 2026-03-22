@@ -208,6 +208,41 @@ describe('Hapi Server', () => {
     })
   })
 
+  it('treats an absent optional body as undefined', () => {
+    return verifyRequest(
+      app,
+      (_err, res) => {
+        expect(res.body).to.deep.equal({ state: 'undefined', body: null })
+      },
+      request => request.post(basePath + '/EmptyBody/optional'),
+      200,
+    )
+  })
+
+  it('keeps an explicit empty object body distinct from an absent body', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', {}, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: {} })
+    })
+  })
+
+  it('preserves non-empty body payloads', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', { value: 'present' }, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: { value: 'present' } })
+    })
+  })
+
+  it('fails validation for a missing required body', () => {
+    return verifyRequest(
+      app,
+      (err, _res) => {
+        const body = JSON.parse(err.text)
+        expect(body.fields.body.message).to.equal(`'body' is required`)
+      },
+      request => request.post(basePath + '/EmptyBody/required'),
+      400,
+    )
+  })
+
   it('correctly handles OPTIONS requests', () => {
     const path = basePath + '/OptionsTest/Current'
     return verifyRequest(
@@ -412,6 +447,18 @@ describe('Hapi Server', () => {
           expect(res.status).to.equal(204)
           expect(res.header.hero).to.equal('IronMan')
           expect(res.header.name).to.equal('Tony Stark')
+          expect(res.header['set-cookie']).to.eql(['token=MY_AUTH_TOKEN;', 'refreshToken=MY_REFRESH_TOKEN;'])
+        },
+        204,
+      )
+    })
+
+    it('should append set-cookie arrays regardless of header casing', () => {
+      return verifyGetRequest(
+        app,
+        basePath + `/Controller/customHeaderCaseInsensitive`,
+        (_err, res) => {
+          expect(res.status).to.equal(204)
           expect(res.header['set-cookie']).to.eql(['token=MY_AUTH_TOKEN;', 'refreshToken=MY_REFRESH_TOKEN;'])
         },
         204,

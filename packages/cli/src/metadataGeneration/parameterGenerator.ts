@@ -8,6 +8,33 @@ import { MetadataGenerator } from './metadataGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
 import { TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
+import type { InitializerValue } from './initializer-value'
+
+const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
+const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).every(item => isExampleValue(item, true))
+  }
+
+  return false
+}
+const toParameterExamples = (values: unknown[] | undefined): Tsoa.Example[] | undefined => values?.filter(value => isExampleValue(value))
 
 export class ParameterGenerator {
   constructor(
@@ -74,10 +101,10 @@ export class ParameterGenerator {
     return {
       default: getInitializerValue(parameter.initializer, this.current.typeChecker, type),
       description: this.getParameterDescription(parameter),
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       in: 'request-prop',
-      name: getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'ParameterProp') || parameterName,
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'ParameterProp'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -152,7 +179,7 @@ export class ParameterGenerator {
         name: status,
         produces: headers ? this.getProducesFromResHeaders(headers) : undefined,
         parameterName,
-        examples,
+        examples: toParameterExamples(examples),
         required: true,
         type,
         exampleLabels,
@@ -185,10 +212,10 @@ export class ParameterGenerator {
     return {
       default: getInitializerValue(parameter.initializer, this.current.typeChecker, type),
       description: this.getParameterDescription(parameter),
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       in: 'body-prop',
-      name: getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'BodyProp') || parameterName,
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'BodyProp'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -211,7 +238,7 @@ export class ParameterGenerator {
       description: this.getParameterDescription(parameter),
       in: 'body',
       name: parameterName,
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
@@ -234,10 +261,10 @@ export class ParameterGenerator {
     return {
       default: getInitializerValue(parameter.initializer, this.current.typeChecker, type),
       description: this.getParameterDescription(parameter),
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       in: 'header',
-      name: getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Header') || parameterName,
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Header'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -263,13 +290,15 @@ export class ParameterGenerator {
     return {
       description: this.getParameterDescription(parameter),
       in: 'formData',
-      name:
+      name: getDecoratorStringValue(
         getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => {
           if (isArray) {
             return ident.text === 'UploadedFiles'
           }
           return ident.text === 'UploadedFile'
-        }) ?? parameterName,
+        }),
+        parameterName,
+      ),
       required: !parameter.questionToken && !parameter.initializer,
       type,
       parameterName,
@@ -289,7 +318,7 @@ export class ParameterGenerator {
     return {
       description: this.getParameterDescription(parameter),
       in: 'formData',
-      name: getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'FormField') ?? parameterName,
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'FormField'), parameterName),
       required: !parameter.questionToken && !parameter.initializer,
       type,
       parameterName,
@@ -329,11 +358,11 @@ export class ParameterGenerator {
 
             const { examples: example, exampleLabels } = this.getParameterExample(parameter, parameterName)
 
-            return {
-              description: this.getParameterDescription(parameter),
-              in: 'queries',
-              name: parameterName,
-              example,
+              return {
+                description: this.getParameterDescription(parameter),
+                in: 'queries',
+                name: parameterName,
+                example: toParameterExamples(example),
               exampleLabels,
               parameterName,
               required: !parameter.questionToken && !parameter.initializer,
@@ -363,7 +392,7 @@ export class ParameterGenerator {
       description: this.getParameterDescription(parameter),
       in: 'queries',
       name: parameterName,
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
@@ -409,10 +438,10 @@ export class ParameterGenerator {
     const commonProperties = {
       default: getInitializerValue(parameter.initializer, this.current.typeChecker, type),
       description: this.getParameterDescription(parameter),
-      example,
+      example: toParameterExamples(example),
       exampleLabels,
       in: 'query' as const,
-      name: getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Query') || parameterName,
+      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, ident => ident.text === 'Query'), parameterName),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       validators: getParameterValidators(this.parameter, parameterName),
@@ -468,7 +497,7 @@ export class ParameterGenerator {
     return {
       default: getInitializerValue(parameter.initializer, this.current.typeChecker, type),
       description: this.getParameterDescription(parameter),
-      example: examples,
+      example: toParameterExamples(examples),
       exampleLabels,
       in: 'path',
       name: pathName,
@@ -519,8 +548,9 @@ export class ParameterGenerator {
       }
     } else {
       try {
+        const parsedExamples = examples.map(example => JSON.parse(example) as unknown)
         return {
-          examples: examples.map(example => JSON.parse(example)),
+          examples: parsedExamples,
           exampleLabels,
         }
       } catch (e) {

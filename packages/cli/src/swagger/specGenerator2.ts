@@ -175,8 +175,9 @@ export class SpecGenerator2 extends SpecGenerator {
     return paths
   }
 
-  private buildMethod(controllerName: string, method: Tsoa.Method, pathObject: any, defaultProduces?: string[]) {
-    const pathMethod: Swagger.Operation = (pathObject[method.method] = this.buildOperation(controllerName, method, defaultProduces))
+  private buildMethod(controllerName: string, method: Tsoa.Method, pathObject: Partial<Record<Tsoa.Method['method'], Swagger.Operation>>, defaultProduces?: string[]) {
+    const pathMethod: Swagger.Operation = this.buildOperation(controllerName, method, defaultProduces)
+    pathObject[method.method] = pathMethod
     pathMethod.description = method.description
     pathMethod.summary = method.summary
     pathMethod.tags = method.tags
@@ -543,9 +544,9 @@ export class SpecGenerator2 extends SpecGenerator {
           }, {})
         return { ...acc, ...props }
       } else {
-        process.env.NODE_ENV !== 'tsoa_test' &&
-           
+        if (process.env.NODE_ENV !== 'tsoa_test') {
           console.warn('Swagger 2.0 does not fully support this kind of intersection types. If you would like to take advantage of this, please change tsoa.json\'s "specVersion" to 3.')
+        }
         return { ...acc }
       }
     }, {})

@@ -1,4 +1,4 @@
-export function Route(name?: string): ClassDecorator {
+export function Route(_name?: string): ClassDecorator {
   return () => {
     return
   }

@@ -1,17 +1,17 @@
 import { IsValidHeader } from '../utils/isHeaderType'
 import { HttpStatusCodeLiteral, HttpStatusCodeStringLiteral, OtherValidOpenApiHttpStatusCode } from '../interfaces/response'
 
-export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(name: string | number, description?: string, produces?: string | string[]): MethodDecorator {
+export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(_name: string | number, _description?: string, _produces?: string | string[]): MethodDecorator {
   return () => {
     return
   }
 }
 
 export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderType> = object>(
-  name: HttpStatusCodeLiteral | HttpStatusCodeStringLiteral | OtherValidOpenApiHttpStatusCode,
-  description?: string,
-  example?: ExampleType,
-  produces?: string | string[],
+  _name: HttpStatusCodeLiteral | HttpStatusCodeStringLiteral | OtherValidOpenApiHttpStatusCode,
+  _description?: string,
+  _example?: ExampleType,
+  _produces?: string | string[],
 ): MethodDecorator & ClassDecorator {
   return () => {
     return
@@ -35,7 +35,7 @@ export function Res(): ParameterDecorator {
  *
  * @link https://swagger.io/docs/specification/media-types/
  */
-export function Produces(value: string): MethodDecorator & ClassDecorator {
+export function Produces(_value: string): MethodDecorator & ClassDecorator {
   return () => {
     return
   }

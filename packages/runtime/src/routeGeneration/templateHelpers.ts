@@ -6,16 +6,26 @@ import { TsoaRoute, isDefaultForAdditionalPropertiesAllowed } from './tsoa-route
 import ValidatorKey = Tsoa.ValidatorKey
 
 // for backwards compatibility with custom templates
+export function ValidateParam<TValue>(
+  property: TsoaRoute.PropertySchema,
+  value: TValue,
+  generatedModels: TsoaRoute.Models,
+  name: string | undefined,
+  fieldErrors: FieldErrors,
+  isBodyParam: boolean,
+  parent: string | undefined,
+  config: AdditionalProps,
+): TValue
 export function ValidateParam(
   property: TsoaRoute.PropertySchema,
-  value: any,
+  value: unknown,
   generatedModels: TsoaRoute.Models,
   name = '',
   fieldErrors: FieldErrors,
   isBodyParam: boolean,
   parent = '',
   config: AdditionalProps,
-) {
+): unknown {
   return new ValidationService(generatedModels, config).ValidateParam(property, value, name, fieldErrors, isBodyParam, parent)
 }
 
@@ -27,7 +37,12 @@ export class ValidationService {
     private readonly config: AdditionalProps,
   ) {}
 
-  public ValidateParam(property: TsoaRoute.PropertySchema, rawValue: any, name = '', fieldErrors: FieldErrors, isBodyParam: boolean, parent = '') {
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+  }
+
+  public ValidateParam<TValue>(property: TsoaRoute.PropertySchema, rawValue: TValue, name: string | undefined, fieldErrors: FieldErrors, isBodyParam: boolean, parent?: string): TValue
+  public ValidateParam(property: TsoaRoute.PropertySchema, rawValue: unknown, name = '', fieldErrors: FieldErrors, isBodyParam: boolean, parent = ''): unknown {
     let value = rawValue
     // If undefined is allowed type, we can move to value validation
     if (value === undefined && property.dataType !== 'undefined') {
@@ -76,7 +91,7 @@ export class ValidationService {
       case 'datetime':
         return this.validateDateTime(name, value, fieldErrors, isBodyParam, property.validators as DateTimeValidator, parent)
       case 'buffer':
-        return this.validateBuffer(name, value)
+        return this.validateBuffer(name, value, fieldErrors, parent)
       case 'union':
         return this.validateUnion(name, value, fieldErrors, isBodyParam, property, parent)
       case 'intersection':
@@ -106,20 +121,20 @@ export class ValidationService {
     }
   }
 
-  public hasCorrectJsType(value: any, type: 'object' | 'boolean' | 'number' | 'string', isBodyParam: boolean) {
+  public hasCorrectJsType(value: unknown, type: 'object' | 'boolean' | 'number' | 'string', isBodyParam: boolean): boolean {
     return !isBodyParam || this.config.bodyCoercion || typeof value === type
   }
 
   public validateNestedObjectLiteral(
     name: string,
-    value: any,
+    value: unknown,
     fieldErrors: FieldErrors,
     isBodyParam: boolean,
     nestedProperties: { [name: string]: TsoaRoute.PropertySchema } | undefined,
     additionalProperties: TsoaRoute.PropertySchema | boolean | undefined,
     parent: string,
   ) {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    if (!this.isRecord(value)) {
       fieldErrors[parent + name] = {
         message: `invalid object`,
         value,
@@ -150,7 +165,7 @@ export class ValidationService {
         if (propHandling === 'throw-on-extras') {
           fieldErrors[parent + name] = {
             message: `"${excessProps.join(',')}" is an excess property and therefore is not allowed`,
-            value: excessProps.reduce((acc, propName) => ({ [propName]: value[propName], ...acc }), {}),
+            value: excessProps.reduce<Record<string, unknown>>((acc, propName) => ({ [propName]: value[propName], ...acc }), {}),
           }
         }
       }
@@ -165,7 +180,7 @@ export class ValidationService {
       }
     })
 
-    if (typeof additionalProperties === 'object' && typeof value === 'object') {
+    if (typeof additionalProperties === 'object') {
       const keys = Object.keys(value).filter(key => typeof nestedProperties[key] === 'undefined')
       keys.forEach(key => {
         const validatedProp = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, parent + name + '.')
@@ -183,7 +198,7 @@ export class ValidationService {
     return value
   }
 
-  public validateInt(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: IntegerValidator, parent = '') {
+  public validateInt(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: IntegerValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isInt(String(value))) {
       let message = `invalid integer number`
       if (validators) {
@@ -244,7 +259,7 @@ export class ValidationService {
     return numberValue
   }
 
-  public validateFloat(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: FloatValidator, parent = '') {
+  public validateFloat(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: FloatValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isFloat(String(value))) {
       let message = 'invalid float number'
       if (validators) {
@@ -328,7 +343,7 @@ export class ValidationService {
     return members[enumMatchIndex]
   }
 
-  public validateDate(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateValidator, parent = '') {
+  public validateDate(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateValidator, parent = ''): Date | undefined {
     if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
       const message = validators && validators.isDate && validators.isDate.errorMsg ? validators.isDate.errorMsg : `invalid ISO 8601 date format, i.e. YYYY-MM-DD`
       fieldErrors[parent + name] = {
@@ -365,7 +380,7 @@ export class ValidationService {
     return dateValue
   }
 
-  public validateDateTime(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateTimeValidator, parent = '') {
+  public validateDateTime(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateTimeValidator, parent = ''): Date | undefined {
     if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
       const message = validators && validators.isDateTime && validators.isDateTime.errorMsg ? validators.isDateTime.errorMsg : `invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss`
       fieldErrors[parent + name] = {
@@ -402,7 +417,7 @@ export class ValidationService {
     return datetimeValue
   }
 
-  public validateString(name: string, value: any, fieldErrors: FieldErrors, validators?: StringValidator, parent = '') {
+  public validateString(name: string, value: unknown, fieldErrors: FieldErrors, validators?: StringValidator, parent = ''): string | undefined {
     if (typeof value !== 'string') {
       const message = validators && validators.isString && validators.isString.errorMsg ? validators.isString.errorMsg : `invalid string value`
       fieldErrors[parent + name] = {
@@ -446,7 +461,7 @@ export class ValidationService {
     return stringValue
   }
 
-  public validateBool(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: BooleanValidator, parent = '') {
+  public validateBool(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: BooleanValidator, parent = ''): boolean | undefined {
     if (value === true || value === false) {
       return value
     }
@@ -471,7 +486,7 @@ export class ValidationService {
     return
   }
 
-  public validateUndefined(name: string, value: any, fieldErrors: FieldErrors, parent = '') {
+  public validateUndefined(name: string, value: unknown, fieldErrors: FieldErrors, parent = ''): undefined {
     if (value === undefined) {
       return undefined
     }
@@ -484,7 +499,7 @@ export class ValidationService {
     return
   }
 
-  public validateArray(name: string, value: any[], fieldErrors: FieldErrors, isBodyParam: boolean, schema?: TsoaRoute.PropertySchema, validators?: ArrayValidator, parent = '') {
+  public validateArray(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, schema?: TsoaRoute.PropertySchema, validators?: ArrayValidator, parent = ''): unknown[] | undefined {
     if ((isBodyParam && this.config.bodyCoercion === false && !Array.isArray(value)) || !schema || value === undefined) {
       const message = validators && validators.isArray && validators.isArray.errorMsg ? validators.isArray.errorMsg : `invalid array`
       fieldErrors[parent + name] = {
@@ -494,14 +509,16 @@ export class ValidationService {
       return
     }
 
-    let arrayValue = [] as any[]
+    let arrayValue: unknown[] = []
     const previousErrors = Object.keys(fieldErrors).length
     if (Array.isArray(value)) {
       arrayValue = value.map((elementValue, index) => {
-        return this.ValidateParam(schema, elementValue, `$${index}`, fieldErrors, isBodyParam, name + '.')
+        const validatedElement: unknown = this.ValidateParam(schema, elementValue, `$${index}`, fieldErrors, isBodyParam, name + '.')
+        return validatedElement
       })
     } else {
-      arrayValue = [this.ValidateParam(schema, value, '$0', fieldErrors, isBodyParam, name + '.')]
+      const validatedElement: unknown = this.ValidateParam(schema, value, '$0', fieldErrors, isBodyParam, name + '.')
+      arrayValue = [validatedElement]
     }
 
     if (Object.keys(fieldErrors).length > previousErrors) {
@@ -545,11 +562,28 @@ export class ValidationService {
     return arrayValue
   }
 
-  public validateBuffer(_name: string, value: string) {
-    return Buffer.from(value)
+  public validateBuffer(name: string, value: unknown, fieldErrors: FieldErrors, parent = ''): Buffer | undefined {
+    if (Buffer.isBuffer(value)) {
+      return value
+    }
+
+    if (typeof value === 'string') {
+      return Buffer.from(value)
+    }
+
+    if (value instanceof Uint8Array) {
+      return Buffer.from(value)
+    }
+
+    fieldErrors[parent + name] = {
+      message: 'invalid buffer value',
+      value,
+    }
+    return
   }
 
-  public validateUnion(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent = ''): any {
+  public validateUnion<TValue>(name: string, value: TValue, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent?: string): TValue
+  public validateUnion(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent = ''): unknown {
     if (!property.subSchemas) {
       throw new Error(
         'internal tsoa error: ' +
@@ -578,7 +612,8 @@ export class ValidationService {
     return
   }
 
-  public validateIntersection(name: string, value: any, fieldErrors: FieldErrors, isBodyParam: boolean, subSchemas: TsoaRoute.PropertySchema[] | undefined, parent = ''): any {
+  public validateIntersection<TValue>(name: string, value: TValue, fieldErrors: FieldErrors, isBodyParam: boolean, subSchemas: TsoaRoute.PropertySchema[] | undefined, parent?: string): TValue
+  public validateIntersection(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, subSchemas: TsoaRoute.PropertySchema[] | undefined, parent = ''): unknown {
     if (!subSchemas) {
       throw new Error(
         'internal tsoa error: ' +
@@ -588,16 +623,18 @@ export class ValidationService {
     }
 
     const subFieldErrors: FieldErrors[] = []
-    let cleanValues = {}
+    let cleanValues: Record<string, unknown> = {}
 
     subSchemas.forEach(subSchema => {
       const subFieldError: FieldErrors = {}
       const cleanValue = this.createChildValidationService({
         noImplicitAdditionalProperties: 'silently-remove-extras',
       }).ValidateParam(subSchema, this.deepClone(value), name, subFieldError, isBodyParam, parent)
-      cleanValues = {
-        ...cleanValues,
-        ...cleanValue,
+      if (this.isRecord(cleanValue)) {
+        cleanValues = {
+          ...cleanValues,
+          ...cleanValue,
+        }
       }
       subFieldErrors.push(subFieldError)
     })
@@ -628,7 +665,7 @@ export class ValidationService {
     const schemasWithRequiredProps = schemas.filter(schema => Object.keys(getRequiredPropError(schema)).length === 0)
 
     if (this.config.noImplicitAdditionalProperties === 'ignore') {
-      return { ...value, ...cleanValues }
+      return this.isRecord(value) ? { ...value, ...cleanValues } : cleanValues
     }
 
     if (this.config.noImplicitAdditionalProperties === 'silently-remove-extras') {
@@ -643,7 +680,7 @@ export class ValidationService {
       }
     }
 
-    if (schemasWithRequiredProps.length > 0 && schemasWithRequiredProps.some(schema => this.getExcessPropertiesFor(schema, Object.keys(value)).length === 0)) {
+    if (this.isRecord(value) && schemasWithRequiredProps.length > 0 && schemasWithRequiredProps.some(schema => this.getExcessPropertiesFor(schema, Object.keys(value)).length === 0)) {
       return cleanValues
     } else {
       fieldErrors[parent + name] = {
@@ -749,7 +786,8 @@ export class ValidationService {
     }
   }
 
-  public validateModel(input: { name: string; value: any; modelDefinition: TsoaRoute.ModelSchema; fieldErrors: FieldErrors; isBodyParam: boolean; parent?: string }): any {
+  public validateModel<TValue>(input: { name: string; value: TValue; modelDefinition: TsoaRoute.ModelSchema; fieldErrors: FieldErrors; isBodyParam: boolean; parent?: string }): TValue
+  public validateModel(input: { name: string; value: unknown; modelDefinition: TsoaRoute.ModelSchema; fieldErrors: FieldErrors; isBodyParam: boolean; parent?: string }): unknown {
     const { name, value, modelDefinition, fieldErrors, isBodyParam, parent = '' } = input
     const previousErrors = Object.keys(fieldErrors).length
 
@@ -764,7 +802,7 @@ export class ValidationService {
 
       const fieldPath = parent + name
 
-      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      if (!this.isRecord(value)) {
         fieldErrors[fieldPath] = {
           message: `invalid object`,
           value,
@@ -867,33 +905,32 @@ export class ValidationService {
 
     // Handle built-in object types
     if (obj instanceof Date) {
-      return new Date(obj.getTime()) as any
+      return new Date(obj.getTime()) as T
     }
 
     if (obj instanceof RegExp) {
-      return new RegExp(obj.source, obj.flags) as any
+      // Preserve the existing instance instead of reconstructing a pattern from untrusted data.
+      return obj
     }
 
-    if (obj instanceof Array) {
-      const cloneArr: any[] = new Array(obj.length)
-      for (let i = 0; i < obj.length; i++) {
-        cloneArr[i] = this.deepClone(obj[i])
-      }
-      return cloneArr as any
+    if (Array.isArray(obj)) {
+      const arrayValues = obj as unknown[]
+      const clonedArray: unknown = arrayValues.map(value => this.deepClone(value))
+      return clonedArray as T
     }
 
     if (Buffer && obj instanceof Buffer) {
-      return Buffer.from(obj) as any
+      return Buffer.from(obj) as T
     }
 
     // Handle plain objects
-    const cloneObj: any = {}
+    const cloneObj: Record<string, unknown> = {}
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        cloneObj[key] = this.deepClone(obj[key])
+        cloneObj[key] = this.deepClone((obj as Record<string, unknown>)[key])
       }
     }
-    return cloneObj
+    return cloneObj as T
   }
 
   /**
@@ -904,7 +941,7 @@ export class ValidationService {
    * @param subErrors Array of sub-errors to summarize
    * @param value The value that failed validation
    */
-  private addSummarizedError(fieldErrors: FieldErrors, errorKey: string, prefix: string, subErrors: FieldErrors[], value: any): void {
+  private addSummarizedError(fieldErrors: FieldErrors, errorKey: string, prefix: string, subErrors: FieldErrors[], value: unknown): void {
     const maxErrorLength = this.config.maxValidationErrorSize ? this.config.maxValidationErrorSize - prefix.length : undefined
 
     fieldErrors[errorKey] = {
@@ -1023,7 +1060,7 @@ export interface ArrayValidator {
 export type Validator = IntegerValidator | FloatValidator | DateValidator | DateTimeValidator | StringValidator | BooleanValidator | ArrayValidator
 
 export interface FieldErrors {
-  [name: string]: { message: string; value?: any }
+  [name: string]: { message: string; value?: unknown }
 }
 
 export interface Exception extends Error {

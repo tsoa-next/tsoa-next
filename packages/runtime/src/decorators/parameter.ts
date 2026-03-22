@@ -13,7 +13,7 @@ export function Body(): ParameterDecorator {
  *
  * @param {string} [name] The name of the body parameter
  */
-export function BodyProp(name?: string): ParameterDecorator {
+export function BodyProp(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -33,7 +33,7 @@ export function Request(): ParameterDecorator {
  *
  * @param {name} [name] The name of the request parameter
  */
-export function RequestProp(name?: string): ParameterDecorator {
+export function RequestProp(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -44,7 +44,7 @@ export function RequestProp(name?: string): ParameterDecorator {
  *
  * @param {string} [name] The name of the path parameter
  */
-export function Path(name?: string): ParameterDecorator {
+export function Path(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -55,7 +55,7 @@ export function Path(name?: string): ParameterDecorator {
  *
  * @param {string} [name] The name of the query parameter
  */
-export function Query(name?: string): ParameterDecorator {
+export function Query(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -75,7 +75,7 @@ export function Queries(): ParameterDecorator {
  *
  * @param {string} [name] The name of the header parameter
  */
-export function Header(name?: string): ParameterDecorator {
+export function Header(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -95,7 +95,7 @@ export function Inject(): ParameterDecorator {
  *
  * @param {string} [name] The name of the uploaded file parameter
  */
-export function UploadedFile(name?: string): ParameterDecorator {
+export function UploadedFile(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -106,7 +106,7 @@ export function UploadedFile(name?: string): ParameterDecorator {
  *
  * @param {string} [name] The name of the uploaded files parameter
  */
-export function UploadedFiles(name?: string): ParameterDecorator {
+export function UploadedFiles(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -117,7 +117,7 @@ export function UploadedFiles(name?: string): ParameterDecorator {
  *
  * @param {string} [name] The name of the uploaded files parameter
  */
-export function FormField(name?: string): ParameterDecorator {
+export function FormField(_name?: string): ParameterDecorator {
   return () => {
     return
   }
@@ -130,7 +130,7 @@ export function FormField(name?: string): ParameterDecorator {
  *
  * @link https://swagger.io/docs/specification/describing-request-body/
  */
-export function Consumes(value: string): MethodDecorator {
+export function Consumes(_value: string): MethodDecorator {
   return () => {
     return
   }
