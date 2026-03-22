@@ -175,15 +175,18 @@ export namespace Swagger {
 
   type Swagger2BaseParameter = BaseParameter & {
     schema: Schema2
+  }
+
+  type Swagger2NonBodyParameter = {
     exclusiveMaximum?: boolean
     exclusiveMinimum?: boolean
   }
 
   export type Swagger2BodyParameter = Swagger2BaseParameter & BodyParameter
-  export type Swagger2FormDataParameter = Swagger2BaseParameter & FormDataParameter
-  export type Swagger2QueryParameter = Swagger2BaseParameter & QueryParameter
-  export type Swagger2PathParameter = Swagger2BaseParameter & PathParameter
-  export type Swagger2HeaderParameter = Swagger2BaseParameter & HeaderParameter
+  export type Swagger2FormDataParameter = Swagger2BaseParameter & FormDataParameter & Swagger2NonBodyParameter
+  export type Swagger2QueryParameter = Swagger2BaseParameter & QueryParameter & Swagger2NonBodyParameter
+  export type Swagger2PathParameter = Swagger2BaseParameter & PathParameter & Swagger2NonBodyParameter
+  export type Swagger2HeaderParameter = Swagger2BaseParameter & HeaderParameter & Swagger2NonBodyParameter
 
   export type Parameter2 = Swagger2BodyParameter | Swagger2FormDataParameter | Swagger2QueryParameter | Swagger2PathParameter | Swagger2HeaderParameter
 
