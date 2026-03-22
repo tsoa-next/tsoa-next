@@ -132,61 +132,54 @@ export namespace Swagger {
 
   export type BaseParameter = {
     name: string
-    in: 'query' | 'header' | 'path' | 'formData' | 'body' | 'cookie'
     required?: boolean
     description?: string
-    deprecated?: boolean
     [ext: `x-${string}`]: unknown
-  } & Pick<BaseSchema, 'type' | 'items' | 'enum' | 'format' | 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern'>
+  }
+
+  type Swagger2ParameterValue = Pick<BaseSchema, 'items' | 'enum' | 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern'> & {
+    type: DataType
+    format?: DataFormat
+    default?: unknown
+  }
 
   export type BodyParameter = BaseParameter & {
     in: 'body'
-  }
-
-  export type FormDataParameter = BaseParameter & {
-    in: 'formData'
-    type: DataType
-    format?: DataFormat
-    collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
-    default?: unknown
-  }
-
-  type QueryParameter = BaseParameter & {
-    in: 'query'
-    type: DataType
-    format?: DataFormat
-    collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
-    default?: unknown
-  }
-
-  type PathParameter = BaseParameter & {
-    in: 'path'
-    type: DataType
-    format?: DataFormat
-    default?: unknown
-  }
-
-  type HeaderParameter = BaseParameter & {
-    in: 'header'
-    type: DataType
-    format?: DataFormat
-    default?: unknown
-  }
-
-  type Swagger2BaseParameter = BaseParameter & {
     schema: Schema2
   }
+
+  export type FormDataParameter = BaseParameter &
+    Swagger2ParameterValue & {
+      in: 'formData'
+      collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
+    }
+
+  type QueryParameter = BaseParameter &
+    Swagger2ParameterValue & {
+      in: 'query'
+      collectionFormat?: 'csv' | 'ssv' | 'tsv' | 'pipes' | 'multi'
+    }
+
+  type PathParameter = BaseParameter &
+    Swagger2ParameterValue & {
+      in: 'path'
+    }
+
+  type HeaderParameter = BaseParameter &
+    Swagger2ParameterValue & {
+      in: 'header'
+    }
 
   type Swagger2NonBodyParameter = {
     exclusiveMaximum?: boolean
     exclusiveMinimum?: boolean
   }
 
-  export type Swagger2BodyParameter = Swagger2BaseParameter & BodyParameter
-  export type Swagger2FormDataParameter = Swagger2BaseParameter & FormDataParameter & Swagger2NonBodyParameter
-  export type Swagger2QueryParameter = Swagger2BaseParameter & QueryParameter & Swagger2NonBodyParameter
-  export type Swagger2PathParameter = Swagger2BaseParameter & PathParameter & Swagger2NonBodyParameter
-  export type Swagger2HeaderParameter = Swagger2BaseParameter & HeaderParameter & Swagger2NonBodyParameter
+  export type Swagger2BodyParameter = BodyParameter
+  export type Swagger2FormDataParameter = FormDataParameter & Swagger2NonBodyParameter
+  export type Swagger2QueryParameter = QueryParameter & Swagger2NonBodyParameter
+  export type Swagger2PathParameter = PathParameter & Swagger2NonBodyParameter
+  export type Swagger2HeaderParameter = HeaderParameter & Swagger2NonBodyParameter
 
   export type Parameter2 = Swagger2BodyParameter | Swagger2FormDataParameter | Swagger2QueryParameter | Swagger2PathParameter | Swagger2HeaderParameter
 
@@ -194,8 +187,13 @@ export namespace Swagger {
     return typeof parameter === 'object' && parameter !== null && 'in' in parameter && parameter.in === 'query'
   }
 
+  export function isBodyParameter(parameter: unknown): parameter is Swagger2BodyParameter {
+    return typeof parameter === 'object' && parameter !== null && 'in' in parameter && parameter.in === 'body'
+  }
+
   export interface Parameter3 extends BaseParameter {
     in: 'query' | 'header' | 'path' | 'cookie'
+    deprecated?: boolean
     schema: Schema3
     style?: string
     explode?: boolean

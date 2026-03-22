@@ -35,12 +35,15 @@ describe('Exclusive numeric bounds', () => {
 
     const lowerParameter = spec.paths['/ExclusiveParameter/lower'].get?.parameters?.[0]
     expect(lowerParameter).to.include({ minimum: 5, exclusiveMinimum: true })
+    expect(lowerParameter).not.to.have.property('schema')
 
     const upperParameter = spec.paths['/ExclusiveParameter/upper'].get?.parameters?.[0]
     expect(upperParameter).to.include({ maximum: 10, exclusiveMaximum: true })
+    expect(upperParameter).not.to.have.property('schema')
 
     const rangeParameter = spec.paths['/ExclusiveParameter/range'].get?.parameters?.[0]
     expect(rangeParameter).to.include({ minimum: 5, exclusiveMinimum: true, maximum: 10, exclusiveMaximum: true })
+    expect(rangeParameter).not.to.have.property('schema')
   })
 
   it('emits boolean exclusive bounds for OpenAPI 3.0', () => {
@@ -49,12 +52,23 @@ describe('Exclusive numeric bounds', () => {
 
     const lowerParameter = spec.paths['/ExclusiveParameter/lower'].get?.parameters?.[0]
     expect(lowerParameter?.schema).to.include({ minimum: 5, exclusiveMinimum: true })
+    expect(lowerParameter).not.to.have.property('minimum')
+    expect(lowerParameter).not.to.have.property('exclusiveMinimum')
+    expect(lowerParameter).not.to.have.property('type')
 
     const upperParameter = spec.paths['/ExclusiveParameter/upper'].get?.parameters?.[0]
     expect(upperParameter?.schema).to.include({ maximum: 10, exclusiveMaximum: true })
+    expect(upperParameter).not.to.have.property('maximum')
+    expect(upperParameter).not.to.have.property('exclusiveMaximum')
+    expect(upperParameter).not.to.have.property('type')
 
     const rangeParameter = spec.paths['/ExclusiveParameter/range'].get?.parameters?.[0]
     expect(rangeParameter?.schema).to.include({ minimum: 5, exclusiveMinimum: true, maximum: 10, exclusiveMaximum: true })
+    expect(rangeParameter).not.to.have.property('minimum')
+    expect(rangeParameter).not.to.have.property('exclusiveMinimum')
+    expect(rangeParameter).not.to.have.property('maximum')
+    expect(rangeParameter).not.to.have.property('exclusiveMaximum')
+    expect(rangeParameter).not.to.have.property('type')
   })
 
   it('rejects inclusive and exclusive conflicts for Swagger 2.0 and OpenAPI 3.0', () => {
@@ -76,13 +90,20 @@ describe('Exclusive numeric bounds', () => {
     const lowerParameter = spec.paths['/ExclusiveParameter/lower'].get?.parameters?.[0]
     expect(lowerParameter?.schema).to.include({ exclusiveMinimum: 5 })
     expect(lowerParameter?.schema).not.to.have.property('minimum')
+    expect(lowerParameter).not.to.have.property('exclusiveMinimum')
+    expect(lowerParameter).not.to.have.property('type')
 
     const upperParameter = spec.paths['/ExclusiveParameter/upper'].get?.parameters?.[0]
     expect(upperParameter?.schema).to.include({ exclusiveMaximum: 10 })
     expect(upperParameter?.schema).not.to.have.property('maximum')
+    expect(upperParameter).not.to.have.property('exclusiveMaximum')
+    expect(upperParameter).not.to.have.property('type')
 
     const rangeParameter = spec.paths['/ExclusiveParameter/range'].get?.parameters?.[0]
     expect(rangeParameter?.schema).to.include({ exclusiveMinimum: 5, exclusiveMaximum: 10 })
+    expect(rangeParameter).not.to.have.property('exclusiveMinimum')
+    expect(rangeParameter).not.to.have.property('exclusiveMaximum')
+    expect(rangeParameter).not.to.have.property('type')
   })
 
   it('allows inclusive and exclusive coexistence in OpenAPI 3.1', () => {

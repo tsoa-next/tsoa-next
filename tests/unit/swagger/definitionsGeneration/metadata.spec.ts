@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
-import { Tsoa } from '@tsoa-next/runtime'
+import { Swagger, Tsoa } from '@tsoa-next/runtime'
 import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'
 import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions'
 
@@ -809,6 +809,9 @@ describe('Metadata generation', () => {
       }
 
       expect(genderParam.in).to.equal('path')
+      if (Swagger.isBodyParameter(genderParam)) {
+        throw new Error('Expected genderParam to be a non-body Swagger 2.0 parameter.')
+      }
       expect(genderParam.name).to.equal('gender')
       expect(genderParam.description).to.equal('Gender description')
       expect(genderParam.required).to.be.true

@@ -309,6 +309,9 @@ describe('Schema details generation', () => {
         expect(method.parameters).to.have.lengthOf(1)
 
         const normalParam = method.parameters![0]
+        if (Swagger.isBodyParameter(normalParam)) {
+          throw new Error('Expected hiddenQueryMethod parameter to be a non-body Swagger 2.0 parameter.')
+        }
         expect(normalParam.in).to.equal('query')
         expect(normalParam.name).to.equal('normalParam')
         expect(normalParam.required).to.be.true
@@ -333,6 +336,9 @@ describe('Schema details generation', () => {
         expect(method.parameters).to.have.lengthOf(1)
 
         const normalParam = method.parameters![0]
+        if (Swagger.isBodyParameter(normalParam)) {
+          throw new Error('Expected injectParameterMethod parameter to be a non-body Swagger 2.0 parameter.')
+        }
         expect(normalParam.in).to.equal('query')
         expect(normalParam.name).to.equal('normalParam')
         expect(normalParam.required).to.be.true
@@ -1009,6 +1015,9 @@ describe('Schema details generation', () => {
       expect(method).to.have.lengthOf(3)
       const [data, indexes, gender] = method
 
+      if (Swagger.isBodyParameter(data) || Swagger.isBodyParameter(indexes) || Swagger.isBodyParameter(gender)) {
+        throw new Error('Expected formData parameters to remain non-body Swagger 2.0 parameters.')
+      }
       expect(data.in).to.equal('formData')
       expect(data.type).to.equal('string')
       // Can process numeric enum

@@ -208,7 +208,7 @@ export class SpecGenerator2 extends SpecGenerator {
     if (bodyPropParameter) {
       pathMethod.parameters.push(bodyPropParameter)
     }
-    if (pathMethod.parameters.filter((p: Swagger.BaseParameter) => p.in === 'body').length > 1) {
+    if (pathMethod.parameters.filter(p => p.in === 'body').length > 1) {
       throw new Error('Only one body parameter allowed per controller method.')
     }
 
@@ -299,7 +299,7 @@ export class SpecGenerator2 extends SpecGenerator {
       return
     }
 
-    const parameter = {
+    const parameter: Swagger.Swagger2BodyParameter = {
       in: 'body',
       name: 'body',
       schema: {
@@ -307,7 +307,7 @@ export class SpecGenerator2 extends SpecGenerator {
         title: `${this.getOperationId(controllerName, method)}Body`,
         type: 'object',
       },
-    } as Swagger.Parameter2
+    }
     if (required.length) {
       parameter.schema.required = required
     }
@@ -338,55 +338,119 @@ export class SpecGenerator2 extends SpecGenerator {
 
     const parameterType = this.getSwaggerType(type)
 
-    let parameter = {
+    if (source.in === 'body') {
+      const schemaValidators = this.getSchemaValidators(source.validators) as Partial<Swagger.Schema2>
+
+      const schema: Swagger.Schema2 =
+        source.type.dataType === 'array'
+          ? {
+              items: parameterType.items,
+              type: 'array',
+              ...schemaValidators,
+            }
+          : source.type.dataType === 'any'
+            ? { type: 'object', ...schemaValidators }
+            : {
+                ...this.toSwagger2Schema(parameterType),
+                ...schemaValidators,
+              }
+
+      return {
+        description: source.description,
+        in: 'body',
+        name: source.name,
+        required: this.isRequiredWithoutDefault(source),
+        ...(source.deprecated ? { 'x-deprecated': true } : {}),
+        schema,
+      }
+    }
+
+    if (parameterType.$ref) {
+      throw new Error(`Swagger 2.0 does not support schema references for '${source.in}' parameters. Only body parameters may use schema.`)
+    }
+
+    const parameterValidators = this.getSchemaValidators(source.validators) as Partial<
+      Pick<
+        Swagger.Swagger2QueryParameter,
+        'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'
+      >
+    >
+    const baseParameter = {
       default: source.default,
       description: source.description,
-      in: source.in,
       name: source.name,
       required: this.isRequiredWithoutDefault(source),
       ...(source.deprecated ? { 'x-deprecated': true } : {}),
-      ...(parameterType.$ref ? { schema: parameterType } : {}),
       ...(parameterType.format ? { format: this.throwIfNotDataFormat(parameterType.format) } : {}),
-    } as Swagger.Parameter2
-
-    if (Swagger.isQueryParameter(parameter) && parameterType.type === 'array') {
-      parameter.collectionFormat = 'multi'
+      ...(parameterType.items ? { items: parameterType.items } : {}),
+      ...(parameterType.enum ? { enum: parameterType.enum } : {}),
+      ...parameterValidators,
     }
+    const resolvedType = source.type.dataType === 'any' ? 'string' : parameterType.type ? this.throwIfNotDataType(parameterType.type) : undefined
 
-    if (parameter.schema) {
-      return parameter
-    }
-
-    const validatorObjs = this.getSchemaValidators(source.validators) as Partial<Swagger.Parameter2>
-
-    if (source.in === 'body' && source.type.dataType === 'array') {
-      parameter.schema = {
-        items: parameterType.items,
-        type: 'array',
-      }
-    } else {
-      if (source.type.dataType === 'any') {
-        if (source.in === 'body') {
-          parameter.schema = { type: 'object' }
-        } else {
-          parameter.type = 'string'
+    switch (source.in) {
+      case 'query':
+        return {
+          ...baseParameter,
+          in: 'query',
+          type: resolvedType ?? 'string',
+          ...(resolvedType === 'array' ? { collectionFormat: 'multi' } : {}),
         }
-      } else {
-        if (parameterType.type) {
-          parameter.type = this.throwIfNotDataType(parameterType.type)
+      case 'formData':
+        return {
+          ...baseParameter,
+          in: 'formData',
+          type: resolvedType ?? 'string',
         }
-        parameter.items = parameterType.items
-        parameter.enum = parameterType.enum
-      }
+      case 'header':
+        return {
+          ...baseParameter,
+          in: 'header',
+          type: resolvedType ?? 'string',
+        }
+      case 'path':
+        return {
+          ...baseParameter,
+          in: 'path',
+          type: resolvedType ?? 'string',
+        }
+      default:
+        throw new Error(`Unsupported Swagger 2.0 parameter location '${source.in}'.`)
+    }
+  }
+
+  private toSwagger2Schema(schema: Swagger.BaseSchema): Swagger.Schema2 {
+    const { additionalProperties, items, properties, type, ...schemaWithoutNestedValues } = schema
+    const converted: Swagger.Schema2 = {
+      ...schemaWithoutNestedValues,
+      ...(type ? { type: this.throwIfNotDataType(type) } : {}),
     }
 
-    if (parameter.schema) {
-      parameter.schema = Object.assign({}, parameter.schema, validatorObjs)
-    } else {
-      parameter = Object.assign({}, parameter, validatorObjs)
+    if (items && this.isSwaggerBaseSchema(items)) {
+      converted.items = this.toSwagger2Schema(items)
     }
 
-    return parameter
+    if (typeof additionalProperties === 'boolean') {
+      converted.additionalProperties = additionalProperties
+    } else if (additionalProperties && this.isSwaggerBaseSchema(additionalProperties)) {
+      converted.additionalProperties = this.toSwagger2Schema(additionalProperties)
+    }
+
+    if (properties) {
+      const convertedProperties: { [propertyName: string]: Swagger.Schema2 } = {}
+      Object.entries(properties).forEach(([propertyName, propertySchema]) => {
+        if (this.isSwaggerBaseSchema(propertySchema)) {
+          convertedProperties[propertyName] = this.toSwagger2Schema(propertySchema)
+        }
+      })
+      converted.properties = convertedProperties
+    }
+
+    return converted
+  }
+
+  private isSwaggerBaseSchema(value: unknown): value is Swagger.BaseSchema {
+    return typeof value === 'object' && value !== null
   }
 
   protected buildProperties(source: Tsoa.Property[]) {

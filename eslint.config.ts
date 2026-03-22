@@ -21,6 +21,7 @@ export default defineConfig([
       'eslint.config.ts',
       'prettier.config.ts',
       'tests/fixtures/**/routes.ts',
+      'tests/fixtures/swagger-typing/**/*.ts',
       'tests/fixtures/**/customRoutes.ts',
       'tests/fixtures/custom/custom-route-generator/routes/**/*.ts',
     ],
