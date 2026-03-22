@@ -133,7 +133,10 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
       return
     }
     Object.keys(headers).forEach((name: string) => {
-      response.set(name, headers[name])
+      const headerValue = headers[name]
+      if (headerValue !== undefined) {
+        response.set(name, headerValue)
+      }
     })
 
     // Check if the response is marked to be JSON

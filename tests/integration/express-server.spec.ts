@@ -631,6 +631,19 @@ describe('Express Server', () => {
       )
     })
 
+    it('should skip undefined headers', () => {
+      return verifyGetRequest(
+        app,
+        basePath + `/Controller/customHeaderUndefined`,
+        (_err, res) => {
+          expect(res.status).to.equal(204)
+          expect(res.header.hero).to.equal(undefined)
+          expect(res.header.name).to.equal('Tony Stark')
+        },
+        204,
+      )
+    })
+
     it('should unavailable for legal reasons status code', () => {
       return verifyGetRequest(
         app,

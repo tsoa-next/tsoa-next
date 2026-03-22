@@ -60,6 +60,17 @@ export class TestController extends Controller {
     })
   }
 
+  @Get('customHeaderUndefined')
+  public async customHeaderUndefined(): Promise<void> {
+    return new Promise<void>(resolve => {
+      setTimeout(() => {
+        this.setHeader('hero', undefined)
+        this.setHeader('name', 'Tony Stark')
+        resolve()
+      }, 1000)
+    })
+  }
+
   @SuccessResponse(418)
   @Get('successResponse')
   public async getSuccessResponse(): Promise<void> {

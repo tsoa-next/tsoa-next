@@ -1401,6 +1401,23 @@ describe('ValidationService', () => {
     })
   })
 
+  describe('Buffer validate', () => {
+    it('should accept string values', () => {
+      const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateBuffer('name', 'buffer-value', {})
+      expect(result).to.deep.equal(Buffer.from('buffer-value'))
+    })
+
+    it('should reject unsupported values instead of coercing them', () => {
+      const name = 'name'
+      const value = { invalid: true }
+      const error: FieldErrors = {}
+      const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateBuffer(name, value, error)
+      expect(result).to.equal(undefined)
+      expect(error[name].message).to.equal('invalid buffer value')
+      expect(error[name].value).to.equal(value)
+    })
+  })
+
   describe('Union validate', () => {
     it('should validate discriminated union with silently-remove-extras on', () => {
       const v = new ValidationService(
