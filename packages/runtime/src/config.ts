@@ -40,7 +40,7 @@ export interface Config {
   tsconfig?: string
 
   /**
-   * Typescript CompilerOptions to be used during generation.
+   * TypeScript CompilerOptions to be used during generation.
    * These are merged over compiler options resolved from tsconfig.
    *
    * @type {Record<string, unknown>}

@@ -52,6 +52,19 @@ describe('CompilerOptions', () => {
     expect(compilerOptions.experimentalDecorators).to.equal(true)
   })
 
+  it('retains the legacy compilerOptions-only call shape', () => {
+    const compilerOptions = validateCompilerOptions(
+      {
+        module: 'esnext',
+        strict: true,
+      },
+      testDir,
+    )
+
+    expect(compilerOptions.module).to.equal(ts.ModuleKind.ESNext)
+    expect(compilerOptions.strict).to.equal(true)
+  })
+
   it('supports an explicit tsconfig path and extends', async () => {
     await writeFile(
       join(testDir, 'tsconfig.base.json'),

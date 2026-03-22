@@ -121,18 +121,20 @@ const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, co
 
 const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): CompilerOptions => {
   const configuredTsconfig = config.tsconfig
+  const fileExists = (fileName: string) => ts.sys.fileExists(fileName)
+  const readFile = (fileName: string) => ts.sys.readFile(fileName)
   const resolvedTsconfigPath =
     configuredTsconfig !== undefined
       ? isAbsolute(configuredTsconfig)
         ? configuredTsconfig
         : resolve(configBaseDir, configuredTsconfig)
-      : ts.findConfigFile(configBaseDir, ts.sys.fileExists, 'tsconfig.json')
+      : ts.findConfigFile(configBaseDir, fileExists, 'tsconfig.json')
 
   if (!resolvedTsconfigPath) {
     return {}
   }
 
-  const readResult = ts.readConfigFile(resolvedTsconfigPath, ts.sys.readFile)
+  const readResult = ts.readConfigFile(resolvedTsconfigPath, readFile)
   if (readResult.error) {
     formatCompilerOptionsErrors(`Failed to read tsconfig at '${resolvedTsconfigPath}'`, [readResult.error])
   }
@@ -146,9 +148,21 @@ const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): Com
   return parsed.options
 }
 
-export const validateCompilerOptions = (config: Config, configBaseDir = workingDir): CompilerOptions => {
-  const tsconfigCompilerOptions = loadTsConfigCompilerOptions(config, configBaseDir)
-  const explicitCompilerOptions = config.compilerOptions ? parseCompilerOptionsObject(config.compilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config') : {}
+const isConfig = (value: Config | Record<string, unknown> | undefined): value is Config => {
+  return typeof value === 'object' && value !== null && ('entryFile' in value || 'routes' in value || 'spec' in value || 'tsconfig' in value)
+}
+
+export function validateCompilerOptions(config: Config, configBaseDir?: string): CompilerOptions
+export function validateCompilerOptions(compilerOptions?: Record<string, unknown>, configBaseDir?: string): CompilerOptions
+export function validateCompilerOptions(configOrCompilerOptions?: Config | Record<string, unknown>, configBaseDir = workingDir): CompilerOptions {
+  if (!isConfig(configOrCompilerOptions)) {
+    return configOrCompilerOptions ? parseCompilerOptionsObject(configOrCompilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config') : {}
+  }
+
+  const tsconfigCompilerOptions = loadTsConfigCompilerOptions(configOrCompilerOptions, configBaseDir)
+  const explicitCompilerOptions = configOrCompilerOptions.compilerOptions
+    ? parseCompilerOptionsObject(configOrCompilerOptions.compilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config')
+    : {}
 
   return {
     ...tsconfigCompilerOptions,
