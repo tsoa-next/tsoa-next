@@ -301,7 +301,7 @@ export namespace Swagger {
 
   export interface Response {
     description: string
-    schema?: BaseSchema
+    schema?: Schema2
     headers?: { [name: string]: Header }
     examples?: { [responseMediaType: string]: { [exampleName: string]: Example3 | string } }
   }

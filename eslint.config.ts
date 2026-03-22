@@ -19,6 +19,7 @@ export default defineConfig([
       'dist',
       'eslint.config.ts',
       'prettier.config.ts',
+      'scripts/**/*.mjs',
       'tests/fixtures/**/routes.ts',
       'tests/fixtures/**/customRoutes.ts',
       'tests/fixtures/custom/custom-route-generator/routes/**/*.ts',
@@ -61,6 +62,8 @@ export default defineConfig([
         'warn',
         {
           argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
         },
       ],
       semi: ['error', 'never'],
