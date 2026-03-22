@@ -31,6 +31,37 @@ jobs:
       - id: detect
         uses: ./.github/actions/detect-package-impact
 
+  coverage:
+    name: Coverage
+    needs: detect-package-impact
+    if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm install --ignore-scripts
+
+      - name: Generate coverage
+        run: npm run coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+
   build:
     name: Build
     needs: detect-package-impact
