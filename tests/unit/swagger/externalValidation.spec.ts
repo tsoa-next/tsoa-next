@@ -29,6 +29,7 @@ describe('External validation metadata', function () {
       ['joiInferred', 'joi'],
       ['yup', 'yup'],
       ['superstruct', 'superstruct'],
+      ['upload', 'joi'],
       ['ioTs', 'io-ts'],
     ] as const
 
@@ -114,6 +115,16 @@ describe('External validation metadata', function () {
 
   it('infers validator kinds for namespace-imported schemas used in bare @Validate(schema) form', () => {
     const parameter = getMethod('joiInferred').parameters[0]
+    expect(parameter.externalValidator).to.deep.equal({
+      kind: 'joi',
+      strategy: 'external',
+    })
+  })
+
+  it('allows external validation on uploaded file parameters by treating them as form data', () => {
+    const parameter = getMethod('upload').parameters[0]
+
+    expect(parameter.in).to.equal('formData')
     expect(parameter.externalValidator).to.deep.equal({
       kind: 'joi',
       strategy: 'external',

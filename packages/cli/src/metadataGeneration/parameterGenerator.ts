@@ -325,6 +325,7 @@ export class ParameterGenerator {
       parameterName,
       validators: getParameterValidators(this.parameter, parameterName),
       parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'formData'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -606,8 +607,9 @@ export class ParameterGenerator {
     }
 
     const resolvedLocation = decoratorName ? decoratorName.toLowerCase() : 'path'
-    if (!['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'].includes(resolvedLocation)) {
-      throw new GenerateMetadataError(`@Validate is not supported on '${resolvedLocation}' parameters in this release.`, this.parameter)
+    const normalizedLocation = ['uploadedfile', 'uploadedfiles'].includes(resolvedLocation) ? 'formfield' : resolvedLocation
+    if (!['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'].includes(normalizedLocation)) {
+      throw new GenerateMetadataError(`@Validate is not supported on '${normalizedLocation}' parameters in this release.`, this.parameter)
     }
   }
 

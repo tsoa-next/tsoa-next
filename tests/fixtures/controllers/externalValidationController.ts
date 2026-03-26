@@ -1,5 +1,5 @@
 import * as Joi from 'joi'
-import { Body, Controller, Get, Path, Post, Query, Route, Validate } from '@tsoa-next/runtime'
+import { Body, Controller, File, Get, Path, Post, Query, Route, UploadedFile, Validate } from '@tsoa-next/runtime'
 import {
   ExternalIntersectionAlias as RenamedExternalIntersectionAlias,
   type ExternalLiteralUnionAlias,
@@ -54,6 +54,11 @@ export class ExternalValidationController extends Controller {
   @Post('superstruct')
   public superstruct(@Body() @Validate('superstruct', SuperstructBodySchema) payload: RenamedExternalIntersectionAlias): RenamedExternalIntersectionAlias {
     return payload
+  }
+
+  @Post('upload')
+  public upload(@UploadedFile('asset') @Validate('joi', Joi.any()) asset: File): File {
+    return asset
   }
 
   @Post('io-ts')
