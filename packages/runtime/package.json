@@ -88,5 +88,6 @@
   "engineStrict": true,
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "homepage": "https://tsoa-next.dev"
 }
