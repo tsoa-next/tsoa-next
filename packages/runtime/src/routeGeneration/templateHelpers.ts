@@ -71,10 +71,6 @@ export class ValidationService {
   ): unknown {
     let value = rawValue
 
-    if (property.validationStrategy === 'external' && property.externalValidator) {
-      return this.validateExternal(name, value, fieldErrors, property, parent, metadata)
-    }
-
     // If undefined is allowed type, we can move to value validation
     if (value === undefined && property.dataType !== 'undefined') {
       // If there's either default value or datatype is union with undefined valid, we can just set it and move to validation
@@ -100,6 +96,10 @@ export class ValidationService {
       } else {
         return value
       }
+    }
+
+    if (property.validationStrategy === 'external' && property.externalValidator) {
+      return this.validateExternal(name, value, fieldErrors, property, parent, metadata)
     }
 
     switch (property.dataType) {

@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
 import { TsoaRoute, Validate, ValidationService, validateExternalSchema } from '@tsoa-next/runtime'
+import { z } from 'zod'
 import {
   JoiBodySchema,
   SuperstructBodySchema,
@@ -160,6 +161,40 @@ describe('External validation runtime', () => {
 
     expect(result).to.equal(undefined)
     expect(fieldErrors).to.have.property('payload')
+  })
+
+  it('enforces required route metadata before delegating to external validation', () => {
+    class ExternalController {
+      public submit(@Validate(z.string().optional()) payload?: string) {
+        return payload
+      }
+    }
+
+    const service = new ValidationService({}, validationConfig)
+    const fieldErrors: Record<string, { message: string; value: unknown }> = {}
+    const schema: TsoaRoute.PropertySchema = {
+      dataType: 'string',
+      required: true,
+      validationStrategy: 'external',
+      externalValidator: {
+        kind: 'zod',
+        strategy: 'external',
+      },
+    }
+
+    const result = service.ValidateParam(schema, undefined, 'payload', fieldErrors, true, '', {
+      controllerClass: ExternalController,
+      methodName: 'submit',
+      parameterIndex: 0,
+    })
+
+    expect(result).to.equal(undefined)
+    expect(fieldErrors).to.deep.equal({
+      payload: {
+        message: "'payload' is required",
+        value: undefined,
+      },
+    })
   })
 
   it('applies translation hooks when projecting external issues to legacy field errors', () => {
