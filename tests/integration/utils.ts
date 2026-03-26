@@ -15,9 +15,14 @@ export function verifyRequest(app: App, verifyResponse: (err: any, res: request.
             return
           }
 
+          if (err && !res) {
+            reject(err)
+            return
+          }
+
           let parsedError: any
           try {
-            parsedError = JSON.parse(res.error)
+            parsedError = typeof res?.error === 'string' ? JSON.parse(res.error) : res?.error
           } catch (_err) {
             parsedError = res?.error
           }

@@ -24,9 +24,8 @@ let superstructModule: SuperstructModule | undefined
 function loadOptionalModule<T>(moduleName: string): T {
   try {
     return require(moduleName) as T
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind. ${message}`)
+  } catch (_error) {
+    throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind.`)
   }
 }
 
