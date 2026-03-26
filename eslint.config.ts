@@ -21,7 +21,6 @@ export default defineConfig([
       'commitlint.config.cjs',
       'eslint.config.ts',
       'prettier.config.ts',
-      'scripts/**/*.mjs',
       'tests/fixtures/**/routes.ts',
       'tests/fixtures/swagger-typing/**/*.ts',
       'tests/fixtures/**/customRoutes.ts',
