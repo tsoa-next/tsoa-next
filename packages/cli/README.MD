@@ -5,5 +5,5 @@ This package contains the `tsoa-next` build-time components.
 For the main README and API reference, see:
 
 - [Repository README](https://github.com/VannaDii/tsoa-next#readme)
-- [Project documentation](https://vannadii.github.io/tsoa-next/docs/)
-- [API reference](https://vannadii.github.io/tsoa-next/reference/)
+- [Project documentation](https://tsoa-next.dev/)
+- [API reference](https://tsoa-next.dev/reference/)

@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://vannadii.github.io/tsoa-next/" target="_blank" rel="noreferrer">
+  <a href="https://tsoa-next.dev/" target="_blank" rel="noreferrer">
     <h1>tsoa-next</h1>
   </a>
 Pronounced so·uh
@@ -95,13 +95,13 @@ This feature is fully opt-in. If you do not use `@Validate(...)`, existing inter
   - Node.js 22 or newer
   - npm 10 or newer
   - We verify support across the previous LTS, current LTS, and Node vNext in CI
-- [Documentation](https://vannadii.github.io/tsoa-next/docs/)
-- [API Reference](https://vannadii.github.io/tsoa-next/reference/)
-- [Getting started guide](https://vannadii.github.io/tsoa-next/docs/getting-started)
+- [Documentation](https://tsoa-next.dev/)
+- [API Reference](https://tsoa-next.dev/reference/)
+- [Getting started guide](https://tsoa-next.dev/getting-started)
 
 ## Examples
 
-Check out the [guides](https://vannadii.github.io/tsoa-next/docs/)
+Check out the [guides](https://tsoa-next.dev/)
 
 See example controllers in [the tests](https://github.com/VannaDii/tsoa-next/tree/main/tests/fixtures/controllers)
 

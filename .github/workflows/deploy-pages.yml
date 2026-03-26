@@ -41,9 +41,8 @@ jobs:
       - name: Build guides
         run: npm run docs:build
         env:
-          BASE_URL: /docs/
-          SITE_ROOT: ../
-          API_REFERENCE_URL: ../reference/
+          BASE_URL: /
+          API_REFERENCE_URL: /reference/
 
       - name: Build API reference
         run: npm run typedocs
@@ -51,9 +50,8 @@ jobs:
       - name: Assemble site artifact
         run: |
           rm -rf _site
-          mkdir -p _site/docs _site/reference _site/stylesheets
-          cp site/index.html _site/
-          cp -R site/stylesheets/. _site/stylesheets/
+          mkdir -p _site/docs _site/reference
+          cp -R site/guide-docs/.vitepress/dist/. _site/
           cp -R site/guide-docs/.vitepress/dist/. _site/docs/
           cp -R .typedoc/. _site/reference/
 

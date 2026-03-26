@@ -47,7 +47,7 @@ export default defineConfig({
     nav: [
       {
         text: 'Home',
-        link: process.env.SITE_ROOT || '../',
+        link: '/',
       },
       {
         text: 'Guides',
@@ -55,7 +55,7 @@ export default defineConfig({
       },
       {
         text: 'API Reference',
-        link: process.env.API_REFERENCE_URL || '../reference/',
+        link: process.env.API_REFERENCE_URL || '/reference/',
       },
       {
         text: 'GitHub',
