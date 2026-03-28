@@ -6,7 +6,7 @@
     "build": "turbo run build --output-logs=full",
     "changeset": "changeset",
     "check:pre-commit": "npm run build && npm run lint",
-    "check:pre-push": "npm run build && npm run test",
+    "check:pre-push": "node ./scripts/check-pre-push.cjs",
     "check:standard": "npm run build && npm run lint && npm run test",
     "clean": "turbo run clean --output-logs=full",
     "coverage": "rimraf coverage && npm --prefix tests run pretest && c8 npm --prefix tests run test:coverage",
