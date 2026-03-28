@@ -563,7 +563,7 @@ export class SpecGenerator3 extends SpecGenerator {
     const properties: { [propertyName: string]: Swagger.Schema3 } = {}
 
     source.forEach(property => {
-      let swaggerType = this.getSwaggerType(property.type) as Swagger.Schema3
+      let swaggerType = this.getSwaggerType(this.getPropertySchemaType(property.type)) as Swagger.Schema3
       const format = property.format as Swagger.DataFormat
       swaggerType.description = property.description
       swaggerType.example = property.example

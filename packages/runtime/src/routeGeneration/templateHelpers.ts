@@ -73,6 +73,11 @@ export class ValidationService {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
   }
 
+  private buildChildPath(parent: string, name: string): string {
+    const fieldPath = parent + name
+    return fieldPath ? `${fieldPath}.` : ''
+  }
+
   public ValidateParam<TValue>(
     property: TsoaRoute.PropertySchema,
     rawValue: TValue,
@@ -120,19 +125,10 @@ export class ValidationService {
     })
   }
 
-  private handleUndefinedValue({
-    property,
-    rawValue,
-    name,
-    fieldErrors,
-    parent,
-  }: {
-    property: TsoaRoute.PropertySchema
-    rawValue: unknown
-    name: string
-    fieldErrors: FieldErrors
-    parent: string
-  }): { handled: boolean; value: unknown } {
+  private handleUndefinedValue({ property, rawValue, name, fieldErrors, parent }: { property: TsoaRoute.PropertySchema; rawValue: unknown; name: string; fieldErrors: FieldErrors; parent: string }): {
+    handled: boolean
+    value: unknown
+  } {
     if (rawValue !== undefined || property.dataType === 'undefined') {
       return { handled: false, value: rawValue }
     }
@@ -253,14 +249,7 @@ export class ValidationService {
     }
   }
 
-  private validateExternal(
-    name: string,
-    rawValue: unknown,
-    fieldErrors: FieldErrors,
-    property: TsoaRoute.PropertySchema,
-    parent: string,
-    metadata?: ParameterValidationMetadata,
-  ): unknown {
+  private validateExternal(name: string, rawValue: unknown, fieldErrors: FieldErrors, property: TsoaRoute.PropertySchema, parent: string, metadata?: ParameterValidationMetadata): unknown {
     const value = rawValue === undefined && property.default !== undefined ? property.default : rawValue
     const runtimeMetadata = this.getRuntimeExternalValidatorMetadata(metadata, property)
 
@@ -311,13 +300,7 @@ export class ValidationService {
     return undefined
   }
 
-  private projectExternalFailureToFieldErrors(
-    failure: Tsoa.ValidationFailure,
-    fieldErrors: FieldErrors,
-    name: string,
-    parent: string,
-    value: unknown,
-  ) {
+  private projectExternalFailureToFieldErrors(failure: Tsoa.ValidationFailure, fieldErrors: FieldErrors, name: string, parent: string, value: unknown) {
     if (failure.issues.length === 0) {
       fieldErrors[parent + name] = {
         message: failure.summaryMessage,
@@ -327,7 +310,8 @@ export class ValidationService {
     }
 
     for (const issue of failure.issues) {
-      const fieldPath = issue.path ? `${parent}${name}.${issue.path}` : `${parent}${name}`
+      const baseFieldPath = parent + name
+      const fieldPath = issue.path ? (baseFieldPath ? `${baseFieldPath}.${issue.path}` : issue.path) : baseFieldPath
       if (!fieldErrors[fieldPath]) {
         fieldErrors[fieldPath] = {
           message: issue.message || failure.summaryMessage,
@@ -384,8 +368,10 @@ export class ValidationService {
       }
     }
 
+    const childPath = this.buildChildPath(parent, name)
+
     Object.keys(nestedProperties).forEach(key => {
-      const validatedProp = this.ValidateParam(nestedProperties[key], value[key], key, fieldErrors, isBodyParam, parent + name + '.', metadata)
+      const validatedProp = this.ValidateParam(nestedProperties[key], value[key], key, fieldErrors, isBodyParam, childPath, metadata)
 
       // Add value from validator if it's not undefined or if value is required and unfedined is valid type
       if (validatedProp !== undefined || (nestedProperties[key].dataType === 'undefined' && nestedProperties[key].required)) {
@@ -396,7 +382,7 @@ export class ValidationService {
     if (typeof additionalProperties === 'object') {
       const keys = Object.keys(value).filter(key => typeof nestedProperties[key] === 'undefined')
       keys.forEach(key => {
-        const validatedProp = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, parent + name + '.', metadata)
+        const validatedProp = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
         // Add value from validator if it's not undefined or if value is required and unfedined is valid type
         if (validatedProp !== undefined || (additionalProperties.dataType === 'undefined' && additionalProperties.required)) {
           value[key] = validatedProp
@@ -417,7 +403,16 @@ export class ValidationService {
       | [string, unknown, FieldErrors, boolean, { [name: string]: TsoaRoute.PropertySchema } | undefined, TsoaRoute.PropertySchema | boolean | undefined, string, ParameterValidationMetadata?],
   ): ValidateNestedObjectLiteralOptions {
     if (typeof args[0] === 'string') {
-      const tupleArgs = args as [string, unknown, FieldErrors, boolean, { [name: string]: TsoaRoute.PropertySchema } | undefined, TsoaRoute.PropertySchema | boolean | undefined, string?, ParameterValidationMetadata?]
+      const tupleArgs = args as [
+        string,
+        unknown,
+        FieldErrors,
+        boolean,
+        { [name: string]: TsoaRoute.PropertySchema } | undefined,
+        TsoaRoute.PropertySchema | boolean | undefined,
+        string?,
+        ParameterValidationMetadata?,
+      ]
       const [name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent = '', metadata] = tupleArgs
       return { name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent, metadata }
     }
@@ -726,59 +721,83 @@ export class ValidationService {
     return
   }
 
+  public validateArray(options: ValidateArrayOptions): unknown[] | undefined
   public validateArray(
-    ...args:
-      | [ValidateArrayOptions]
-      | [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema | undefined, ArrayValidator | undefined, string?, ParameterValidationMetadata?]
+    name: string,
+    value: unknown,
+    fieldErrors: FieldErrors,
+    isBodyParam: boolean,
+    schema?: TsoaRoute.PropertySchema,
+    validators?: ArrayValidator,
+    parent?: string,
+    metadata?: ParameterValidationMetadata,
+  ): unknown[] | undefined
+  public validateArray(
+    nameOrOptions: string | ValidateArrayOptions,
+    value?: unknown,
+    fieldErrors?: FieldErrors,
+    isBodyParam?: boolean,
+    schema?: TsoaRoute.PropertySchema,
+    validators?: ArrayValidator,
+    parent = '',
+    metadata?: ParameterValidationMetadata,
   ): unknown[] | undefined {
-    const { name, value, fieldErrors, isBodyParam, schema, validators, parent, metadata } = this.normalizeValidateArrayArgs(args)
-    if ((isBodyParam && this.config.bodyCoercion === false && !Array.isArray(value)) || !schema || value === undefined) {
-      const message = validators && validators.isArray && validators.isArray.errorMsg ? validators.isArray.errorMsg : `invalid array`
-      fieldErrors[parent + name] = {
+    const options =
+      typeof nameOrOptions === 'string'
+        ? {
+            name: nameOrOptions,
+            value,
+            fieldErrors: fieldErrors as FieldErrors,
+            isBodyParam: isBodyParam as boolean,
+            schema,
+            validators,
+            parent,
+            metadata,
+          }
+        : nameOrOptions
+    const {
+      name,
+      value: resolvedValue,
+      fieldErrors: resolvedFieldErrors,
+      isBodyParam: resolvedIsBodyParam,
+      schema: resolvedSchema,
+      validators: resolvedValidators,
+      parent: resolvedParent = '',
+      metadata: resolvedMetadata,
+    } = options
+    if ((resolvedIsBodyParam && this.config.bodyCoercion === false && !Array.isArray(resolvedValue)) || !resolvedSchema || resolvedValue === undefined) {
+      const message = resolvedValidators && resolvedValidators.isArray && resolvedValidators.isArray.errorMsg ? resolvedValidators.isArray.errorMsg : `invalid array`
+      resolvedFieldErrors[resolvedParent + name] = {
         message,
-        value,
+        value: resolvedValue,
       }
       return
     }
 
     let arrayValue: unknown[] = []
-    const previousErrors = Object.keys(fieldErrors).length
-    const childParent = `${parent}${name}.`
-    if (Array.isArray(value)) {
-      arrayValue = value.map((elementValue, index) => {
-        const validatedElement: unknown = this.ValidateParam(schema, elementValue, `$${index}`, fieldErrors, isBodyParam, childParent, metadata)
+    const previousErrors = Object.keys(resolvedFieldErrors).length
+    const childParent = this.buildChildPath(resolvedParent, name)
+    if (Array.isArray(resolvedValue)) {
+      arrayValue = resolvedValue.map((elementValue, index) => {
+        const validatedElement: unknown = this.ValidateParam(resolvedSchema, elementValue, `$${index}`, resolvedFieldErrors, resolvedIsBodyParam, childParent, resolvedMetadata)
         return validatedElement
       })
     } else {
-      const validatedElement: unknown = this.ValidateParam(schema, value, '$0', fieldErrors, isBodyParam, childParent, metadata)
+      const validatedElement: unknown = this.ValidateParam(resolvedSchema, resolvedValue, '$0', resolvedFieldErrors, resolvedIsBodyParam, childParent, resolvedMetadata)
       arrayValue = [validatedElement]
     }
 
-    if (Object.keys(fieldErrors).length > previousErrors) {
+    if (Object.keys(resolvedFieldErrors).length > previousErrors) {
       return
     }
 
-    const validatorError = this.getArrayValidatorError(validators, arrayValue, value)
+    const validatorError = this.getArrayValidatorError(resolvedValidators, arrayValue, resolvedValue)
     if (validatorError) {
-      fieldErrors[parent + name] = validatorError
+      resolvedFieldErrors[resolvedParent + name] = validatorError
       return
     }
 
     return arrayValue
-  }
-
-  private normalizeValidateArrayArgs(
-    args:
-      | [ValidateArrayOptions]
-      | [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema | undefined, ArrayValidator | undefined, string?, ParameterValidationMetadata?],
-  ): ValidateArrayOptions {
-    if (typeof args[0] === 'string') {
-      const tupleArgs = args as [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema | undefined, ArrayValidator | undefined, string?, ParameterValidationMetadata?]
-      const [name, value, fieldErrors, isBodyParam, schema, validators, parent = '', metadata] = tupleArgs
-      return { name, value, fieldErrors, isBodyParam, schema, validators, parent, metadata }
-    }
-
-    return args[0]
   }
 
   private getArrayValidatorError(validators: ArrayValidator | undefined, arrayValue: unknown[], originalValue: unknown) {
@@ -846,15 +865,7 @@ export class ValidationService {
     parent?: string,
     metadata?: ParameterValidationMetadata,
   ): TValue
-  public validateUnion(
-    name: string,
-    value: unknown,
-    fieldErrors: FieldErrors,
-    isBodyParam: boolean,
-    property: TsoaRoute.PropertySchema,
-    parent = '',
-    metadata?: ParameterValidationMetadata,
-  ): unknown {
+  public validateUnion(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent = '', metadata?: ParameterValidationMetadata): unknown {
     if (!property.subSchemas) {
       throw new Error(
         'internal tsoa error: ' +
@@ -871,15 +882,7 @@ export class ValidationService {
       // Clean value if it's not undefined or use undefined directly if it's undefined.
       // Value can be undefined if undefined is allowed datatype of the union
       const validateableValue = value !== undefined ? this.deepClone(value) : value
-      const cleanValue = this.ValidateParam(
-        { ...subSchema, validators: { ...property.validators, ...subSchema.validators } },
-        validateableValue,
-        name,
-        subFieldError,
-        isBodyParam,
-        parent,
-        metadata,
-      )
+      const cleanValue = this.ValidateParam({ ...subSchema, validators: { ...property.validators, ...subSchema.validators } }, validateableValue, name, subFieldError, isBodyParam, parent, metadata)
       subFieldErrors.push(subFieldError)
 
       if (Object.keys(subFieldError).length === 0) {
@@ -1113,6 +1116,7 @@ export class ValidationService {
       }
 
       const fieldPath = parent + name
+      const childPath = this.buildChildPath(parent, name)
 
       if (!this.isRecord(value)) {
         fieldErrors[fieldPath] = {
@@ -1127,7 +1131,7 @@ export class ValidationService {
       const allPropertiesOnData = new Set(Object.keys(value))
 
       Object.entries(properties).forEach(([key, property]) => {
-        const validatedParam = this.ValidateParam(property, value[key], key, fieldErrors, isBodyParam, fieldPath + '.', metadata)
+        const validatedParam = this.ValidateParam(property, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
 
         // Add value from validator if it's not undefined or if value is required and unfedined is valid type
         if (validatedParam !== undefined || (property.dataType === 'undefined' && property.required)) {
@@ -1147,7 +1151,7 @@ export class ValidationService {
         Object.keys(value).forEach((key: string) => {
           if (isAnExcessProperty(key)) {
             if (this.config.noImplicitAdditionalProperties === 'throw-on-extras') {
-              fieldErrors[`${fieldPath}.${key}`] = {
+              fieldErrors[`${childPath}${key}`] = {
                 message: `"${key}" is an excess property and therefore is not allowed`,
                 value: key,
               }
@@ -1163,12 +1167,12 @@ export class ValidationService {
       } else {
         Object.keys(value).forEach((key: string) => {
           if (isAnExcessProperty(key)) {
-            const validatedValue = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, fieldPath + '.', metadata)
+            const validatedValue = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
             // Add value from validator if it's not undefined or if value is required and unfedined is valid type
             if (validatedValue !== undefined || (additionalProperties.dataType === 'undefined' && additionalProperties.required)) {
               value[key] = validatedValue
             } else {
-              fieldErrors[`${fieldPath}.${key}`] = {
+              fieldErrors[`${childPath}${key}`] = {
                 message: `No matching model found in additionalProperties to validate ${key}`,
                 value: key,
               }

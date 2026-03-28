@@ -383,10 +383,7 @@ export class SpecGenerator2 extends SpecGenerator {
     }
 
     const parameterValidators = this.getSchemaValidators(source.validators) as Partial<
-      Pick<
-        Swagger.Swagger2QueryParameter,
-        'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'
-      >
+      Pick<Swagger.Swagger2QueryParameter, 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'>
     >
     const baseParameter = {
       default: source.default,
@@ -471,7 +468,7 @@ export class SpecGenerator2 extends SpecGenerator {
     const properties: { [propertyName: string]: Swagger.Schema2 } = {}
 
     source.forEach(property => {
-      let swaggerType = this.getSwaggerType(property.type) as Swagger.Schema2
+      let swaggerType = this.getSwaggerType(this.getPropertySchemaType(property.type)) as Swagger.Schema2
       const format = property.format as Swagger.DataFormat
       swaggerType.description = property.description
       swaggerType.example = property.example
@@ -525,7 +522,6 @@ export class SpecGenerator2 extends SpecGenerator {
         return swaggerType
       }
     } else if (process.env.NODE_ENV !== 'tsoa_test') {
-       
       console.warn('Swagger 2.0 does not support union types beyond string literals.\n' + 'If you would like to take advantage of this, please change tsoa.json\'s "specVersion" to 3.')
     }
     return { type: 'object' }
