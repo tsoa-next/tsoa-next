@@ -69,7 +69,8 @@ function inferValidatorKindFromSymbol(symbol: ts.Symbol | undefined, typeChecker
     }
   }
 
-  const resolvedSymbol = (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? typeChecker.getAliasedSymbol(symbol) : symbol
+  const isAliasSymbol = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+  const resolvedSymbol = isAliasSymbol ? typeChecker.getAliasedSymbol(symbol) : symbol
   if (resolvedSymbol !== symbol) {
     const direct = inferValidatorKindFromSymbol(resolvedSymbol, typeChecker, visited)
     if (direct) {
