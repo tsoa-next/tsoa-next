@@ -1,0 +1,219 @@
+# tsoa-next documentation for LLMs
+
+This file is a plain-text guide for humans and coding agents implementing APIs with tsoa-next.
+
+Canonical docs
+- Home: https://tsoa-next.dev/
+- Guides: https://tsoa-next.dev/introduction
+- API reference: https://tsoa-next.dev/reference/
+- GitHub: https://github.com/tsoa-next/tsoa-next
+
+Project overview
+- tsoa-next continues the original tsoa project.
+- It generates OpenAPI specifications and runtime route handlers from TypeScript controllers and models.
+- Supported runtime targets include Express, Koa, and Hapi. Custom route templates are also supported.
+- Current support policy in the docs is Node.js 22 or newer and npm 10 or newer.
+
+Core ideas
+- TypeScript controllers and models are the source of truth.
+- OpenAPI metadata is generated from TypeScript types and decorators.
+- Runtime request validation is handled by generated routes.
+- JSDoc is used for descriptive text where types are not enough.
+- OpenAPI 3 reduces schema-expressiveness gaps compared with OpenAPI 2.
+
+Quick start checklist
+1. Install runtime dependencies such as `tsoa-next`, your web framework, and `reflect-metadata` when your setup needs it.
+2. Install TypeScript and framework type packages.
+3. Create `tsoa.json` with at least:
+   - `entryFile`
+   - `controllerPathGlobs`
+   - `spec.outputDirectory`
+   - `spec.specVersion`
+   - `routes.routesDir`
+4. Enable `experimentalDecorators` in `tsconfig.json`.
+5. Use named exports for controllers. Default-exported controllers are not supported.
+6. Write controllers with `@Route`, HTTP method decorators, and parameter decorators.
+7. Generate files with `tsoa spec` and `tsoa routes`, or use the programmatic APIs.
+8. Import generated `RegisterRoutes` into the app, after body parsers and before final error handling.
+
+Important config notes
+- `noImplicitAdditionalProperties` controls excess property behavior:
+  - `ignore`
+  - `silently-remove-extras`
+  - `throw-on-extras`
+- `spec.specVersion` can be `2` or `3`.
+- `routes.authenticationModule` is used for auth middleware integration.
+- With `pnpm`, explicitly add `@tsoa-next/runtime` because generated routes depend on it.
+- `emitDecoratorMetadata` is not required for basic tsoa-next usage. The docs only call it out as relevant for some custom middleware patterns.
+
+Controller authoring rules
+- Decorate classes with `@Route('path')`.
+- Decorate methods with `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, and related decorators.
+- Use parameter decorators to bind request data:
+  - `@Path`
+  - `@Query`
+  - `@Queries`
+  - `@Header`
+  - `@Body`
+  - `@BodyProp`
+  - `@FormField`
+  - `@UploadedFile`
+  - `@UploadedFiles`
+  - `@Request`
+  - `@Res`
+- Path parameters follow OpenAPI path templating, for example `@Get('{userId}')`.
+
+Generation commands
+- CLI:
+  - `tsoa spec`
+  - `tsoa routes`
+- Programmatic:
+  - `generateSpec(...)`
+  - `generateRoutes(...)`
+
+Runtime setup pattern
+- Add framework body parsers first.
+- Call `RegisterRoutes(app)`.
+- Add a 404 handler if desired.
+- Add a global error handler last.
+
+Validation and error handling
+- Generated routes validate request input before controller execution.
+- Catch `ValidateError` in your framework error middleware and return a structured 422 response.
+- Document known error responses with `@Response<...>(422, 'Validation Failed')` or similar.
+- `@Res()` can inject typed alternate responders for non-success responses.
+
+External validators
+- The external schema decorator is named `@Validate(...)`.
+- If someone asks for `@Validator`, they usually mean `@Validate`.
+- Supported forms:
+  - `@Validate(schema)`
+  - `@Validate('zod', schema)`
+  - `@Validate({ kind: 'zod', schema })`
+- Supported libraries:
+  - `zod`
+  - `joi`
+  - `yup`
+  - `superstruct`
+  - `io-ts`
+- Supported parameter decorators for external validation:
+  - `@Body`
+  - `@BodyProp`
+  - `@Query`
+  - `@Queries`
+  - `@Path`
+  - `@Header`
+  - `@FormField`
+  - `@UploadedFile`
+  - `@UploadedFiles`
+- Behavior:
+  - TypeScript types still generate OpenAPI.
+  - The external schema replaces built-in runtime validation for the decorated parameter subtree.
+  - Routes without `@Validate(...)` keep existing behavior.
+- Practical guidance:
+  - Keep TypeScript types and external schemas aligned.
+  - Import controller modules before route registration so decorator metadata exists at runtime.
+  - If you maintain custom route templates, preserve the validation metadata plumbing for controller class, method name, and parameter index.
+- Library-specific installation:
+  - `npm install zod`
+  - `npm install joi`
+  - `npm install yup`
+  - `npm install superstruct`
+  - `npm install io-ts fp-ts io-ts-types`
+- External validator guide:
+  - https://tsoa-next.dev/external-validators
+
+Authentication
+- Define security schemes in the OpenAPI config.
+- Point `routes.authenticationModule` at a module exporting framework-specific authentication handlers.
+- Use `@Security('name', ['scope'])` on controller methods.
+- The security definition name in config must match the decorator security name.
+- Guide:
+  - https://tsoa-next.dev/authentication
+
+File uploads
+- Install `multer` and `@types/multer` for Express-based file upload workflows.
+- Use `@UploadedFile`, `@UploadedFiles`, and `@FormField` for multipart inputs.
+- Custom multer handling can be done inside controller methods when you need custom storage behavior.
+- Guide:
+  - https://tsoa-next.dev/file-upload
+
+Custom middleware and custom validation
+- `@Middlewares(...)` can apply framework middleware to endpoints.
+- The existing custom validation guide documents a middleware-based `class-validator` approach.
+- That guide is separate from `@Validate(...)`, which is the built-in external-schema integration.
+- Guides:
+  - https://tsoa-next.dev/custom-middlewares
+  - https://tsoa-next.dev/custom-validation
+  - https://tsoa-next.dev/external-validators
+
+Descriptions and annotations
+- Use JSDoc for endpoint and model descriptions.
+- Use annotations and decorators when types alone are not enough.
+- Guides:
+  - https://tsoa-next.dev/descriptions
+  - https://tsoa-next.dev/annotations
+  - https://tsoa-next.dev/decorators
+
+Decorators commonly referenced in the docs
+- `@Route`
+- `@Tags`
+- `@Security`
+- `@OperationId`
+- `@Deprecated`
+- `@Hidden`
+- `@Request`
+- `@Validate`
+- Decorator guide:
+  - https://tsoa-next.dev/decorators
+
+Dependency injection
+- tsoa-next supports IOC container integration.
+- The docs include examples using runtime IOC interfaces and controller resolution patterns.
+- Guide:
+  - https://tsoa-next.dev/di
+
+Templates and custom frameworks
+- Express, Koa, and Hapi route generation are built in.
+- Custom Handlebars route templates can support other frameworks.
+- Guides:
+  - https://tsoa-next.dev/templates
+  - https://tsoa-next.dev/routes
+
+Path mapping and project structure
+- The docs include guidance for TypeScript path mapping and how it interacts with generation.
+- Guide:
+  - https://tsoa-next.dev/path-mapping
+
+Examples and migrations
+- Examples guide:
+  - https://tsoa-next.dev/examples
+- Upgrading guide:
+  - https://tsoa-next.dev/upgrading
+
+Guide map
+- Introduction: https://tsoa-next.dev/introduction
+- Getting started: https://tsoa-next.dev/getting-started
+- Generating routes and OAS: https://tsoa-next.dev/generating
+- Error handling: https://tsoa-next.dev/error-handling
+- Descriptions: https://tsoa-next.dev/descriptions
+- Examples: https://tsoa-next.dev/examples
+- Annotations: https://tsoa-next.dev/annotations
+- Custom middlewares: https://tsoa-next.dev/custom-middlewares
+- Custom validation with class-validator: https://tsoa-next.dev/custom-validation
+- External validators with @Validate: https://tsoa-next.dev/external-validators
+- Dependency injection: https://tsoa-next.dev/di
+- Authentication: https://tsoa-next.dev/authentication
+- Decorators: https://tsoa-next.dev/decorators
+- FAQ: https://tsoa-next.dev/faq
+- File upload: https://tsoa-next.dev/file-upload
+- Path mapping: https://tsoa-next.dev/path-mapping
+- Templates: https://tsoa-next.dev/templates
+- Routes: https://tsoa-next.dev/routes
+- Upgrading: https://tsoa-next.dev/upgrading
+- API reference: https://tsoa-next.dev/reference/
+
+When in doubt
+- Prefer the guides for workflow and patterns.
+- Prefer the API reference for exact type signatures and config shapes.
+- Keep generated OpenAPI, controller types, and runtime validation rules aligned.

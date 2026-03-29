@@ -29,6 +29,7 @@ const sidebar: DefaultTheme.Sidebar = [
       { text: 'Annotations', link: '/annotations' },
       { text: 'Custom Middlewares', link: '/custom-middlewares' },
       { text: 'Custom Validation', link: '/custom-validation' },
+      { text: 'External Validators', link: '/external-validators' },
       { text: 'Dependency Injection', link: '/di' },
       { text: 'Authentication', link: '/authentication' },
       { text: 'Decorators', link: '/decorators' },
@@ -77,6 +78,7 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    logo: '/tsoa-next-logo-590.png',
     search: {
       provider: 'local',
     },

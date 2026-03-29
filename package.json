@@ -21,6 +21,8 @@
     "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
     "preversion": "npm run test",
     "release": "npm run build && changeset publish",
+    "sync:readmes": "node ./scripts/sync-readmes.cjs",
+    "sync:readmes:check": "node ./scripts/sync-readmes.cjs --check",
     "syncpack": "syncpack",
     "test": "turbo run test --concurrency=1 --output-logs=full",
     "turbo": "turbo",

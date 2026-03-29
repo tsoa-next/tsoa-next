@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
+npm run sync:readmes
+git add README.MD packages/tsoa/README.MD packages/tsoa/tsoa-next-logo-590.png
 npm exec lint-staged
 npm run check:pre-commit

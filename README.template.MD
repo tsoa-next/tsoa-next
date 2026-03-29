@@ -1,10 +1,8 @@
-<!-- This file is generated from README.template.MD by `npm run sync:readmes`. Do not edit directly. -->
-
 <div align="center">
   <a href="https://tsoa-next.dev/" target="_blank" rel="noreferrer">
     <h1>
       <span style="display: inline-flex; align-items: center; gap: 0.35em; white-space: nowrap;">
-        <img src="./tsoa-next-logo-590.png" alt="tsoa-next logo" height="40" style="height: 1em; width: auto;" />
+        <img src="{{LOGO_PATH}}" alt="tsoa-next logo" height="40" style="height: 1em; width: auto;" />
         <span>tsoa-next</span>
       </span>
     </h1>
