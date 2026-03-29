@@ -155,6 +155,41 @@ type UserDetails = {
 };
 ```
 
+## Validate
+
+The external schema decorator is named `@Validate(...)`.
+Use it on controller method parameters when you want a supported external schema library to replace built-in runtime validation for that parameter subtree.
+
+- Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
+- Supported libraries: `zod`, `joi`, `yup`, `superstruct`, `io-ts`
+- Supported parameter decorators: `@Body`, `@BodyProp`, `@Query`, `@Queries`, `@Path`, `@Header`, `@FormField`, `@UploadedFile`, `@UploadedFiles`
+- OpenAPI generation still comes from your TypeScript types; `@Validate(...)` only changes runtime validation
+
+```ts
+import { Body, Controller, Post, Route, Validate } from 'tsoa-next'
+import { z } from 'zod'
+
+type CreateUser = {
+  name: string
+  tags: string[]
+}
+
+const CreateUserSchema = z.object({
+  name: z.string().min(3),
+  tags: z.array(z.string()).min(1),
+})
+
+@Route('users')
+export class UsersController extends Controller {
+  @Post()
+  public create(@Body() @Validate(CreateUserSchema) payload: CreateUser): CreateUser {
+    return payload
+  }
+}
+```
+
+For complete setup notes and examples for every supported validator library, see [External Validators](./external-validators).
+
 
 ## Hidden
 

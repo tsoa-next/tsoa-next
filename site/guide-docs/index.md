@@ -3,11 +3,13 @@ layout: home
 title: tsoa-next
 
 hero:
-  name: tsoa-next
+  name: '<span class="brand-lockup"><img class="brand-lockup-logo" src="/tsoa-next-logo-590.png" alt="tsoa-next logo" /><span class="brand-lockup-text">tsoa-next</span></span>'
   tagline: OpenAPI-compliant REST APIs using TypeScript and Node
   actions:
     - text: Get Started →
       link: /getting-started
+    - text: LLMs 🧠 →
+      link: /llms.txt
 
 features:
   - title: "TypeScript ♥ OpenAPI"

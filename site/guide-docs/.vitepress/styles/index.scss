@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Proza+Libre:ital,wght@0,400;0,500;1,400;1,500&display=swap");
 
+:root {
+  --vp-nav-logo-height: 1em;
+}
+
 .theme-container.home-class header.hero {
   height: 55vh;
   padding-top: 20vh;
@@ -13,4 +17,26 @@
 
 .theme-container.home-class header.hero p.description {
   max-width: unset;
+}
+
+.VPNavBarTitle .title {
+  gap: 0;
+}
+
+.VPNavBarTitle :deep(.logo) {
+  width: auto;
+}
+
+.VPHero .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+}
+
+.VPHero .brand-lockup-logo {
+  display: block;
+  height: 1em;
+  width: auto;
+  flex: 0 0 auto;
 }

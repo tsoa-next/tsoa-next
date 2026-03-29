@@ -5,7 +5,8 @@
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "tsoa-next-logo-590.png"
   ],
   "bin": {
     "tsoa": "dist/cli.js"
@@ -40,7 +41,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tsoa-next/tsoa-next.git"
+    "url": "https://github.com/tsoa-next/tsoa-next.git",
+    "directory": "packages/tsoa"
   },
   "engines": {
     "node": ">=22.0.0",
