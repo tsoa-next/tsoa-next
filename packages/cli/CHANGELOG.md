@@ -1,5 +1,13 @@
 # @tsoa-next/cli
 
+## 7.3.1
+
+### Patch Changes
+
+- 56c6b54: Refresh the release publish workflow to run on Node 24 so npm trusted publishing can authenticate with OIDC during npm publishes.
+- Updated dependencies [56c6b54]
+  - @tsoa-next/runtime@7.3.1
+
 ## 7.3.0
 
 ### Minor Changes
