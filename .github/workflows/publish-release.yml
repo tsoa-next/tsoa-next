@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  id-token: write # Required for OIDC
   contents: write
-  id-token: write
   packages: write
   pull-requests: write
 
@@ -42,7 +42,6 @@ jobs:
           publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Prepare GitHub Packages package
         if: steps.changesets.outputs.published == 'true'
