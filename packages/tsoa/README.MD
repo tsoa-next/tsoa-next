@@ -42,14 +42,25 @@ Where historical release notes or migration references still point upstream, the
 
 ## External Validators
 
-`@Validate(...)` adds opt-in runtime authority for external schemas on controller parameters.
+`@Validate(...)` adds opt-in runtime authority for external schemas on supported controller method parameters.
 
 - Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
 - Supported libraries: `zod`, `joi`, `yup`, `superstruct`, `io-ts`
 - `io-ts` installs: add `fp-ts`, and add `io-ts-types` as well if you rely on helpers like `withMessage`
-- Scope: parameter-level only in this release
+- Supported parameter decorators: `@Body`, `@BodyProp`, `@Query`, `@Queries`, `@Path`, `@Header`, and `@FormField` / uploaded file params
 - Behavior: TypeScript metadata still drives OpenAPI generation, while the external schema replaces built-in runtime validation for the decorated parameter subtree
 - Compatibility: routes without `@Validate(...)` keep their current behavior
+
+Generated `RegisterRoutes(...)` functions also accept an optional validation context so applications can provide translation or failure-formatting hooks:
+
+```ts
+RegisterRoutes(app, {
+  validation: {
+    translate: (key, params) => translateMessage(key, params),
+    errorFormatter: failure => failure,
+  },
+})
+```
 
 ```ts
 import * as t from 'io-ts'
