@@ -3,13 +3,12 @@
 ## Sorting
 
 - **I'm submitting a ...**
-
   - [ ] bug report
   - [ ] feature request
   - [ ] support request
 
 - I confirm that I
-  - [ ] used the [search](https://github.com/VannaDii/tsoa-next/issues?q=is%3Aissue) to make sure that a similar issue hasn't already been submitted
+  - [ ] used the [search](https://github.com/tsoa-next/tsoa-next/issues?q=is%3Aissue) to make sure that a similar issue hasn't already been submitted
 
 ## Expected Behavior
 

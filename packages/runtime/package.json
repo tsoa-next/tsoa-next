@@ -42,16 +42,44 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "express": "^4.21.0 || ^5.0.0"
+    "express": "^4.21.0 || ^5.0.0",
+    "fp-ts": "^2.16.11",
+    "io-ts": "^2.2.21",
+    "io-ts-types": "^0.5.19",
+    "joi": "^17.13.3",
+    "superstruct": "^2.0.2",
+    "yup": "^1.7.1",
+    "zod": "^4.1.11"
   },
   "peerDependenciesMeta": {
     "express": {
+      "optional": true
+    },
+    "fp-ts": {
+      "optional": true
+    },
+    "io-ts": {
+      "optional": true
+    },
+    "io-ts-types": {
+      "optional": true
+    },
+    "joi": {
+      "optional": true
+    },
+    "superstruct": {
+      "optional": true
+    },
+    "yup": {
+      "optional": true
+    },
+    "zod": {
       "optional": true
     }
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vannadii/tsoa-next.git"
+    "url": "https://github.com/tsoa-next/tsoa-next.git"
   },
   "engines": {
     "node": ">=22.0.0",
@@ -60,5 +88,6 @@
   "engineStrict": true,
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "homepage": "https://tsoa-next.dev"
 }

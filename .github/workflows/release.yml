@@ -24,7 +24,7 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          owner: VannaDii
+          owner: tsoa-next
           repositories: tsoa-next
 
       - uses: actions/checkout@v6.0.2

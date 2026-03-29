@@ -3,7 +3,7 @@
 By default all the controllers are created by the auto-generated routes template using an empty default constructor.
 If you want to use dependency injection and let the DI-framework handle the creation of your controllers, we need set up an IoC Module tsoa can call.
 
-To tell `tsoa-next` to use your DI-container you have to reference your module exporting the DI-container in the [config](https://github.com/VannaDii/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`):
+To tell `tsoa-next` to use your DI-container you have to reference your module exporting the DI-container in the [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`):
 
 ```js
 {
@@ -28,14 +28,14 @@ Containers must conform to the following interface.
 
 ```ts
 interface IocContainer {
-  get<T>(controller: { prototype: T }): T;
+  get<T>(controller: { prototype: T }): T
 }
 ```
 
 Functions must conform to the following signature, where `request` is your web framework's request object.
 
 ```ts
-type IocContainerFactory = (request: unknown) => IocContainer;
+type IocContainerFactory = (request: unknown) => IocContainer
 ```
 
 ### Example
@@ -44,33 +44,31 @@ Container instance:
 
 ```ts
 // src/ioc.ts
-import { Container } from "di-package";
+import { Container } from 'di-package'
 
 // Assign a container to `iocContainer`.
-const iocContainer = new Container();
+const iocContainer = new Container()
 
 // export according to convention
-export { iocContainer };
+export { iocContainer }
 ```
 
 Factory function:
 
 ```ts
 // src/ioc.ts
-import { IocContainer, IocContainerFactory } from "@tsoa-next/runtime";
-import { Container } from "di-package";
+import { IocContainer, IocContainerFactory } from '@tsoa-next/runtime'
+import { Container } from 'di-package'
 
 // Or assign a factory function to `iocContainer`.
-const iocContainer: IocContainerFactory = function (
-  request: Request
-): IocContainer {
-  const container = new Container();
-  container.bind(request);
-  return container;
-};
+const iocContainer: IocContainerFactory = function (request: Request): IocContainer {
+  const container = new Container()
+  container.bind(request)
+  return container
+}
 
 // export according to convention
-export { iocContainer };
+export { iocContainer }
 ```
 
 ::: tip
@@ -78,9 +76,9 @@ If you want to use a DI framework other than the examples below, adding it isn't
 If you set an iocModule, tsoa will call this module (to get a `FooController`) with:
 
 ```ts
-import { iocContainer } from "./the/path/to/the/module/from/tsoa.json";
+import { iocContainer } from './the/path/to/the/module/from/tsoa.json'
 
-iocContainer.get<FooController>(FooController);
+iocContainer.get<FooController>(FooController)
 ```
 
 If you wrap your DI's API or even a ControllerFactory to accept this call and respond with a FooController, it'll work.
@@ -96,20 +94,20 @@ More information can be found [here](https://github.com/inversify/inversify-bind
 
 ```ts
 // src/ioc.ts
-import { Container, decorate, injectable } from "inversify";
-import { buildProviderModule } from "inversify-binding-decorators";
-import { Controller } from "tsoa-next";
+import { Container, decorate, injectable } from 'inversify'
+import { buildProviderModule } from 'inversify-binding-decorators'
+import { Controller } from 'tsoa-next'
 
 // Create a new container tsoa can use
-const iocContainer = new Container();
+const iocContainer = new Container()
 
-decorate(injectable(), Controller); // Makes tsoa's Controller injectable
+decorate(injectable(), Controller) // Makes tsoa's Controller injectable
 
 // make inversify aware of inversify-binding-decorators
-iocContainer.load(buildProviderModule());
+iocContainer.load(buildProviderModule())
 
 // export according to convention
-export { iocContainer };
+export { iocContainer }
 ```
 
 We usually don't want to create a new controller instance for every call, so let's create a convenience wrapper around [`@fluentProvide()`](https://github.com/inversify/inversify-binding-decorators#fluent-binding-decorator)
@@ -123,14 +121,12 @@ Instead of `@provideSingleton`, please make sure to use `@fluentProvide` directl
 
 ```ts
 // src/util/provideSingleton.ts
-import { fluentProvide } from "inversify-binding-decorators";
-import { interfaces } from "inversify";
+import { fluentProvide } from 'inversify-binding-decorators'
+import { interfaces } from 'inversify'
 
-export const provideSingleton = function <T>(
-  identifier: interfaces.ServiceIdentifier<T>
-) {
-  return fluentProvide(identifier).inSingletonScope().done();
-};
+export const provideSingleton = function <T>(identifier: interfaces.ServiceIdentifier<T>) {
+  return fluentProvide(identifier).inSingletonScope().done()
+}
 ```
 
 Now, in our controllers, we can use `@provideSingleton()`
@@ -165,20 +161,20 @@ Here's an example using [TSyringe](https://github.com/microsoft/tsyringe).
 // src/lib/tsyringeTsoaIocContainer.ts
 // Target this file in your tsoa.json's "iocModule" property
 
-import { IocContainer } from '@tsoa-next/runtime';
-import { container } from 'tsyringe';
+import { IocContainer } from '@tsoa-next/runtime'
+import { container } from 'tsyringe'
 
 export const iocContainer: IocContainer = {
   get: <T>(controller: { prototype: T }): T => {
-    return container.resolve<T>(controller as never);
+    return container.resolve<T>(controller as never)
   },
-};
+}
 ```
 
 ```ts
 // src/services/FooService.ts
 
-import { singleton } from 'tsyringe';
+import { singleton } from 'tsyringe'
 // ...
 
 @singleton()
@@ -190,18 +186,18 @@ export class FooService {
 ```ts
 // src/controllers/FooController.ts
 
-import { Controller, Route } from 'tsoa-next';
-import { injectable } from 'tsyringe';
-import { FooService } from '../services/FooService';
+import { Controller, Route } from 'tsoa-next'
+import { injectable } from 'tsyringe'
+import { FooService } from '../services/FooService'
 // ...
 
 @injectable()
 @Route('foo')
 export class FooController extends Controller {
   constructor(private fooService: FooService) {
-    super();
+    super()
   }
-  
+
   // ...
 }
 ```

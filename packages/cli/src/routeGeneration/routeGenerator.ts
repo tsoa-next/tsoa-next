@@ -187,9 +187,12 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     const property = this.buildProperty(source.type)
     const parameter = {
       default: source.default,
+      externalValidator: source.externalValidator,
       in: source.in,
       name: source.name,
+      parameterIndex: source.parameterIndex,
       required: source.required ? true : undefined,
+      validationStrategy: source.validationStrategy,
     } as TsoaRoute.ParameterSchema
     const parameterSchema = Object.assign(parameter, property)
 

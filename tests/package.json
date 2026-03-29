@@ -8,6 +8,8 @@
     "prepare-test": "cross-env NODE_ENV=tsoa_test ts-node --require=tsconfig-paths/register ./prepare.ts",
     "pretest": "npm run clean && npm run prepare-test && npm run typecheck",
     "test": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\"",
+    "test:ci": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\" --parallel --timeout 20000",
+    "test:long": "npm run test:ci",
     "typecheck": "tsc"
   },
   "keywords": [
@@ -49,8 +51,11 @@
     "constructs": "^10.4.2",
     "cross-env": "^7.0.3",
     "express": "^4.21.2",
+    "fp-ts": "^2.16.11",
     "inversify": "^6.1.6",
     "inversify-binding-decorators": "^4.0.0",
+    "io-ts": "^2.2.21",
+    "io-ts-types": "^0.5.19",
     "joi": "^17.13.3",
     "koa": "^3.1.2",
     "koa-bodyparser": "^4.4.0",
@@ -60,15 +65,17 @@
     "reflect-metadata": "^0.2.2",
     "rimraf": "^6.1.3",
     "sinon": "^19.0.2",
+    "superstruct": "^2.0.2",
     "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
+    "yup": "^1.7.1",
     "zod": "^4.1.11"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vannadii/tsoa-next.git"
+    "url": "https://github.com/tsoa-next/tsoa-next.git"
   },
   "engines": {
     "node": ">=24.14.0",

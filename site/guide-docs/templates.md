@@ -8,7 +8,7 @@ Using a custom template means that you will have a more difficult time migrating
 
 _Okay, but why would you want to override the route template?_
 
-- Are you using a server framework that we don't yet support? If so, then [please open an issue first](https://github.com/VannaDii/tsoa-next/issues). It's likely that we will try to accept your custom template as one of the new standard options. If we can't support the new framework, then we'll recommend a custom route template.
+- Are you using a server framework that we don't yet support? If so, then [please open an issue first](https://github.com/tsoa-next/tsoa-next/issues). It's likely that we will try to accept your custom template as one of the new standard options. If we can't support the new framework, then we'll recommend a custom route template.
 - Do you have a very specific requirement? Have you already opened an issue and have the tsoa maintainers opted not to support this feature? Then a custom template might solve your needs best.
 
 Route templates are generated from predefined handlebar templates. You can override and define your own template to use

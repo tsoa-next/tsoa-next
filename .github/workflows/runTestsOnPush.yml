@@ -24,16 +24,67 @@ jobs:
       has-impact: ${{ steps.detect.outputs.has-impact }}
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - id: detect
         uses: ./.github/actions/detect-package-impact
 
+  coverage:
+    name: Coverage
+    needs: detect-package-impact
+    if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm install --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      - name: Generate coverage
+        run: npm run coverage
+
+      - name: Sonar Scan
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+
   build:
     name: Build
-    needs: detect-package-impact
+    needs:
+      - detect-package-impact
+      - coverage
+    if: always() && github.ref != 'refs/heads/changeset-release/main'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -42,42 +93,52 @@ jobs:
         typescript-version: ["^5.0.0"]
 
     steps:
+      - name: Skip when no impacted packages changed
+        if: needs.detect-package-impact.outputs.has-impact != 'true'
+        run: echo "No impacted packages changed; skipping build matrix."
+
+      - name: Fail when coverage gate does not pass
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result != 'success'
+        run: |
+          echo "Coverage gate did not pass."
+          exit 1
+
       - name: Checkout
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
-        uses: actions/checkout@v6.0.2
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
-        uses: actions/setup-node@v6.3.0
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Set override for matrix TypeScript version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm pkg set 'overrides.typescript=${{ matrix.typescript-version }}'
 
       - name: Install
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm install --ignore-scripts
 
       - name: Output ts version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm exec -- tsc --version
 
       - name: Output packages version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm ls --workspaces --depth=0
 
       - name: Build
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run build
 
       - name: Lint
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run lint
 
       - name: Test
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run test

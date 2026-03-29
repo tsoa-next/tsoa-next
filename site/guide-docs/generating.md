@@ -39,39 +39,34 @@ You can find the Reference for the tsoa configuration file [here](../reference/i
 
 For information on the configuration object (tsoa.json), you may also me interested in:
 
-[Configuration definition](https://github.com/VannaDii/tsoa-next/blob/main/packages/runtime/src/config.ts)
+[Configuration definition](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts)
 
-[Configuration sample](https://github.com/VannaDii/tsoa-next/blob/main/tests/tsoa.json)
+[Configuration sample](https://github.com/tsoa-next/tsoa-next/blob/main/tests/tsoa.json)
 
 ## Programmatic
 
 ```typescript
-import {
-  generateRoutes,
-  generateSpec,
-  ExtendedRoutesConfig,
-  ExtendedSpecConfig,
-} from "tsoa-next";
+import { generateRoutes, generateSpec, ExtendedRoutesConfig, ExtendedSpecConfig } from 'tsoa-next'
 
-(async () => {
+;(async () => {
   const specOptions: ExtendedSpecConfig = {
-    basePath: "/api",
-    entryFile: "./api/server.ts",
+    basePath: '/api',
+    entryFile: './api/server.ts',
     specVersion: 3,
-    outputDirectory: "./api/dist",
-    controllerPathGlobs: ["./routeControllers/**/*Controller.ts"],
-  };
+    outputDirectory: './api/dist',
+    controllerPathGlobs: ['./routeControllers/**/*Controller.ts'],
+  }
 
   const routeOptions: ExtendedRoutesConfig = {
-    basePath: "/api",
-    entryFile: "./api/server.ts",
-    routesDir: "./api",
-  };
+    basePath: '/api',
+    entryFile: './api/server.ts',
+    routesDir: './api',
+  }
 
-  await generateSpec(specOptions);
+  await generateSpec(specOptions)
 
-  await generateRoutes(routeOptions);
-})();
+  await generateRoutes(routeOptions)
+})()
 ```
 
 **Note:** If you use tsoa programmatically, please be aware that tsoa's methods can (under rare circumstances) change in minor and patch releases. But if you are using tsoa in a .ts file, then TypeScript will help you migrate to any changes. We reserve this right to change what are essentially our internal methods so that we can continue to provide incremental value to the majority user (our CLI users). The CLI however will only receive breaking changes during a major release.

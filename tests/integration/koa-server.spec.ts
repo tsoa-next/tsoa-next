@@ -107,8 +107,8 @@ describe('Koa Server', () => {
       app,
       path,
       data,
-      (_err, _res) => {
-        return
+      (_err, res) => {
+        expect(res.status).to.equal(201)
       },
       201,
     )
@@ -178,7 +178,15 @@ describe('Koa Server', () => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (_err: any, res: any) => {
+            expect(res.status).to.equal(400)
+          },
+          400,
+        )
       }),
     )
   })
@@ -217,7 +225,15 @@ describe('Koa Server', () => {
         const data = getFakeModel()
         data.dateValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (_err: any, res: any) => {
+            expect(res.status).to.equal(400)
+          },
+          400,
+        )
       }),
     )
   })
@@ -230,7 +246,15 @@ describe('Koa Server', () => {
         const data = getFakeModel()
         data.numberValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (_err: any, res: any) => {
+            expect(res.status).to.equal(400)
+          },
+          400,
+        )
       }),
     )
   })
@@ -251,7 +275,15 @@ describe('Koa Server', () => {
 
     return Promise.all(
       invalidValues.map((value: any) => {
-        return verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest/Object',
+          { obj: value },
+          (_err: any, res: any) => {
+            expect(res.status).to.equal(400)
+          },
+          400,
+        )
       }),
     )
   })
@@ -1163,12 +1195,26 @@ describe('Koa Server', () => {
 
       it('returns 200 if tsoa auth is correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+          },
+          200,
+        )
       })
 
       it('returns 200 if multiple auth handlers are correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=abc123456&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+          },
+          200,
+        )
       })
 
       it('returns 401 if neither API key nor tsoa auth are correct, last error to resolve is returned', () => {
@@ -1211,12 +1257,26 @@ describe('Koa Server', () => {
 
       it('returns 401 if API key is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=abc123456&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(401)
+          },
+          401,
+        )
       })
 
       it('returns 401 if tsoa auth is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(401)
+          },
+          401,
+        )
       })
 
       it('should pass through error if controller method crashes', () => {
@@ -1307,8 +1367,9 @@ describe('Koa Server', () => {
       })
     })
 
-    it('parses path parameters', () => {
-      return verifyGetRequest(app, basePath + '/ParameterTest/Path/Tony/Stark/45/82.1/true/MALE', (_err, res) => {
+    it('parses path parameters', function () {
+      return verifyGetRequest(app, basePath + '/ParameterTest/Path/Tony/Stark/45/82.1/true/MALE', (err, res) => {
+        expect(err).to.equal(false)
         const model = res.body as ParameterTestModel
         expect(model.firstname).to.equal('Tony')
         expect(model.lastname).to.equal('Stark')
@@ -1735,7 +1796,12 @@ describe('Koa Server', () => {
     })
   })
 
-  it('shutdown server', () => server.close())
+  it('shutdown server', done => {
+    server.close(error => {
+      expect(error).to.equal(undefined)
+      done()
+    })
+  })
 
   function getFakeModel(): TestModel {
     // Defining as Partial to help writing and allowing to leave out values that should be dropped or made optional in generation

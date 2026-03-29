@@ -21,6 +21,8 @@ type ExpressApiHandlerParameters = {
 
 type ExpressValidationArgsParameters = {
   args: Record<string, TsoaRoute.ParameterSchema>
+  controllerClass?: object
+  methodName?: string
   request: ExRequest
   response: ExResponse
 }
@@ -52,10 +54,11 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
   }
 
   getValidatedArgs(params: ExpressValidationArgsParameters): unknown[] {
-    const { args, request, response } = params
+    const { args, controllerClass, methodName, request, response } = params
 
     const fieldErrors: FieldErrors = {}
     const values = Object.values(args).map(param => {
+      const metadata = { controllerClass, methodName, parameterIndex: param.parameterIndex }
       const name = param.name
       switch (param.in) {
         case 'request':
@@ -63,20 +66,20 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
         case 'request-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(request, name)
           const value: unknown = descriptor ? descriptor.value : undefined
-          return this.validationService.ValidateParam(param, value, name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, value, name, fieldErrors, false, undefined, metadata)
         }
         case 'query':
-          return this.validationService.ValidateParam(param, request.query[name], name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, request.query[name], name, fieldErrors, false, undefined, metadata)
         case 'queries':
-          return this.validationService.ValidateParam(param, request.query, name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, request.query, name, fieldErrors, false, undefined, metadata)
         case 'path':
-          return this.validationService.ValidateParam(param, request.params[name], name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, request.params[name], name, fieldErrors, false, undefined, metadata)
         case 'header':
-          return this.validationService.ValidateParam(param, request.header(name), name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, request.header(name), name, fieldErrors, false, undefined, metadata)
         case 'body': {
           const bodyFieldErrors: FieldErrors = {}
           const normalizedBody = this.normalizeRequestBody(request.body, request.headers)
-          const bodyArgs = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined)
+          const bodyArgs = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined, metadata)
           Object.keys(bodyFieldErrors).forEach(key => {
             fieldErrors[key] = { message: bodyFieldErrors[key].message }
           })
@@ -85,7 +88,7 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
         case 'body-prop': {
           const bodyPropFieldErrors: FieldErrors = {}
           const bodyPropValue = this.getBodyProperty(request.body, request.headers, name)
-          const bodyPropArgs = this.validationService.ValidateParam(param, bodyPropValue, name, bodyPropFieldErrors, true, 'body.')
+          const bodyPropArgs = this.validationService.ValidateParam(param, bodyPropValue, name, bodyPropFieldErrors, true, 'body.', metadata)
           Object.keys(bodyPropFieldErrors).forEach(key => {
             fieldErrors[key] = { message: bodyPropFieldErrors[key].message }
           })
@@ -95,19 +98,15 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
           const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array && p.array.dataType === 'file'))
           if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
             const requestFiles = request.files as { [fileName: string]: Express.Multer.File[] } | undefined
-
-            const fileArgs = this.validationService.ValidateParam(param, requestFiles?.[name], name, fieldErrors, false, undefined)
+            const fileValue = param.dataType === 'array' ? requestFiles?.[name] : requestFiles?.[name]?.[0]
+            const fileArgs = this.validationService.ValidateParam(param, fileValue, name, fieldErrors, false, undefined, metadata)
             if (param.dataType === 'array') {
               return fileArgs
-            }
-            if (Array.isArray(fileArgs) && fileArgs.length === 1) {
-              const firstFile: unknown = fileArgs[0]
-              return firstFile
             }
             return fileArgs
           }
           const bodyValue = this.isRecord(request.body) ? request.body[name] : undefined
-          return this.validationService.ValidateParam(param, bodyValue, name, fieldErrors, false, undefined)
+          return this.validationService.ValidateParam(param, bodyValue, name, fieldErrors, false, undefined, metadata)
         }
         case 'res':
           return ((status: number | undefined, data: unknown, headers: HeaderRecord) => {

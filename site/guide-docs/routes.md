@@ -4,7 +4,7 @@ You have two options for how to tell tsoa where it can find the controllers that
 
 ## Using automatic controllers discovery
 
-You can tell `tsoa-next` to use your automatic controllers discovery by providing a [minimatch glob](http://www.globtester.com/) in the [config](https://github.com/VannaDii/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`). It can be provided on `config.spec` or `config.routes`.
+You can tell `tsoa-next` to use your automatic controllers discovery by providing a [minimatch glob](http://www.globtester.com/) in the [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`). It can be provided on `config.spec` or `config.routes`.
 
 Pros:
 
@@ -44,22 +44,22 @@ Cons:
 - New developers on your team might add a controller and not understand why the new controller was not exposed to the router or to the OpenAPI generation. If this is a problem for you, please use the automatic controller discovery option described above.
 
 ```typescript
-import * as methodOverride from "method-override";
-import * as express from "express";
-import * as bodyParser from "body-parser";
-import { RegisterRoutes } from "./routes";
+import * as methodOverride from 'method-override'
+import * as express from 'express'
+import * as bodyParser from 'body-parser'
+import { RegisterRoutes } from './routes'
 
 // ########################################################################
 // controllers need to be referenced in order to get crawled by the generator
-import "./users/usersController";
+import './users/usersController'
 // ########################################################################
 
-const app = express();
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(methodOverride());
+const app = express()
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json())
+app.use(methodOverride())
 
-RegisterRoutes(app);
+RegisterRoutes(app)
 
-app.listen(3000);
+app.listen(3000)
 ```

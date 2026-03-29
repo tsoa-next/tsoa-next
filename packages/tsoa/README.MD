@@ -1,13 +1,14 @@
 <div align="center">
-  <a href="https://vannadii.github.io/tsoa-next/" target="_blank" rel="noreferrer">
+  <a href="https://tsoa-next.dev/" target="_blank" rel="noreferrer">
     <h1>tsoa-next</h1>
   </a>
 Pronounced so·uh
 
 OpenAPI-compliant REST APIs using TypeScript and Node
 
-![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)
+[![build status](https://github.com/tsoa-next/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)](https://github.com/tsoa-next/tsoa-next/actions/workflows/runTestsOnPush.yml)
 [![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tsoa-next_tsoa-next&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tsoa-next_tsoa-next)
 
 </div>
 
@@ -39,26 +40,86 @@ Where historical release notes or migration references still point upstream, the
 - Runtime validation of tsoa-next should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
   - Please note that by enabling OpenAPI 3 you minimize the chances of divergent validation logic since OpenAPI 3 has a more expressive schema syntax.
 
+## External Validators
+
+`@Validate(...)` adds opt-in runtime authority for external schemas on supported controller method parameters.
+
+- Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
+- Supported libraries: `zod`, `joi`, `yup`, `superstruct`, `io-ts`
+- `io-ts` installs: add `fp-ts`, and add `io-ts-types` as well if you rely on helpers like `withMessage`
+- Supported parameter decorators: `@Body`, `@BodyProp`, `@Query`, `@Queries`, `@Path`, `@Header`, and `@FormField` / uploaded file params
+- Behavior: TypeScript metadata still drives OpenAPI generation, while the external schema replaces built-in runtime validation for the decorated parameter subtree
+- Compatibility: routes without `@Validate(...)` keep their current behavior
+
+Generated `RegisterRoutes(...)` functions also accept an optional validation context so applications can provide translation or failure-formatting hooks:
+
+```ts
+RegisterRoutes(app, {
+  validation: {
+    translate: (key, params) => translateMessage(key, params),
+    errorFormatter: failure => failure,
+  },
+})
+```
+
+```ts
+import * as t from 'io-ts'
+import { withMessage } from 'io-ts-types'
+import { Body, Controller, Post, Route, Validate } from '@tsoa-next/runtime'
+
+interface PositiveFloatBrand {
+  readonly PositiveFloat: unique symbol
+}
+
+const PositiveFloat = withMessage(
+  t.brand(t.number, (n): n is t.Branded<number, PositiveFloatBrand> => Number.isFinite(n) && n > 0, 'PositiveFloat'),
+  () => 'validation.wager.amount.mustBePositiveFloat',
+)
+
+const WagerCodec = t.type({
+  amount: PositiveFloat,
+  outcome: t.Int,
+})
+
+type Wager = t.TypeOf<typeof WagerCodec>
+
+@Route('wagers')
+export class WagersController extends Controller {
+  @Post()
+  public createWager(
+    @Body()
+    @Validate('io-ts', WagerCodec)
+    wager: Wager,
+  ): Wager {
+    return wager
+  }
+}
+```
+
+## Migration Note
+
+This feature is fully opt-in. If you do not use `@Validate(...)`, existing interface/class models, generated routes, validation behavior, and error responses are unchanged.
+
 ## Getting Started
 
 - Requirements:
   - Node.js 22 or newer
   - npm 10 or newer
   - We verify support across the previous LTS, current LTS, and Node vNext in CI
-- [Documentation](https://vannadii.github.io/tsoa-next/docs/)
-- [API Reference](https://vannadii.github.io/tsoa-next/reference/)
-- [Getting started guide](https://vannadii.github.io/tsoa-next/docs/getting-started)
+- [Documentation](https://tsoa-next.dev/)
+- [API Reference](https://tsoa-next.dev/reference/)
+- [Getting started guide](https://tsoa-next.dev/getting-started)
 
 ## Examples
 
-Check out the [guides](https://vannadii.github.io/tsoa-next/docs/)
+Check out the [guides](https://tsoa-next.dev/)
 
-See example controllers in [the tests](https://github.com/VannaDii/tsoa-next/tree/main/tests/fixtures/controllers)
+See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)
 
-See example models in [the tests](https://github.com/VannaDii/tsoa-next/blob/main/tests/fixtures/testModel.ts)
+See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)
 
 ## Help wanted
 
 ### Contributing code
 
-To contribute (via a PR), please first see the [Contributing Guide](https://github.com/VannaDii/tsoa-next/blob/main/docs/CONTRIBUTING.md)
+To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)

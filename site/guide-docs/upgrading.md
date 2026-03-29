@@ -21,23 +21,23 @@ They can range from simple scenarios
  * A Word shall be a non-empty string
  * @minLength 1
  */
-type Word = string;
+type Word = string
 ```
 
 to more complex scenarios like unions and intersections of aliases
 
 ```ts
-type IntersectionAlias = { value1: string; value2: string } & TypeAliasModel1;
+type IntersectionAlias = { value1: string; value2: string } & TypeAliasModel1
 
 // or
-type OneOrTwo = TypeAliasModel1 | TypeAliasModel2;
+type OneOrTwo = TypeAliasModel1 | TypeAliasModel2
 ```
 
 or even generic type aliases:
 
 ```ts
-type GenericAlias<T> = T | string;
-type ForwardGenericAlias<T, U> = GenericAlias<U> | T;
+type GenericAlias<T> = T | string
+type ForwardGenericAlias<T, U> = GenericAlias<U> | T
 ```
 
 Please note that this means that tsoa does not only generate the specification (OpenAPI v3 and Swagger2\*), but will also validate the input against the types including the jsDoc annotations.
@@ -56,29 +56,29 @@ tsoa now works with the ts type checker to resolve mapped types. We will activel
  * Make all properties in T optional
  */
 type Partial<T> = {
-  [P in keyof T]?: T[P];
-};
+  [P in keyof T]?: T[P]
+}
 
 /**
  * Make all properties in T required
  */
 type Required<T> = {
-  [P in keyof T]-?: T[P];
-};
+  [P in keyof T]-?: T[P]
+}
 
 /**
  * Make all properties in T readonly
  */
 type Readonly<T> = {
-  readonly [P in keyof T]: T[P];
-};
+  readonly [P in keyof T]: T[P]
+}
 
 /**
  * From T, pick a set of properties whose keys are in the union K
  */
 type Pick<T, K extends keyof T> = {
-  [P in K]: T[P];
-};
+  [P in K]: T[P]
+}
 ```
 
 ### Support for conditional types
@@ -86,7 +86,7 @@ type Pick<T, K extends keyof T> = {
 As of version 2.8, TypeScript supports conditional types. The syntax is very close to the ternary operator and enables expression of 2 (or more) different types based on a condition. Please refer to the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/advanced-types.html#conditional-types) for details.
 
 ```ts
-type Diff<T, U> = T extends U ? never : T; // Remove types from T that are assignable to U
+type Diff<T, U> = T extends U ? never : T // Remove types from T that are assignable to U
 ```
 
 tsoa now works with the ts type checker to resolve conditional types. We will actively try to support most cases, however the test suite for now only covers the utility types typescript ships with, like:
@@ -95,17 +95,17 @@ tsoa now works with the ts type checker to resolve conditional types. We will ac
 /**
  * Exclude from T those types that are assignable to U
  */
-type Exclude<T, U> = T extends U ? never : T;
+type Exclude<T, U> = T extends U ? never : T
 
 /**
  * Extract from T those types that are assignable to U
  */
-type Extract<T, U> = T extends U ? T : never;
+type Extract<T, U> = T extends U ? T : never
 
 /**
  * Exclude null and undefined from T
  */
-type NonNullable<T> = T extends null | undefined ? never : T;
+type NonNullable<T> = T extends null | undefined ? never : T
 ```
 
 ### Support for combinations and utility types
@@ -256,4 +256,4 @@ Valid settings are now: `'throw-on-extras' | 'silently-remove-extras' | 'ignore'
 
 **For reference, see the TS interface of the entire config [here](../reference/interfaces/tsoa-next.Config.html)**
 
-### TypeScript Unions are now implemented as `anyOf` in OpenAPI [\#671](https://github.com/VannaDii/tsoa-next/issues/671)
+### TypeScript Unions are now implemented as `anyOf` in OpenAPI [\#671](https://github.com/tsoa-next/tsoa-next/issues/671)

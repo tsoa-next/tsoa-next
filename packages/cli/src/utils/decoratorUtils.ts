@@ -38,6 +38,7 @@ const TSOA_DECORATOR_NAMES = new Set([
   'Tags',
   'UploadedFile',
   'UploadedFiles',
+  'Validate',
 ])
 
 function tsHasDecorators(tsNamespace: typeof ts): tsNamespace is typeof ts & {

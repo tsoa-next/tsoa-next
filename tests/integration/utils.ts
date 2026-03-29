@@ -4,30 +4,59 @@ import { Agent } from 'http'
 import { resolve } from 'path'
 import { App } from 'supertest/types'
 
+function parseResponseError(response: { error?: unknown } | undefined): unknown {
+  if (typeof response?.error !== 'string') {
+    return response?.error
+  }
+
+  try {
+    return JSON.parse(response.error)
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return response.error
+    }
+
+    throw error
+  }
+}
+
 export function verifyRequest(app: App, verifyResponse: (err: any, res: request.Response) => any, methodOperation: (request: TestAgent<request.Test>) => request.Test, expectedStatus = 200) {
   return new Promise<void>((resolve, reject) => {
-    methodOperation(request(app))
-      .expect(expectedStatus)
-      .end((err: any, res: any) => {
-        let parsedError: any
-        try {
-          parsedError = JSON.parse(res.error)
-        } catch (err) {
-          parsedError = res?.error
-        }
+    const attemptRequest = (remainingRetries: number) => {
+      methodOperation(request(app))
+        .expect(expectedStatus)
+        .end((err: any, res: any) => {
+          if (err && !res && remainingRetries > 0) {
+            attemptRequest(remainingRetries - 1)
+            return
+          }
 
-        if (err) {
-          verifyResponse(err, res)
-          reject({
-            error: err,
-            response: parsedError,
-          })
-          return
-        }
+          if (err && !res) {
+            reject(err)
+            return
+          }
 
-        verifyResponse(parsedError, res)
-        resolve()
-      })
+          const parsedError = parseResponseError(res)
+
+          try {
+            if (err) {
+              verifyResponse(err, res)
+              reject({
+                error: err,
+                response: parsedError,
+              })
+              return
+            }
+
+            verifyResponse(parsedError, res)
+            resolve()
+          } catch (verificationError) {
+            reject(verificationError)
+          }
+        })
+    }
+
+    attemptRequest(1)
   })
 }
 

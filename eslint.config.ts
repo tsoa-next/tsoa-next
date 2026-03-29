@@ -17,6 +17,7 @@ export default defineConfig([
     ignorePatterns: [
       'node_modules',
       'dist',
+      'coverage',
       'commitlint.config.cjs',
       'eslint.config.ts',
       'prettier.config.ts',
@@ -28,7 +29,7 @@ export default defineConfig([
     extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:@typescript-eslint/recommended-requiring-type-checking', 'prettier'],
     parser: '@typescript-eslint/parser',
     parserOptions: {
-      project: ['./packages/**/tsconfig.json', './tests/tsconfig.json', './tests/esm/tsconfig.json'],
+      project: ['./packages/**/tsconfig.json', './scripts/tsconfig.json', './tests/tsconfig.json', './tests/esm/tsconfig.json'],
       sourceType: 'module',
     },
     plugins: ['@typescript-eslint'],
@@ -111,6 +112,16 @@ export default defineConfig([
           '@typescript-eslint/only-throw-error': 'off',
           '@typescript-eslint/prefer-promise-reject-errors': 'off',
           'no-unsafe-optional-chaining': 'off',
+        },
+      },
+      {
+        files: ['scripts/**/*.cjs'],
+        rules: {
+          '@typescript-eslint/no-unsafe-argument': 'off',
+          '@typescript-eslint/no-unsafe-assignment': 'off',
+          '@typescript-eslint/no-unsafe-call': 'off',
+          '@typescript-eslint/no-unsafe-member-access': 'off',
+          '@typescript-eslint/no-unsafe-return': 'off',
         },
       },
     ],

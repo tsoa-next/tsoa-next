@@ -1,10 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa-next/runtime';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
+import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import { fetchMiddlewares, KoaTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
 {{#if authenticationModule}}
@@ -29,7 +29,7 @@ const koaAuthenticationRecasted = koaAuthentication as (req: KRequest, securityN
 {{/if}}
 
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
 const models: TsoaRoute.Models = {
     {{#each models}}
@@ -52,28 +52,28 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
     {{/each}}
 };
-const templateService = new KoaTemplateService(models, {{{ json minimalSwaggerConfig }}});
-
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-
 {{#if useFileUploads}}
-export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>}) {
+export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
 {{else}}
-export function RegisterRoutes(router: KoaRouter) {
+export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.ValidationContext}) {
 {{/if}}
 
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
-    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
+    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/tsoa-next/tsoa-next
     // ###########################################################################################################
 
     {{#if useFileUploads}}
     const upload = opts?.multer ||  multer({{{json multerOpts}}});
     {{/if}}
+    const additionalProps: AdditionalProps = {
+      ...{{{ json minimalSwaggerConfig }}},
+      validation: opts?.validation,
+    };
+    const templateService = new KoaTemplateService(models, additionalProps);
 
     {{#each controllers}}
     {{#each actions}}
@@ -105,7 +105,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             let validatedArgs: any[] = [];
             try {
-              validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, context, next });
+              validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', context, next });
             } catch (err) {
               const error = err as any;
               error.message ||= JSON.stringify({ fields: error.fields });
@@ -132,18 +132,18 @@ export function RegisterRoutes(router: KoaRouter) {
               successStatus: {{successStatus}},
             });
         });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
     {{/each}}
     {{/each}}
 
     {{#if useSecurity}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
         return async function runAuthenticationMiddleware(context: any, next: any) {
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
             // keep track of failed auth attempts so we can hand back the most
             // recent one.  This behavior was previously existing so preserving it
@@ -178,7 +178,7 @@ export function RegisterRoutes(router: KoaRouter) {
                 }
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
             let success;
             try {
@@ -207,12 +207,12 @@ export function RegisterRoutes(router: KoaRouter) {
                 await next();
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
         }
     }
     {{/if}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 }
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+

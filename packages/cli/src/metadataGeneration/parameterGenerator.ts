@@ -8,6 +8,7 @@ import { MetadataGenerator } from './metadataGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
 import { TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
+import { getParameterExternalValidator } from '../utils/validateDecoratorUtils'
 import type { InitializerValue } from './initializer-value'
 
 const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
@@ -45,11 +46,8 @@ export class ParameterGenerator {
   ) {}
 
   public Generate(): Tsoa.Parameter[] {
-    const decoratorName = getNodeFirstDecoratorName(
-      this.parameter,
-      (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName),
-      this.current.typeChecker,
-    )
+    const decoratorName = getNodeFirstDecoratorName(this.parameter, (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName), this.current.typeChecker)
+    this.assertValidateDecoratorCompatibility(decoratorName)
 
     switch (decoratorName) {
       case 'Request':
@@ -93,6 +91,7 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type: { dataType: 'object' },
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -116,6 +115,7 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -165,7 +165,6 @@ export class ParameterGenerator {
     const statusArgumentTypes = statusArguments.map(a => this.current.typeChecker.getTypeAtLocation(a))
 
     const isNumberLiteralType = (tsType: ts.Type): tsType is ts.NumberLiteralType => {
-       
       return (tsType.getFlags() & ts.TypeFlags.NumberLiteral) !== 0
     }
 
@@ -192,6 +191,7 @@ export class ParameterGenerator {
         exampleLabels,
         schema: type,
         validators: {},
+        parameterIndex: this.getParameterIndex(parameter),
         headers,
         deprecated: this.getParameterDeprecation(parameter),
       }
@@ -230,6 +230,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'body-prop'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -254,6 +256,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'body'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -274,11 +278,16 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'header',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Header'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Header'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'header'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -313,6 +322,8 @@ export class ParameterGenerator {
       type,
       parameterName,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'formData'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -336,6 +347,8 @@ export class ParameterGenerator {
       type,
       parameterName,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'formData'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -371,16 +384,18 @@ export class ParameterGenerator {
 
             const { examples: example, exampleLabels } = this.getParameterExample(parameter, parameterName)
 
-              return {
-                description: this.getParameterDescription(parameter),
-                in: 'queries',
-                name: parameterName,
-                example: toParameterExamples(example),
+            return {
+              description: this.getParameterDescription(parameter),
+              in: 'queries',
+              name: parameterName,
+              example: toParameterExamples(example),
               exampleLabels,
               parameterName,
               required: !parameter.questionToken && !parameter.initializer,
               type: resolvedType,
               validators: getParameterValidators(this.parameter, parameterName),
+              parameterIndex: this.getParameterIndex(parameter),
+              ...this.getExternalValidationMetadata(parameter, 'queries'),
               deprecated: this.getParameterDeprecation(parameter),
             }
           }
@@ -411,6 +426,8 @@ export class ParameterGenerator {
       required: !parameter.questionToken && !parameter.initializer,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'queries'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -454,10 +471,15 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'query' as const,
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Query'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Query'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'query'),
       deprecated: this.getParameterDeprecation(parameter),
     }
 
@@ -498,7 +520,8 @@ export class ParameterGenerator {
     const parameterName = (parameter.name as ts.Identifier).text
 
     const type = this.getValidatedType(parameter)
-    const pathName = String(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Path') || parameterName)
+    const decoratorValue = getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Path')
+    const pathName = typeof decoratorValue === 'string' ? decoratorValue : parameterName
 
     if (!this.supportPathDataType(type)) {
       throw new GenerateMetadataError(`@Path('${parameterName}') Can't support '${type.dataType}' type.`)
@@ -518,6 +541,8 @@ export class ParameterGenerator {
       required: true,
       type,
       validators: getParameterValidators(this.parameter, parameterName),
+      parameterIndex: this.getParameterIndex(parameter),
+      ...this.getExternalValidationMetadata(parameter, 'path'),
       deprecated: this.getParameterDeprecation(parameter),
     }
   }
@@ -577,9 +602,39 @@ export class ParameterGenerator {
     return ['post', 'put', 'patch', 'delete'].some(m => m === method.toLowerCase())
   }
 
+  private assertValidateDecoratorCompatibility(decoratorName?: string) {
+    const hasValidateDecorator = getDecorators(this.parameter, (_identifier, canonicalName) => canonicalName === 'Validate', this.current.typeChecker).length > 0
+    if (!hasValidateDecorator) {
+      return
+    }
+
+    const resolvedLocation = decoratorName ? decoratorName.toLowerCase() : 'path'
+    const normalizedLocation = ['uploadedfile', 'uploadedfiles'].includes(resolvedLocation) ? 'formfield' : resolvedLocation
+    if (!['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'].includes(normalizedLocation)) {
+      throw new GenerateMetadataError(`@Validate is not supported on '${normalizedLocation}' parameters in this release.`, this.parameter)
+    }
+  }
+
+  private getParameterIndex(parameter: ts.ParameterDeclaration) {
+    const parameters = parameter.parent && ts.isFunctionLike(parameter.parent) ? parameter.parent.parameters : undefined
+    if (!parameters) {
+      return undefined
+    }
+
+    const index = parameters.indexOf(parameter)
+    return index >= 0 ? index : undefined
+  }
+
+  private getExternalValidationMetadata(parameter: ts.ParameterDeclaration, parameterIn: Tsoa.Parameter['in']) {
+    return getParameterExternalValidator(parameter, parameterIn, this.current.typeChecker)
+  }
+
   private supportParameterDecorator(decoratorName?: string) {
-    return !!decoratorName && ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
-      d => d === decoratorName.toLocaleLowerCase(),
+    return (
+      !!decoratorName &&
+      ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
+        d => d === decoratorName.toLocaleLowerCase(),
+      )
     )
   }
 

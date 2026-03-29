@@ -1,10 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa-next/runtime';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
+import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import { fetchMiddlewares, HapiTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
 {{#if authenticationModule}}
@@ -18,7 +18,7 @@ import type { IocContainer, IocContainerFactory } from '@tsoa-next/runtime';
 import { boomify, isBoom, type Payload } from '@hapi/boom';
 import type { Request, ResponseToolkit, RouteOptionsPreAllOptions } from '@hapi/hapi';
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
 const models: TsoaRoute.Models = {
     {{#each models}}
@@ -41,22 +41,25 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
     {{/each}}
 };
-const templateService = new HapiTemplateService(
-  models,
-  {{{ json minimalSwaggerConfig }}},
-  { boomify, isBoom },
-);
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
-export function RegisterRoutes(server: any) {
+export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.ValidationContext }) {
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
-    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
+    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/tsoa-next/tsoa-next
     // ###########################################################################################################
+    const additionalProps: AdditionalProps = {
+      ...{{{ json minimalSwaggerConfig }}},
+      validation: opts?.validation,
+    };
+    const templateService = new HapiTemplateService(
+      models,
+      additionalProps,
+      { boomify, isBoom },
+    );
     {{#each controllers}}
     {{#each actions}}
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
@@ -100,7 +103,7 @@ export function RegisterRoutes(server: any) {
 
                     let validatedArgs: any[] = [];
                     try {
-                        validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, request, h });
+                        validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', request, h });
                     } catch (err) {
                         const error = err as any;
                         if (isBoom(error)) {
@@ -138,18 +141,18 @@ export function RegisterRoutes(server: any) {
                 }
             }
         });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
     {{/each}}
     {{/each}}
 
     {{#if useSecurity}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
         return async function runAuthenticationMiddleware(request: any, h: any) {
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
             // keep track of failed auth attempts so we can hand back the most
             // recent one.  This behavior was previously existing so preserving it
@@ -172,7 +175,7 @@ export function RegisterRoutes(server: any) {
                         );
                     }
 
-                    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
                     secMethodOrPromises.push(Promise.all(secMethodAndPromises)
                         .then(users => { return users[0]; }));
@@ -186,7 +189,7 @@ export function RegisterRoutes(server: any) {
                 }
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
             try {
                 request['user'] = await Promise.any(secMethodOrPromises);
@@ -209,7 +212,7 @@ export function RegisterRoutes(server: any) {
                 throw boomErr;
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
         }
     }
     {{/if}}
@@ -261,7 +264,7 @@ export function RegisterRoutes(server: any) {
     }
     {{/if}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 }
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+

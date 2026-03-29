@@ -3,6 +3,7 @@ import { minimatch } from 'minimatch'
 import { createProgram, forEachChild, isClassDeclaration, type ClassDeclaration, type CompilerOptions, type Program, type TypeChecker } from 'typescript'
 import { getDecorators } from '../utils/decoratorUtils'
 import { importClassesFromDirectories } from '../utils/importClassesFromDirectories'
+import { assertValidateDecoratorTargets } from '../utils/validateDecoratorUtils'
 import { ControllerGenerator } from './controllerGenerator'
 import { GenerateMetadataError } from './exceptions'
 import { TypeResolver } from './typeResolver'
@@ -30,6 +31,7 @@ export class MetadataGenerator {
   }
 
   public Generate(): Tsoa.Metadata {
+    assertValidateDecoratorTargets(this.program, this.typeChecker)
     this.extractNodeFromProgramSourceFiles()
 
     const controllers = this.buildControllers()

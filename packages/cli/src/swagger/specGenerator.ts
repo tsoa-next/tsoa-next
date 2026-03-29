@@ -144,6 +144,26 @@ export abstract class SpecGenerator {
     properties: Tsoa.Property[],
   ): { [propertyName: string]: Swagger.Schema2 } | { [propertyName: string]: Swagger.Schema3 } | { [propertyName: string]: Swagger.Schema31 }
 
+  protected getPropertySchemaType(type: Tsoa.Type): Tsoa.Type {
+    const unwrapBrandedAlias = (current: Tsoa.Type): Tsoa.Type => {
+      if (current.dataType === 'refAlias') {
+        const next = current.type
+        if (next.dataType === 'intersection' && next.types.length === 1) {
+          return unwrapBrandedAlias(next.types[0])
+        }
+        return current
+      }
+
+      if (current.dataType === 'intersection' && current.types.length === 1) {
+        return unwrapBrandedAlias(current.types[0])
+      }
+
+      return current
+    }
+
+    return unwrapBrandedAlias(type)
+  }
+
   public getSwaggerTypeForObjectLiteral(objectLiteral: Tsoa.NestedObjectLiteralType, title?: string): Swagger.BaseSchema {
     const properties = this.buildProperties(objectLiteral.properties)
 
@@ -191,7 +211,6 @@ export abstract class SpecGenerator {
   protected getSwaggerTypeForPrimitiveType(dataType: Tsoa.PrimitiveTypeLiteral): Swagger.BaseSchema {
     if (dataType === 'object') {
       if (process.env.NODE_ENV !== 'tsoa_test') {
-         
         console.warn(`The type Object is discouraged. Please consider using an interface such as:
           export interface IStringToStringDictionary {
             [key: string]: string;
@@ -265,8 +284,13 @@ export abstract class SpecGenerator {
       type: property.type,
       default: property.default,
       validators: property.validators,
+      parameterIndex: undefined,
       deprecated: property.deprecated,
     }
+  }
+
+  protected getExternalValidatorExtension(source: Pick<Tsoa.Parameter, 'externalValidator'>): { 'x-schema-validator'?: Tsoa.ExternalValidatorKind } {
+    return source.externalValidator ? { 'x-schema-validator': source.externalValidator.kind } : {}
   }
 
   protected isRequiredWithoutDefault(prop: Tsoa.Property | Tsoa.Parameter): boolean | undefined {
@@ -276,10 +300,13 @@ export abstract class SpecGenerator {
   protected getSchemaValidators(validators: Tsoa.Validators): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
     const schemaValidators = Object.keys(validators)
       .filter(shouldIncludeValidatorInSchema)
-      .reduce((acc, key) => {
-        acc[key] = validators[key]!.value
-        return acc
-      }, {} as Partial<Record<Tsoa.SchemaValidatorKey, unknown>>)
+      .reduce(
+        (acc, key) => {
+          acc[key] = validators[key]!.value
+          return acc
+        },
+        {} as Partial<Record<Tsoa.SchemaValidatorKey, unknown>>,
+      )
 
     return this.transformSchemaValidators(schemaValidators)
   }
@@ -288,9 +315,7 @@ export abstract class SpecGenerator {
     return validators
   }
 
-  protected transformExclusiveNumericValidatorsForLegacySpec(
-    validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>,
-  ): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+  protected transformExclusiveNumericValidatorsForLegacySpec(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
     const transformed = { ...validators }
 
     if (transformed.exclusiveMinimum !== undefined) {

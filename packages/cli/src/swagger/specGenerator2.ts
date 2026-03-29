@@ -34,7 +34,7 @@ export class SpecGenerator2 extends SpecGenerator {
       swagger: '2.0',
     }
 
-    const securityDefinitions = this.config.securityDefinitions ? this.config.securityDefinitions : {}
+    const securityDefinitions = this.config.securityDefinitions ?? {}
     const supportedSchemes = ['basic', 'apiKey', 'oauth2']
     for (const { type } of Object.values(securityDefinitions)) {
       if (!supportedSchemes.includes(type)) {
@@ -95,7 +95,7 @@ export class SpecGenerator2 extends SpecGenerator {
         definitions[referenceType.refName] = {
           description: referenceType.description,
           properties: this.buildProperties(referenceType.properties),
-          required: required && required.length > 0 ? Array.from(new Set(required)) : undefined,
+          required: required.length > 0 ? Array.from(new Set(required)) : undefined,
           type: 'object',
         }
 
@@ -120,7 +120,7 @@ export class SpecGenerator2 extends SpecGenerator {
           enum: referenceType.enums,
           type: this.decideEnumType(referenceType.enums, referenceType.refName),
         }
-        if (this.config.xEnumVarnames && referenceType.enumVarnames !== undefined && referenceType.enums.length === referenceType.enumVarnames.length) {
+        if (this.config.xEnumVarnames && referenceType.enumVarnames?.length === referenceType.enums.length) {
           definitions[referenceType.refName]['x-enum-varnames'] = referenceType.enumVarnames
         }
         if (referenceType.example) {
@@ -358,12 +358,14 @@ export class SpecGenerator2 extends SpecGenerator {
               ...(parameterType.items && this.isSwaggerBaseSchema(parameterType.items) ? { items: this.toSwagger2Schema(parameterType.items) } : {}),
               type: 'array',
               ...schemaValidators,
+              ...this.getExternalValidatorExtension(source),
             }
           : source.type.dataType === 'any'
-            ? { type: 'object', ...schemaValidators }
+            ? { type: 'object', ...schemaValidators, ...this.getExternalValidatorExtension(source) }
             : {
                 ...this.toSwagger2Schema(parameterType),
                 ...schemaValidators,
+                ...this.getExternalValidatorExtension(source),
               }
 
       return {
@@ -381,10 +383,7 @@ export class SpecGenerator2 extends SpecGenerator {
     }
 
     const parameterValidators = this.getSchemaValidators(source.validators) as Partial<
-      Pick<
-        Swagger.Swagger2QueryParameter,
-        'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'
-      >
+      Pick<Swagger.Swagger2QueryParameter, 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern' | 'exclusiveMinimum' | 'exclusiveMaximum'>
     >
     const baseParameter = {
       default: source.default,
@@ -395,6 +394,7 @@ export class SpecGenerator2 extends SpecGenerator {
       ...(parameterType.format ? { format: this.throwIfNotDataFormat(parameterType.format) } : {}),
       ...(parameterType.items ? { items: parameterType.items } : {}),
       ...(parameterType.enum ? { enum: parameterType.enum } : {}),
+      ...this.getExternalValidatorExtension(source),
       ...parameterValidators,
     }
     const resolvedType = source.type.dataType === 'any' ? 'string' : parameterType.type ? this.throwIfNotDataType(parameterType.type) : undefined
@@ -468,7 +468,7 @@ export class SpecGenerator2 extends SpecGenerator {
     const properties: { [propertyName: string]: Swagger.Schema2 } = {}
 
     source.forEach(property => {
-      let swaggerType = this.getSwaggerType(property.type) as Swagger.Schema2
+      let swaggerType = this.getSwaggerType(this.getPropertySchemaType(property.type)) as Swagger.Schema2
       const format = property.format as Swagger.DataFormat
       swaggerType.description = property.description
       swaggerType.example = property.example
@@ -522,7 +522,6 @@ export class SpecGenerator2 extends SpecGenerator {
         return swaggerType
       }
     } else if (process.env.NODE_ENV !== 'tsoa_test') {
-       
       console.warn('Swagger 2.0 does not support union types beyond string literals.\n' + 'If you would like to take advantage of this, please change tsoa.json\'s "specVersion" to 3.')
     }
     return { type: 'object' }

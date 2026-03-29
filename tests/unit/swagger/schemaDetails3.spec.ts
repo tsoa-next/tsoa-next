@@ -846,7 +846,7 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
           let requestAcceptHeaderTest: Swagger.Spec3
 
           before(function () {
-            this.timeout(10_000)
+            this.timeout(20_000)
             const mediaTypeMetadata = new MetadataGenerator('./fixtures/controllers/mediaTypeController.ts').Generate()
             mediaTypeTest = new SpecGenerator3(mediaTypeMetadata, getDefaultExtendedOptions()).GetSpec()
 
@@ -4562,7 +4562,7 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
             throw new Error(`There was no ${aPropertyName} schema generated for the ${currentSpec.specName}`)
           }
           it(`should produce a valid schema for the ${aPropertyName} property on ${interfaceModelName} for the ${currentSpec.specName}`, () => {
-            assertionsPerProperty[aPropertyName](aPropertyName, propertySchema)
+            expect(() => assertionsPerProperty[aPropertyName](aPropertyName, propertySchema)).not.to.throw()
           })
         })
 

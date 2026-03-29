@@ -28,7 +28,7 @@
     "swagger",
     "typescript"
   ],
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
     "@tsoa-next/cli": "7.2.1",
@@ -40,7 +40,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/VannaDii/tsoa-next.git"
+    "url": "https://github.com/tsoa-next/tsoa-next.git"
   },
   "engines": {
     "node": ">=22.0.0",
@@ -49,5 +49,6 @@
   "engineStrict": true,
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "homepage": "https://tsoa-next.dev"
 }

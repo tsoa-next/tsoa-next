@@ -29,6 +29,8 @@ type HapiApiHandlerParameters = {
 
 type HapiValidationArgsParameters = {
   args: Record<string, TsoaRoute.ParameterSchema>
+  controllerClass?: object
+  methodName?: string
   request: HRequest
   h: HResponse
 }
@@ -84,10 +86,11 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
   }
 
   getValidatedArgs(params: HapiValidationArgsParameters): unknown[] {
-    const { args, request, h } = params
+    const { args, controllerClass, methodName, request, h } = params
 
     const errorFields: FieldErrors = {}
     const values = Object.values(args).map(param => {
+      const metadata = { controllerClass, methodName, parameterIndex: param.parameterIndex }
       const name = param.name
       switch (param.in) {
         case 'request':
@@ -95,20 +98,20 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
         case 'request-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(request, name)
           const value: unknown = descriptor ? descriptor.value : undefined
-          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined, metadata)
         }
         case 'query':
-          return this.validationService.ValidateParam(param, request.query[name], name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, request.query[name], name, errorFields, false, undefined, metadata)
         case 'queries':
-          return this.validationService.ValidateParam(param, request.query, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, request.query, name, errorFields, false, undefined, metadata)
         case 'path':
-          return this.validationService.ValidateParam(param, request.params[name], name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, request.params[name], name, errorFields, false, undefined, metadata)
         case 'header':
-          return this.validationService.ValidateParam(param, request.headers[name], name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, request.headers[name], name, errorFields, false, undefined, metadata)
         case 'body': {
           const bodyFieldErrors: FieldErrors = {}
           const normalizedBody = this.normalizeRequestBody(request.payload, request.headers)
-          const result = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined)
+          const result = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined, metadata)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
@@ -117,7 +120,7 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
         case 'body-prop': {
           const value = this.getBodyProperty(request.payload, request.headers, name)
           const bodyFieldErrors: FieldErrors = {}
-          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.')
+          const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.', metadata)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
@@ -126,7 +129,7 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
         case 'formData': {
           const descriptor = this.isRecord(request.payload) ? Object.getOwnPropertyDescriptor(request.payload, name) : undefined
           const value: unknown = descriptor ? descriptor.value : undefined
-          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined)
+          return this.validationService.ValidateParam(param, value, name, errorFields, false, undefined, metadata)
         }
         case 'res':
           return ((status: number | undefined, data: unknown, headers: HeaderRecord) => {

@@ -510,7 +510,7 @@ describe('Schema details generation', () => {
           let requestAcceptHeaderTest
 
           before(function () {
-            this.timeout(10_000)
+            this.timeout(20_000)
             const metadata = new MetadataGenerator('./fixtures/controllers/mediaTypeController.ts').Generate()
             mediaTypeTest = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec()
 

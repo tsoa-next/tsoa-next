@@ -10,6 +10,9 @@ export function isDefaultForAdditionalPropertiesAllowed(test: TsoaRoute.RefObjec
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace TsoaRoute {
+  export type ValidationStrategy = Tsoa.ValidationStrategy
+  export type ExternalValidatorDescriptor = Tsoa.ExternalValidatorDescriptor
+
   export interface Models {
     [name: string]: ModelSchema
   }
@@ -45,6 +48,8 @@ export namespace TsoaRoute {
     dataType?: Tsoa.TypeStringLiteral
     ref?: string
     required?: boolean
+    validationStrategy?: ValidationStrategy
+    externalValidator?: ExternalValidatorDescriptor
     array?: PropertySchema
     enums?: Array<string | number | boolean | null>
     type?: PropertySchema
@@ -56,6 +61,7 @@ export namespace TsoaRoute {
   }
 
   export interface ParameterSchema extends PropertySchema {
+    parameterIndex?: number
     name: string
     in: string
   }
