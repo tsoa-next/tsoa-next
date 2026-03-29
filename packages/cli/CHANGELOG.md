@@ -1,5 +1,18 @@
 # @tsoa-next/cli
 
+## 7.3.0
+
+### Minor Changes
+
+- 028926a: Add opt-in external validator support for parameter validation with zod, joi, yup, superstruct, and io-ts, while preserving existing validation behavior for undecorated routes.
+
+  Harden metadata, route generation, and OpenAPI handling so type aliases and non-interface named types work as first-class models, including `TypeOf<typeof Codec>`-style flows.
+
+### Patch Changes
+
+- Updated dependencies [028926a]
+  - @tsoa-next/runtime@7.3.0
+
 ## 7.2.1
 
 ### Patch Changes

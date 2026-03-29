@@ -1,6 +1,6 @@
 {
   "name": "tsoa-next",
-  "version": "7.2.1",
+  "version": "7.3.0",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
@@ -32,8 +32,8 @@
   "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
-    "@tsoa-next/cli": "7.2.1",
-    "@tsoa-next/runtime": "7.2.1"
+    "@tsoa-next/cli": "7.3.0",
+    "@tsoa-next/runtime": "7.3.0"
   },
   "devDependencies": {
     "@types/node": "24.12.0",
