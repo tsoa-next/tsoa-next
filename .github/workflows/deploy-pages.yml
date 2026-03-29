@@ -42,6 +42,7 @@ jobs:
         run: npm run docs:build
         env:
           BASE_URL: /
+          SITE_URL: https://tsoa-next.dev
           API_REFERENCE_URL: /reference/
 
       - name: Build API reference

@@ -1,6 +1,20 @@
 import { defineConfig } from 'vitepress'
 import type { DefaultTheme } from 'vitepress'
 
+const defaultSiteUrl = 'https://tsoa-next.dev'
+const siteUrl = process.env.SITE_URL || defaultSiteUrl
+const apiReferenceUrl = new URL(process.env.API_REFERENCE_URL || '/reference/', siteUrl).toString()
+const referenceLinkPattern = /^(?:\.\.\/|\/)?reference\/(.*)$/
+
+function rewriteReferenceLink(href: string) {
+  const match = href.match(referenceLinkPattern)
+  if (!match) {
+    return
+  }
+
+  return new URL(match[1], apiReferenceUrl).toString()
+}
+
 const sidebar: DefaultTheme.Sidebar = [
   { items: [{ text: 'Introduction', link: '/introduction' }] },
   {
@@ -39,7 +53,29 @@ export default defineConfig({
   title: 'tsoa-next',
   base: process.env.BASE_URL || '/',
   ignoreDeadLinks: [/reference\//],
-  markdown: {},
+  markdown: {
+    config(md) {
+      const defaultLinkOpen =
+        md.renderer.rules.link_open ??
+        ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+
+      md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+        const hrefAttrIndex = tokens[idx].attrIndex('href')
+
+        if (hrefAttrIndex >= 0) {
+          const href = tokens[idx].attrs?.[hrefAttrIndex]?.[1]
+          if (href) {
+            const rewrittenHref = rewriteReferenceLink(href)
+            if (rewrittenHref) {
+              tokens[idx].attrs![hrefAttrIndex][1] = rewrittenHref
+            }
+          }
+        }
+
+        return defaultLinkOpen(tokens, idx, options, env, self)
+      }
+    },
+  },
   themeConfig: {
     search: {
       provider: 'local',
@@ -55,7 +91,9 @@ export default defineConfig({
       },
       {
         text: 'API Reference',
-        link: process.env.API_REFERENCE_URL || '/reference/',
+        link: apiReferenceUrl,
+        noIcon: true,
+        target: '_self',
       },
       {
         text: 'GitHub',
