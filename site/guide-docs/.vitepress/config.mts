@@ -52,7 +52,7 @@ const sidebar: DefaultTheme.Sidebar = [
 export default defineConfig({
   title: 'tsoa-next',
   base: process.env.BASE_URL || '/',
-  ignoreDeadLinks: [/reference\//, /^https:\/\/tsoa-next\.dev\/reference\//],
+  ignoreDeadLinks: [/reference\//],
   markdown: {
     config(md) {
       const defaultLinkOpen =
