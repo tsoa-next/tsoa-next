@@ -138,9 +138,10 @@ describe('External validation runtime', () => {
       prototype: { require: (id: string) => unknown }
     }
     const originalRequire = moduleLoader.prototype.require
+    const pathReporterModulePath = require.resolve('io-ts/PathReporter')
 
     moduleLoader.prototype.require = function patchedRequire(id: string) {
-      if (id === 'io-ts/PathReporter') {
+      if (id === pathReporterModulePath) {
         throw new Error('module not found')
       }
 
@@ -166,6 +167,46 @@ describe('External validation runtime', () => {
       expect(result.failure.summaryMessage).to.equal('io-ts validation failed.')
     } finally {
       moduleLoader.prototype.require = originalRequire
+    }
+  })
+
+  it('rethrows transitive module loading failures instead of masking them as missing validators', () => {
+    const moduleLoader = require('node:module') as {
+      prototype: { require: (id: string) => unknown }
+    }
+    const originalRequire = moduleLoader.prototype.require
+    const runtimeModulePath = require.resolve('../../../packages/runtime/src/routeGeneration/externalValidation')
+    const superstructModulePath = require.resolve('superstruct')
+
+    delete require.cache[runtimeModulePath]
+    moduleLoader.prototype.require = function patchedRequire(id: string) {
+      if (id === superstructModulePath) {
+        const error = new Error("Cannot find module 'transitive-dependency'") as Error & { code?: string }
+        error.code = 'MODULE_NOT_FOUND'
+        throw error
+      }
+
+      return originalRequire.apply(this, [id])
+    }
+
+    try {
+      const { validateExternalSchema } =
+        require('../../../packages/runtime/src/routeGeneration/externalValidation') as typeof import('../../../packages/runtime/src/routeGeneration/externalValidation')
+
+      let thrownError: Error | undefined
+
+      try {
+        validateExternalSchema('superstruct', {}, {})
+      } catch (error) {
+        thrownError = error as Error
+      }
+
+      expect(thrownError).to.be.instanceOf(Error)
+      expect(thrownError?.message).to.equal("Cannot find module 'transitive-dependency'")
+      expect(thrownError?.message).not.to.contain("External validator 'superstruct' is not installed")
+    } finally {
+      moduleLoader.prototype.require = originalRequire
+      delete require.cache[runtimeModulePath]
     }
   })
 

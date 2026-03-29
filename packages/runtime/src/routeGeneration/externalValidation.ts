@@ -27,8 +27,10 @@ function isMissingOptionalModuleError(error: unknown): error is ModuleLoadError 
 }
 
 function loadOptionalModule<T>(moduleName: string): T {
+  let resolvedModuleName: string
+
   try {
-    return require(moduleName) as T
+    resolvedModuleName = require.resolve(moduleName)
   } catch (error) {
     if (!isMissingOptionalModuleError(error)) {
       throw error
@@ -36,6 +38,8 @@ function loadOptionalModule<T>(moduleName: string): T {
 
     throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind.`)
   }
+
+  return require(resolvedModuleName) as T
 }
 
 function normalizePath(input: unknown): string {
@@ -54,9 +58,7 @@ function normalizeJoiPath(input: unknown): string {
     return typeof input === 'string' ? input : ''
   }
 
-  return input
-    .map(segment => (typeof segment === 'number' ? `$${segment}` : String(segment)))
-    .join('.')
+  return input.map(segment => (typeof segment === 'number' ? `$${segment}` : String(segment))).join('.')
 }
 
 function maybeMessageKey(message: unknown): string | undefined {
@@ -253,7 +255,10 @@ const ioTsAdapter: RuntimeSchemaAdapter = {
     const validationErrors = (decoded?._tag === 'Left' ? decoded.left : []) as unknown[]
     const issues = validationErrors.map(entry => {
       const validationError = entry as { context?: Array<{ key?: string; type?: { name?: string } }>; message?: unknown; value?: unknown }
-      const contextPath = (validationError.context || []).slice(1).map(item => item.key).filter((segment): segment is string => !!segment)
+      const contextPath = (validationError.context || [])
+        .slice(1)
+        .map(item => item.key)
+        .filter((segment): segment is string => !!segment)
       const finalType = validationError.context?.[validationError.context.length - 1]?.type?.name
       const message = typeof validationError.message === 'string' ? validationError.message : undefined
       const messageKey = maybeMessageKey(message)
@@ -280,11 +285,6 @@ const adapterRegistry: Record<Tsoa.ExternalValidatorKind, RuntimeSchemaAdapter> 
   zod: zodAdapter,
 }
 
-export function validateExternalSchema(
-  kind: Tsoa.ExternalValidatorKind,
-  schema: unknown,
-  value: unknown,
-  context: Tsoa.ValidationContext = {},
-): RuntimeSchemaAdapterResult {
+export function validateExternalSchema(kind: Tsoa.ExternalValidatorKind, schema: unknown, value: unknown, context: Tsoa.ValidationContext = {}): RuntimeSchemaAdapterResult {
   return adapterRegistry[kind].validate(value, schema, context)
 }
