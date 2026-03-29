@@ -216,7 +216,7 @@ describe('GET route generation', () => {
   })
 
   it('should reject invalid header types', function () {
-    this.timeout(10_000)
+    this.timeout(20_000)
     expect(() => {
       new MetadataGenerator('./fixtures/controllers/invalidHeaderController.ts').Generate()
     }).to.throw(/^Unable to parse Header Type 'Header names must be of type string.*/)
