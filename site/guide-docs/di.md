@@ -57,7 +57,7 @@ Factory function:
 
 ```ts
 // src/ioc.ts
-import { IocContainer, IocContainerFactory } from '@tsoa-next/runtime'
+import { IocContainer, IocContainerFactory } from 'tsoa-next'
 import { Container } from 'di-package'
 
 // Or assign a factory function to `iocContainer`.
@@ -161,7 +161,7 @@ Here's an example using [TSyringe](https://github.com/microsoft/tsyringe).
 // src/lib/tsyringeTsoaIocContainer.ts
 // Target this file in your tsoa.json's "iocModule" property
 
-import { IocContainer } from '@tsoa-next/runtime'
+import { IocContainer } from 'tsoa-next'
 import { container } from 'tsyringe'
 
 export const iocContainer: IocContainer = {

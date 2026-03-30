@@ -1,8 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
-import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
-import { fetchMiddlewares, HapiTemplateService } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
+import { fetchMiddlewares, HapiTemplateService } from 'tsoa-next';
 {{#each controllers}}
 
 import { {{name}} } from '{{modulePath}}';
@@ -13,12 +13,10 @@ import { hapiAuthentication } from '{{authenticationModule}}';
 {{/if}}
 {{#if iocModule}}
 import { iocContainer } from '{{iocModule}}';
-import type { IocContainer, IocContainerFactory } from '@tsoa-next/runtime';
+import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import { boomify, isBoom, type Payload } from '@hapi/boom';
 import type { Request, ResponseToolkit, RouteOptionsPreAllOptions } from '@hapi/hapi';
-
-
 
 const models: TsoaRoute.Models = {
     {{#each models}}
@@ -41,10 +39,8 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-
     {{/each}}
 };
-
 
 export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.ValidationContext }) {
     // ###########################################################################################################
@@ -141,19 +137,12 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
                 }
             }
         });
-
     {{/each}}
     {{/each}}
-
     {{#if useSecurity}}
-
-
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
         return async function runAuthenticationMiddleware(request: any, h: any) {
-
-
-
             // keep track of failed auth attempts so we can hand back the most
             // recent one.  This behavior was previously existing so preserving it
             // here
@@ -175,8 +164,6 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
                         );
                     }
 
-
-
                     secMethodOrPromises.push(Promise.all(secMethodAndPromises)
                         .then(users => { return users[0]; }));
                 } else {
@@ -188,8 +175,6 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
                     }
                 }
             }
-
-
 
             try {
                 request['user'] = await Promise.any(secMethodOrPromises);
@@ -208,16 +193,13 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
                     name: error.name,
                     message: error.message,
                 } as unknown as Payload;
-
                 throw boomErr;
             }
-
-
         }
     }
     {{/if}}
-
     {{#if useFileUploads}}
+
     function fileUploadMiddleware(fieldname: string, multiple: boolean = false) {
       return (request: Request, h: any) => {
         if (!request.payload[fieldname]) {
@@ -263,8 +245,4 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
       };
     }
     {{/if}}
-
-
 }
-
-

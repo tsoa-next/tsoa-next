@@ -1,8 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
-import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
-import { fetchMiddlewares, KoaTemplateService } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
+import { fetchMiddlewares, KoaTemplateService } from 'tsoa-next';
 {{#each controllers}}
 
 import { {{name}} } from '{{modulePath}}';
@@ -13,7 +13,7 @@ import { koaAuthentication } from '{{authenticationModule}}';
 {{/if}}
 {{#if iocModule}}
 import { iocContainer } from '{{iocModule}}';
-import type { IocContainer, IocContainerFactory } from '@tsoa-next/runtime';
+import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import type { Context, Next, Middleware, Request as KRequest, Response as KResponse } from 'koa';
 import type * as KoaRouter from '@koa/router';
@@ -27,9 +27,6 @@ const multer = require('@koa/multer');
 {{#if authenticationModule}}
 const koaAuthenticationRecasted = koaAuthentication as (req: KRequest, securityName: string, scopes?: string[], res?: KResponse) => Promise<any>;
 {{/if}}
-
-
-
 
 const models: TsoaRoute.Models = {
     {{#each models}}
@@ -52,20 +49,18 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-
     {{/each}}
 };
+
 {{#if useFileUploads}}
 export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
 {{else}}
 export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.ValidationContext}) {
 {{/if}}
-
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/tsoa-next/tsoa-next
     // ###########################################################################################################
-
     {{#if useFileUploads}}
     const upload = opts?.multer ||  multer({{{json multerOpts}}});
     {{/if}}
@@ -132,19 +127,12 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
               successStatus: {{successStatus}},
             });
         });
-
     {{/each}}
     {{/each}}
-
     {{#if useSecurity}}
-
-
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
         return async function runAuthenticationMiddleware(context: any, next: any) {
-
-
-
             // keep track of failed auth attempts so we can hand back the most
             // recent one.  This behavior was previously existing so preserving it
             // here
@@ -178,8 +166,6 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
                 }
             }
 
-
-
             let success;
             try {
                 const user = await Promise.any(secMethodOrPromises);
@@ -202,17 +188,10 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
             if(context.response.body) {
                 return;
             }
-
             if (success) {
                 await next();
             }
-
-
         }
     }
     {{/if}}
-
-
 }
-
-

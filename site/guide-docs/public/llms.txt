@@ -43,7 +43,7 @@ Important config notes
   - `throw-on-extras`
 - `spec.specVersion` can be `2` or `3`.
 - `routes.authenticationModule` is used for auth middleware integration.
-- With `pnpm`, explicitly add `@tsoa-next/runtime` because generated routes depend on it.
+- Generated routes import from `tsoa-next`, so controllers and generated routes use the same package surface.
 - `emitDecoratorMetadata` is not required for basic tsoa-next usage. The docs only call it out as relevant for some custom middleware patterns.
 
 Controller authoring rules

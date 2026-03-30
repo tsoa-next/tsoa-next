@@ -1139,8 +1139,12 @@ export class TypeResolver {
 
         // If no declarations found, this might be a built-in type or a type that can't be resolved
         if (declarations.length === 0) {
-          // For complex generic types with object literal type arguments,
-          // we need to handle them differently
+          const fallbackReferenceType = this.getReferenceTypeFromTypeChecker(node, name, refTypeName)
+          if (fallbackReferenceType) {
+            this.addToLocalReferenceTypeCache(name, fallbackReferenceType)
+            return fallbackReferenceType
+          }
+
           throw new GenerateMetadataError(`Could not find declarations for type '${name}'. This might be a complex generic type that needs special handling.`)
         }
 
@@ -1329,6 +1333,81 @@ export class TypeResolver {
     return modelTypes
   }
 
+  private getReferenceTypeFromTypeChecker(node: ts.TypeReferenceType, name: string, refTypeName: string): Tsoa.ReferenceType | undefined {
+    const resolvedType = this.getResolvedTypeForReferenceNode(node)
+    const declarationReferenceTypes = this.getReferenceTypesFromResolvedType(resolvedType, refTypeName)
+    if (declarationReferenceTypes.length > 0) {
+      return ReferenceTransformer.merge(declarationReferenceTypes)
+    }
+
+    const resolvedNode = this.current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+    if (!resolvedNode || this.isEquivalentReferenceTypeNode(node, resolvedNode, name)) {
+      return undefined
+    }
+
+    const resolved = new TypeResolver(resolvedNode, this.current, this.parentNode, this.context, resolvedType).resolve()
+    return this.wrapResolvedTypeAsReference(resolved, refTypeName)
+  }
+
+  private getResolvedTypeForReferenceNode(node: ts.TypeReferenceType): ts.Type {
+    if (ts.isTypeReferenceNode(node)) {
+      return this.current.typeChecker.getTypeFromTypeNode(node)
+    }
+
+    return this.current.typeChecker.getTypeAtLocation(node)
+  }
+
+  private getReferenceTypesFromResolvedType(resolvedType: ts.Type, refTypeName: string): Tsoa.ReferenceType[] {
+    const symbols = [(resolvedType as ts.Type & { aliasSymbol?: ts.Symbol }).aliasSymbol, (resolvedType as ts.Type & { symbol?: ts.Symbol }).symbol].filter((symbol): symbol is ts.Symbol => !!symbol)
+
+    const declarations = symbols.flatMap(symbol => this.getUsableDeclarationsFromSymbol(symbol))
+    const uniqueDeclarations = declarations.filter((declaration, index, allDeclarations) => {
+      return allDeclarations.findIndex(candidate => candidate === declaration) === index
+    })
+
+    return uniqueDeclarations.map(declaration => {
+      if (ts.isTypeAliasDeclaration(declaration)) {
+        return new ReferenceTransformer().transform(declaration, refTypeName, this, resolvedType)
+      }
+      if (EnumTransformer.transformable(declaration)) {
+        return new EnumTransformer().transform(this, declaration, refTypeName)
+      }
+      return this.getModelReference(declaration, refTypeName)
+    })
+  }
+
+  private getUsableDeclarationsFromSymbol(symbol: ts.Symbol): UsableDeclarationWithoutPropertySignature[] {
+    const targetSymbol = this.hasFlag(symbol, ts.SymbolFlags.Alias) ? this.current.typeChecker.getAliasedSymbol(symbol) : symbol
+    const declarations = targetSymbol?.getDeclarations?.() || []
+
+    return declarations.filter((node): node is UsableDeclarationWithoutPropertySignature => this.nodeIsUsable(node))
+  }
+
+  private isEquivalentReferenceTypeNode(originalNode: ts.TypeReferenceType, resolvedNode: ts.TypeNode, originalName: string): boolean {
+    if (!ts.isTypeReferenceNode(originalNode) || !ts.isTypeReferenceNode(resolvedNode)) {
+      return false
+    }
+
+    return this.calcTypeName(resolvedNode) === originalName && resolvedNode.typeArguments?.length === originalNode.typeArguments?.length
+  }
+
+  private wrapResolvedTypeAsReference(type: Tsoa.Type, refTypeName: string): Tsoa.ReferenceType {
+    if (type.dataType === 'refAlias' || type.dataType === 'refEnum' || type.dataType === 'refObject') {
+      return {
+        ...type,
+        refName: refTypeName,
+      }
+    }
+
+    return {
+      dataType: 'refAlias',
+      deprecated: false,
+      refName: refTypeName,
+      type,
+      validators: {},
+    }
+  }
+
   private getSymbolAtLocation(type: ts.Node): ts.Symbol | undefined {
     const fallbackSymbol = (type as ts.Node & { symbol?: ts.Symbol }).symbol
     const symbol = this.current.typeChecker.getSymbolAtLocation(type) || fallbackSymbol
@@ -1421,7 +1500,17 @@ export class TypeResolver {
         const resetCtx = this.context
         this.context = this.typeArgumentsToContext(t, baseEntityName)
 
-        const referenceType = this.getReferenceType(t, false)
+        let referenceType: Tsoa.ReferenceType | undefined
+        try {
+          referenceType = this.getReferenceType(t, false)
+        } catch (error) {
+          if (error instanceof GenerateMetadataError) {
+            this.context = resetCtx
+            continue
+          }
+          throw error
+        }
+
         if (referenceType) {
           if (referenceType.dataType === 'refEnum') {
             // since it doesn't have properties to iterate over, then we don't do anything with it

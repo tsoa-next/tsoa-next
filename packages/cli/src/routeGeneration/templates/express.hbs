@@ -1,8 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
-import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
-import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa-next/runtime';
+import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
+import {  fetchMiddlewares, ExpressTemplateService } from 'tsoa-next';
 {{#each controllers}}
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
@@ -12,22 +12,20 @@ import { expressAuthentication } from '{{authenticationModule}}';
 {{/if}}
 {{#if iocModule}}
 import { iocContainer } from '{{iocModule}}';
-import type { IocContainer, IocContainerFactory } from '@tsoa-next/runtime';
+import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
 {{#if useFileUploads}}
 {{#if esm}}
 import multer from 'multer';
 {{else}}
+
 const multer = require('multer');
 {{/if}}
-
 {{/if}}
-
 {{#if authenticationModule}}
 const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, securityName: string, scopes?: string[], res?: ExResponse) => Promise<any>;
 {{/if}}
-
 const models: TsoaRoute.Models = {
     {{#each models}}
     "{{@key}}": {
@@ -57,12 +55,10 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
 {{else}}
 export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationContext}) {
 {{/if}}
-
-    // ###########################################################################################################
+    // #####################################################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/tsoa-next/tsoa-next
-    // ###########################################################################################################
-
+    // #####################################################################################################################################
     {{#if useFileUploads}}
     const upload = opts?.multer ||  multer({{{json multerOpts}}});
     {{/if}}
@@ -71,10 +67,9 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
       validation: opts?.validation,
     };
     const templateService = new ExpressTemplateService(models, additionalProps);
-
-
     {{#each controllers}}
     {{#each actions}}
+
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
             {{#each parameters}}
                 {{@key}}: {{{json this}}},
@@ -104,15 +99,15 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
             let validatedArgs: any[] = [];
             try {
                 validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', request, response });
-
               {{#if ../../iocModule}}
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
 
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
                 const controller: any = await container.get<{{../name}}>({{../name}});
                 if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
+                    controller.setStatus(undefined);
                 }
               {{else}}
+
                 const controller = new {{../name}}();
               {{/if}}
 
@@ -130,7 +125,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
         });
     {{/each}}
     {{/each}}
-
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
@@ -157,8 +151,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                         );
                     }
 
-
-
                     secMethodOrPromises.push(Promise.all(secMethodAndPromises)
                         .then(users => { return users[0]; }));
                 } else {
@@ -171,8 +163,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 }
             }
 
-
-
             try {
                 request['user'] = await Promise.any(secMethodOrPromises);
 
@@ -180,7 +170,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 if (response.writableEnded) {
                     return;
                 }
-
                 next();
             }
             catch(err) {
@@ -194,13 +183,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 }
                 next(error);
             }
-
-
         }
     }
     {{/if}}
-
-
 }
-
-
