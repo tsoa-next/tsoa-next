@@ -1,6 +1,9 @@
 name: Publish Dev Build
 
 on:
+  pull_request:
+    types:
+      - closed
   workflow_dispatch:
     inputs:
       ref:
@@ -19,7 +22,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.merge_commit_sha || github.event.inputs.ref || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -28,12 +31,32 @@ permissions:
 
 jobs:
   publish-dev-build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
 
     steps:
+      - name: Resolve publish inputs
+        id: publish-inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "ref=${{ github.event.pull_request.merge_commit_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "display_ref=${{ github.event.pull_request.merge_commit_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "dist_tag=dev" >> "${GITHUB_OUTPUT}"
+            echo "prerelease_id=dev" >> "${GITHUB_OUTPUT}"
+          else
+            selected_ref="${{ github.event.inputs.ref || github.ref }}"
+            echo "ref=${selected_ref}" >> "${GITHUB_OUTPUT}"
+            echo "display_ref=${selected_ref}" >> "${GITHUB_OUTPUT}"
+            echo "dist_tag=${{ github.event.inputs.dist-tag }}" >> "${GITHUB_OUTPUT}"
+            echo "prerelease_id=${{ github.event.inputs.prerelease-id }}" >> "${GITHUB_OUTPUT}"
+          fi
+
       - uses: actions/checkout@v6.0.2
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ steps.publish-inputs.outputs.ref }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
@@ -56,7 +79,7 @@ jobs:
           set -euo pipefail
 
           short_sha="$(git rev-parse --short HEAD)"
-          suffix="${{ github.event.inputs.prerelease-id }}.${{ github.run_number }}.${short_sha}"
+          suffix="${{ steps.publish-inputs.outputs.prerelease_id }}.${{ github.run_number }}.${short_sha}"
           manifest_path="${RUNNER_TEMP}/dev-publish-manifest.json"
 
           node ./scripts/prepare-dev-publish.cjs \
@@ -70,13 +93,13 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Publish runtime
-        run: npm publish --provenance --tag "${{ github.event.inputs.dist-tag }}" "${{ runner.temp }}/dev-publish/runtime"
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/runtime"
 
       - name: Publish cli
-        run: npm publish --provenance --tag "${{ github.event.inputs.dist-tag }}" "${{ runner.temp }}/dev-publish/cli"
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/cli"
 
       - name: Publish tsoa-next
-        run: npm publish --provenance --tag "${{ github.event.inputs.dist-tag }}" "${{ runner.temp }}/dev-publish/tsoa"
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/tsoa"
 
       - name: Summarize published dev build
         shell: bash
@@ -84,9 +107,12 @@ jobs:
           {
             echo "## Dev Build Published"
             echo
-            echo "- ref: \`${{ github.event.inputs.ref || github.ref }}\`"
+            echo "- ref: \`${{ steps.publish-inputs.outputs.display_ref }}\`"
             echo "- version: \`${{ steps.prepare.outputs.version }}\`"
-            echo "- dist-tag: \`${{ github.event.inputs.dist-tag }}\`"
+            echo "- dist-tag: \`${{ steps.publish-inputs.outputs.dist_tag }}\`"
+            if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+              echo "- source PR: #${{ github.event.pull_request.number }}"
+            fi
             echo
             echo "### Packages"
             jq -r '.packages[] | "- `\(.name)@\(.version)`"' "${{ steps.prepare.outputs.manifest }}"
