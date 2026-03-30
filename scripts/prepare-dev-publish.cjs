@@ -20,6 +20,8 @@ async function main() {
     throw new Error(`Invalid prerelease suffix '${suffix}'. Use only alphanumerics, '-' and '.' segments.`)
   }
 
+  assertSafeOutputDirectory(absoluteOutDir)
+
   await fs.rm(absoluteOutDir, { force: true, recursive: true })
   await fs.mkdir(absoluteOutDir, { recursive: true })
 
@@ -118,4 +120,19 @@ function parseArgs(args) {
   }
 
   return { outDir, suffix }
+}
+
+function assertSafeOutputDirectory(absoluteOutDir) {
+  const fileSystemRoot = path.parse(absoluteOutDir).root
+  if (absoluteOutDir === fileSystemRoot) {
+    throw new Error(`Refusing to remove filesystem root '${absoluteOutDir}'.`)
+  }
+
+  const relativeToRepo = path.relative(absoluteOutDir, repoRoot)
+  const targetsRepoRoot = relativeToRepo === ''
+  const targetsRepoAncestor = relativeToRepo !== '' && !relativeToRepo.startsWith('..') && !path.isAbsolute(relativeToRepo)
+
+  if (targetsRepoRoot || targetsRepoAncestor) {
+    throw new Error(`Refusing to remove '${absoluteOutDir}' because it would delete the repository root or one of its ancestors.`)
+  }
 }

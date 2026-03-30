@@ -48,10 +48,20 @@ describe('prepare-dev-publish', () => {
       expect(cliPackage.dependencies['@tsoa-next/runtime']).to.equal(manifest.version)
       expect(tsoaPackage.dependencies['@tsoa-next/cli']).to.equal(manifest.version)
       expect(tsoaPackage.dependencies['@tsoa-next/runtime']).to.equal(manifest.version)
-      expect(runtimePackage.dependencies.validator).to.equal('^13.15.26')
+      expect(runtimePackage.dependencies.validator).to.equal(runtimeSourcePackage.dependencies.validator)
     } finally {
       rmSync(outDir, { force: true, recursive: true })
     }
+  })
+
+  it('rejects output directories that would delete the repository root or its ancestors', () => {
+    expect(() =>
+      execFileSync('node', [scriptPath, '--suffix', 'dev.42.abcdef0', '--out-dir', '.'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+    ).to.throw(/repository root or one of its ancestors/)
   })
 
   it('fails fast for invalid prerelease suffixes without producing staged packages', () => {
