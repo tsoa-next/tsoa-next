@@ -72,7 +72,7 @@ RegisterRoutes(app, {
 ```ts
 import * as t from 'io-ts'
 import { withMessage } from 'io-ts-types'
-import { Body, Controller, Post, Route, Validate } from '@tsoa-next/runtime'
+import { Body, Controller, Post, Route, Validate } from 'tsoa-next'
 
 interface PositiveFloatBrand {
   readonly PositiveFloat: unique symbol

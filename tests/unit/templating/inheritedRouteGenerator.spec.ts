@@ -22,6 +22,7 @@ function getTempCompilerOptions(): CompilerOptions {
     experimentalDecorators: true,
     module: ts.ModuleKind.CommonJS,
     paths: {
+      'tsoa-next': ['packages/tsoa/src/index.ts'],
       '@tsoa-next/runtime': ['packages/runtime/src/index.ts'],
       '@tsoa-next/runtime/*': ['packages/runtime/src/*'],
     },
@@ -86,6 +87,28 @@ describe('RouteGenerator inherited routes', () => {
       const generatedRoutes = await readGeneratedRoutesFile(paths.routesDir)
       expect(generatedRoutes).to.contain("'/inherited/from-base'")
       expect(generatedRoutes).to.contain("'/inherited/from-child'")
+    })
+  })
+
+  it('imports generated route helpers from tsoa-next for backwards compatibility', async () => {
+    const source = `
+      import { Controller, Get, Route } from 'tsoa-next';
+
+      @Route('compat')
+      export class CompatController extends Controller {
+        @Get()
+        public async get(): Promise<string> {
+          return 'ok';
+        }
+      }
+    `
+
+    await withTempController(source, async paths => {
+      await generateRoutesForController(paths)
+      const generatedRoutes = await readGeneratedRoutesFile(paths.routesDir)
+
+      expect(generatedRoutes).to.contain("from 'tsoa-next'")
+      expect(generatedRoutes).not.to.contain("from '@tsoa-next/runtime'")
     })
   })
 

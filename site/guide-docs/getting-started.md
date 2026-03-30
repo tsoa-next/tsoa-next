@@ -34,14 +34,7 @@ npm i -D typescript @types/node @types/express
 npm exec tsc -- --init
 ```
 
-When using `pnpm`, you will also need to explicitly add the `@tsoa-next/runtime` as a dependency for generated routes.
-This is inherent to the way `pnpm` manages node_modules (see [pnpm symlinked node_modules structure](https://pnpm.io/symlinked-node-modules-structure)).
-
-```shell
-
-# Explicitly add @tsoa-next/runtime with pnpm as it will be needed by generated routes
-pnpm add @tsoa-next/runtime
-```
+Generated routes import from `tsoa-next`, so the package your application installs is also the package used by controllers and generated `RegisterRoutes` files.
 
 ## Configuring tsoa and typescript
 
