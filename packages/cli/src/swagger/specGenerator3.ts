@@ -154,7 +154,7 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected buildSchema() {
     const schema: { [name: string]: Swagger.Schema3 } = {}
-    Object.keys(this.metadata.referenceTypeMap).map(typeName => {
+    Object.keys(this.metadata.referenceTypeMap).forEach(typeName => {
       const referenceType = this.metadata.referenceTypeMap[typeName]
 
       if (referenceType.dataType === 'refObject') {

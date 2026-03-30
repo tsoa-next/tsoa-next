@@ -181,7 +181,7 @@ describe('Hapi Server', () => {
 
     return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, res: any) => {
       const model = res.body as TestModel
-      expect(model).to.deep.equal(model)
+      expect(model).to.deep.equal(data)
     })
   })
 

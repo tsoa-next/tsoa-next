@@ -88,7 +88,7 @@ export class SpecGenerator2 extends SpecGenerator {
 
   private buildDefinitions() {
     const definitions: { [definitionsName: string]: Swagger.Schema2 } = {}
-    Object.keys(this.metadata.referenceTypeMap).map(typeName => {
+    Object.keys(this.metadata.referenceTypeMap).forEach(typeName => {
       const referenceType = this.metadata.referenceTypeMap[typeName]
       if (referenceType.dataType === 'refObject') {
         const required = referenceType.properties.filter(p => this.isRequiredWithoutDefault(p) && !this.hasUndefined(p)).map(p => p.name)

@@ -312,7 +312,7 @@ describe('Express Server', () => {
 
     return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, res: any) => {
       const model = res.body as TestModel
-      expect(model).to.deep.equal(model)
+      expect(model).to.deep.equal(data)
     })
   })
 
@@ -412,7 +412,11 @@ describe('Express Server', () => {
         const body = JSON.parse(err.text)
         expect(body.status).to.equal(400)
       },
-      request => request.post(basePath + '/EmptyBody/optional').set('Content-Type', 'application/json').send('{"value":'),
+      request =>
+        request
+          .post(basePath + '/EmptyBody/optional')
+          .set('Content-Type', 'application/json')
+          .send('{"value":'),
       400,
     )
   })

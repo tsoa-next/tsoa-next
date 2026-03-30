@@ -42,6 +42,79 @@ const determineNoImplicitAdditionalSetting = (noImplicitAdditionalProperties: Co
     return 'ignore'
   }
 }
+
+type ParsedAuthorContact = {
+  name?: string
+  email?: string
+  url?: string
+}
+
+const isAuthorWhitespace = (char: string | undefined): boolean => char === ' ' || char === '\t' || char === '\n' || char === '\r'
+
+const skipAuthorWhitespace = (value: string, index: number): number => {
+  let currentIndex = index
+
+  while (currentIndex < value.length && isAuthorWhitespace(value[currentIndex])) {
+    currentIndex += 1
+  }
+
+  return currentIndex
+}
+
+const trimToUndefined = (value: string): string | undefined => {
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+const parseAuthorContact = (author: string): ParsedAuthorContact => {
+  const contact: ParsedAuthorContact = {}
+  let index = skipAuthorWhitespace(author, 0)
+  let nameBoundary = author.length
+
+  const emailStart = author.indexOf('<', index)
+  if (emailStart !== -1 && emailStart < nameBoundary) {
+    nameBoundary = emailStart
+  }
+
+  const urlStart = author.indexOf('(', index)
+  if (urlStart !== -1 && urlStart < nameBoundary) {
+    nameBoundary = urlStart
+  }
+
+  const name = trimToUndefined(author.slice(index, nameBoundary))
+  if (name) {
+    contact.name = name
+  }
+
+  index = skipAuthorWhitespace(author, nameBoundary)
+
+  if (author[index] === '<') {
+    const emailEnd = author.indexOf('>', index + 1)
+
+    if (emailEnd !== -1) {
+      const email = trimToUndefined(author.slice(index + 1, emailEnd))
+      if (email) {
+        contact.email = email
+      }
+
+      index = skipAuthorWhitespace(author, emailEnd + 1)
+    }
+  }
+
+  if (author[index] === '(') {
+    const urlEnd = author.indexOf(')', index + 1)
+
+    if (urlEnd !== -1) {
+      const url = trimToUndefined(author.slice(index + 1, urlEnd))
+      if (url) {
+        contact.url = url
+      }
+    }
+  }
+
+  return contact
+}
+
 const authorInformation: Promise<
   | string
   | {
@@ -234,18 +307,25 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
     config.spec.contact = {}
   }
 
+  const specContact = config.spec.contact
+  const setContactValue = (key: keyof NonNullable<Config['spec']['contact']>, value: string | undefined) => {
+    if (!specContact[key] && value !== undefined) {
+      specContact[key] = value
+    }
+  }
+
   const author = await authorInformation
 
   if (typeof author === 'string') {
-    const contact = /^([^<(]*)?\s*(?:<([^>(]*)>)?\s*(?:\(([^)]*)\)|$)/m.exec(author)
+    const contact = parseAuthorContact(author)
 
-    config.spec.contact.name = config.spec.contact.name || contact?.[1]
-    config.spec.contact.email = config.spec.contact.email || contact?.[2]
-    config.spec.contact.url = config.spec.contact.url || contact?.[3]
+    setContactValue('name', contact.name)
+    setContactValue('email', contact.email)
+    setContactValue('url', contact.url)
   } else if (typeof author === 'object') {
-    config.spec.contact.name = config.spec.contact.name || author?.name
-    config.spec.contact.email = config.spec.contact.email || author?.email
-    config.spec.contact.url = config.spec.contact.url || author?.url
+    setContactValue('name', author?.name)
+    setContactValue('email', author?.email)
+    setContactValue('url', author?.url)
   }
 
   if (!config.defaultNumberType) {
