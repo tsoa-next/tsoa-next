@@ -1,5 +1,14 @@
 # tsoa-next
 
+## 7.3.3
+
+### Patch Changes
+
+- 1eabe79: Fixes backward compatibility
+- Updated dependencies [1eabe79]
+  - @tsoa-next/cli@7.3.3
+  - @tsoa-next/runtime@7.3.3
+
 ## 7.3.2
 
 ### Patch Changes
