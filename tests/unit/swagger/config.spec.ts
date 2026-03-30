@@ -2,6 +2,9 @@ import { expect } from 'chai'
 import 'mocha'
 import { validateSpecConfig, ExtendedSpecConfig } from '@tsoa-next/cli'
 import { Config } from '@tsoa-next/runtime'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { getDefaultOptions } from '../../fixtures/defaultOptions'
 
 describe('Configuration', () => {
@@ -102,5 +105,55 @@ describe('Configuration', () => {
         done()
       })
     })
+
+    it('should parse string author contact information without regex backtracking', async () => {
+      const config: Config = getDefaultOptions('some/output/directory')
+      config.entryFile = ''
+      config.controllerPathGlobs = ['/some/path']
+      delete config.spec.contact
+
+      const configResult = await withCliModuleForPackageJson({ author: 'Jane Doe <jane@doe.com> (https://example.com)' }, (reloadedValidateSpecConfig: typeof validateSpecConfig) =>
+        reloadedValidateSpecConfig(config),
+      )
+
+      expect(configResult.contact).to.deep.equal({
+        email: 'jane@doe.com',
+        name: 'Jane Doe',
+        url: 'https://example.com',
+      })
+    })
+
+    it('should ignore incomplete author segments without hanging', async () => {
+      const config: Config = getDefaultOptions('some/output/directory')
+      config.entryFile = ''
+      config.controllerPathGlobs = ['/some/path']
+      delete config.spec.contact
+
+      const configResult = await withCliModuleForPackageJson({ author: 'Jane Doe <jane@doe.com' }, (reloadedValidateSpecConfig: typeof validateSpecConfig) => reloadedValidateSpecConfig(config))
+
+      expect(configResult.contact).to.deep.equal({
+        name: 'Jane Doe',
+      })
+    })
   })
 })
+
+async function withCliModuleForPackageJson<T>(packageJson: Record<string, unknown>, callback: (reloadedValidateSpecConfig: typeof validateSpecConfig) => Promise<T>): Promise<T> {
+  const workingDirectory = mkdtempSync(join(tmpdir(), 'tsoa-cli-config-'))
+  const previousWorkingDirectory = process.cwd()
+  const modulePath = require.resolve('../../../packages/cli/src/cli')
+
+  writeFileSync(join(workingDirectory, 'package.json'), JSON.stringify(packageJson), 'utf8')
+
+  try {
+    process.chdir(workingDirectory)
+    delete require.cache[modulePath]
+
+    const reloadedCliModule = require(modulePath) as { validateSpecConfig: typeof validateSpecConfig }
+    return await callback(reloadedCliModule.validateSpecConfig)
+  } finally {
+    delete require.cache[modulePath]
+    process.chdir(previousWorkingDirectory)
+    rmSync(workingDirectory, { force: true, recursive: true })
+  }
+}

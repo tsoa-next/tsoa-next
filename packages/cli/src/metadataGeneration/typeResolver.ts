@@ -40,6 +40,106 @@ const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
   return symbolWithLinks.links?.syntheticOrigin
 }
 
+const isAsciiLetter = (char: string | undefined): boolean => {
+  if (!char) {
+    return false
+  }
+
+  const code = char.charCodeAt(0)
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+}
+
+const isRefTypeTokenCharacter = (char: string | undefined): boolean => {
+  if (!char) {
+    return false
+  }
+
+  const code = char.charCodeAt(0)
+  return isAsciiLetter(char) || (code >= 48 && code <= 57) || char === '_'
+}
+
+const replaceTypeLiteralPropertySeparators = (value: string): string => {
+  let formatted = ''
+  let index = 0
+
+  while (index < value.length) {
+    if (!isRefTypeTokenCharacter(value[index])) {
+      formatted += value[index]
+      index += 1
+      continue
+    }
+
+    const tokenStart = index
+
+    while (index < value.length && isRefTypeTokenCharacter(value[index])) {
+      index += 1
+    }
+
+    if (value[index] === '?') {
+      index += 1
+    }
+
+    const token = value.slice(tokenStart, index)
+
+    if (value[index] === ':') {
+      const typeStart = index + 1
+      let typeEnd = typeStart
+
+      while (typeEnd < value.length && isAsciiLetter(value[typeEnd])) {
+        typeEnd += 1
+      }
+
+      if (typeEnd > typeStart) {
+        formatted += token
+        formatted += '-'
+        formatted += value.slice(typeStart, typeEnd)
+        index = typeEnd
+        continue
+      }
+    }
+
+    formatted += token
+  }
+
+  return formatted
+}
+
+const replaceIndexedAccessSegments = (value: string): string => {
+  let formatted = ''
+  let index = 0
+
+  while (index < value.length) {
+    if (value[index] !== '[') {
+      formatted += value[index]
+      index += 1
+      continue
+    }
+
+    const previousCharacter = formatted[formatted.length - 1]
+    if (!(isAsciiLetter(previousCharacter) || previousCharacter === '}' || previousCharacter === ']')) {
+      formatted += value[index]
+      index += 1
+      continue
+    }
+
+    let segmentEnd = index + 1
+    while (segmentEnd < value.length && isAsciiLetter(value[segmentEnd])) {
+      segmentEnd += 1
+    }
+
+    if (segmentEnd > index + 1 && value[segmentEnd] === ']') {
+      formatted += `-at-${value.slice(index + 1, segmentEnd)}`
+      index = segmentEnd + 1
+      continue
+    }
+
+    formatted += value[index]
+    index += 1
+  }
+
+  return formatted
+}
+
 export class TypeResolver {
   constructor(
     private readonly typeNode: ts.TypeNode,
@@ -1136,7 +1236,7 @@ export class TypeResolver {
   //Generates a name from the original type expression.
   //This function is not invertable, so it's possible, that 2 type expressions have the same refTypeName.
   private getRefTypeName(name: string): string {
-    const preformattedName = name //Preformatted name handles most cases
+    let preformattedName = name //Preformatted name handles most cases
       .replace(/<|>/g, '_')
       .replace(/\s+/g, '')
       .replace(/,/g, '.')
@@ -1146,9 +1246,10 @@ export class TypeResolver {
       .replace(/\|/g, '-or-')
       .replace(/\[\]/g, '-Array')
       .replace(/{|}/g, '_') // SuccessResponse_{indexesCreated-number}_ -> SuccessResponse__indexesCreated-number__
-      .replace(/([a-z_0-9]+\??):([a-z]+)/gi, '$1-$2') // SuccessResponse_indexesCreated:number_ -> SuccessResponse_indexesCreated-number_
-      .replace(/;/g, '--')
-      .replace(/([a-z})\]])\[([a-z]+)\]/gi, '$1-at-$2') // Partial_SerializedDatasourceWithVersion[format]_ -> Partial_SerializedDatasourceWithVersion~format~_,
+
+    preformattedName = replaceTypeLiteralPropertySeparators(preformattedName) // SuccessResponse_indexesCreated:number_ -> SuccessResponse_indexesCreated-number_
+    preformattedName = preformattedName.replace(/;/g, '--')
+    preformattedName = replaceIndexedAccessSegments(preformattedName) // Partial_SerializedDatasourceWithVersion[format]_ -> Partial_SerializedDatasourceWithVersion~format~_,
 
     //Safety fixes to replace all characters which are not accepted by swagger ui
     let formattedName = preformattedName.replace(/[^A-Za-z0-9\-._]/g, match => {
