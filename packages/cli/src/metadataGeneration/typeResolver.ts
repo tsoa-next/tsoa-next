@@ -1334,7 +1334,7 @@ export class TypeResolver {
   }
 
   private getReferenceTypeFromTypeChecker(node: ts.TypeReferenceType, name: string, refTypeName: string): Tsoa.ReferenceType | undefined {
-    const resolvedType = this.current.typeChecker.getTypeFromTypeNode(node)
+    const resolvedType = this.getResolvedTypeForReferenceNode(node)
     const declarationReferenceTypes = this.getReferenceTypesFromResolvedType(resolvedType, refTypeName)
     if (declarationReferenceTypes.length > 0) {
       return ReferenceTransformer.merge(declarationReferenceTypes)
@@ -1347,6 +1347,14 @@ export class TypeResolver {
 
     const resolved = new TypeResolver(resolvedNode, this.current, this.parentNode, this.context, resolvedType).resolve()
     return this.wrapResolvedTypeAsReference(resolved, refTypeName)
+  }
+
+  private getResolvedTypeForReferenceNode(node: ts.TypeReferenceType): ts.Type {
+    if (ts.isTypeReferenceNode(node)) {
+      return this.current.typeChecker.getTypeFromTypeNode(node)
+    }
+
+    return this.current.typeChecker.getTypeAtLocation(node)
   }
 
   private getReferenceTypesFromResolvedType(resolvedType: ts.Type, refTypeName: string): Tsoa.ReferenceType[] {

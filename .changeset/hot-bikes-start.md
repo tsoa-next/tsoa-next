@@ -3,4 +3,4 @@
 '@tsoa-next/cli': patch
 ---
 
-Fixes backward compatability
+Fixes backward compatibility
