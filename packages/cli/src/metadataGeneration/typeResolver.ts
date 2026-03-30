@@ -116,7 +116,7 @@ const replaceIndexedAccessSegments = (value: string): string => {
     }
 
     const previousCharacter = formatted[formatted.length - 1]
-    if (!(isAsciiLetter(previousCharacter) || previousCharacter === '}' || previousCharacter === ']')) {
+    if (!(isAsciiLetter(previousCharacter) || previousCharacter === '}' || previousCharacter === ']' || previousCharacter === ')')) {
       formatted += value[index]
       index += 1
       continue

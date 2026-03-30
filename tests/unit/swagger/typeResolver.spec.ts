@@ -14,4 +14,8 @@ describe('TypeResolver', () => {
   it('should normalize indexed access segments after property replacement', () => {
     expect(getRefTypeName('Partial_SerializedDatasourceWithVersion[format]_')).to.equal('Partial_SerializedDatasourceWithVersion-at-format_')
   })
+
+  it('should normalize indexed access segments after parenthesized types', () => {
+    expect(getRefTypeName('(A|B)[K]')).to.equal('_40_A-or-B_41_-at-K')
+  })
 })
