@@ -34,6 +34,8 @@ describe('TypeResolver', () => {
         module: ts.ModuleKind.CommonJS,
         paths: {
           'tsoa-next': ['packages/tsoa/src/index.ts'],
+          '@tsoa-next/cli': ['packages/cli/src/index.ts'],
+          '@tsoa-next/cli/*': ['packages/cli/src/*'],
           '@tsoa-next/runtime': ['packages/runtime/src/index.ts'],
           '@tsoa-next/runtime/*': ['packages/runtime/src/*'],
         },
