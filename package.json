@@ -24,7 +24,7 @@
     "sync:readmes": "node ./scripts/sync-readmes.cjs",
     "sync:readmes:check": "node ./scripts/sync-readmes.cjs --check",
     "syncpack": "syncpack",
-    "test": "turbo run test --concurrency=1 --output-logs=full",
+    "test": "turbo run test --output-logs=full",
     "turbo": "turbo",
     "typedocs": "typedoc --options ./typedoc.json",
     "version-packages": "changeset version && npm run fix:deps && npm install --ignore-scripts",

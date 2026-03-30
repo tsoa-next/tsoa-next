@@ -65,7 +65,7 @@ if (dryRun) {
 
 const buildWorkspaces = Array.from(new Set(affectedTests.flatMap(testWorkspace => TEST_DEPENDENCIES[testWorkspace] || [])))
 runNpmExec(['turbo', 'run', 'build', ...toTurboFilters(buildWorkspaces), '--output-logs=full'])
-runNpmExec(['turbo', 'run', 'test', ...toTurboFilters(affectedTests), '--concurrency=1', '--output-logs=full'])
+runNpmExec(['turbo', 'run', 'test', ...toTurboFilters(affectedTests), '--output-logs=full'])
 
 function readStdin() {
   return readFileSync(0, 'utf8')
