@@ -9,6 +9,7 @@ head_sha="${PR_HEAD_SHA:-${HEAD_SHA:-}}"
 base_sha="${BASE_SHA:-}"
 before_sha="${BEFORE_SHA:-}"
 default_branch="${DEFAULT_BRANCH:-}"
+pr_merged="${PR_MERGED:-false}"
 pr_head_ref="${PR_HEAD_REF:-}"
 
 fetch_commit() {
@@ -120,7 +121,11 @@ case "$event_name" in
   pull_request)
     fetch_commit "$base_sha"
     fetch_commit "$head_sha"
-    diff_base="$(merge_base_or_empty "$base_sha" "$head_sha")"
+    if [[ "$pr_merged" == 'true' ]]; then
+      diff_base="$base_sha"
+    else
+      diff_base="$(merge_base_or_empty "$base_sha" "$head_sha")"
+    fi
     ;;
   push)
     fetch_commit "$head_sha"

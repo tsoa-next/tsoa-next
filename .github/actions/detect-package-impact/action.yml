@@ -32,6 +32,7 @@ runs:
         BEFORE_SHA: ${{ github.event.before }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         HEAD_SHA: ${{ github.sha }}
+        PR_MERGED: ${{ github.event.pull_request.merged }}
         PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: ./.github/actions/detect-package-impact/detect-impact.sh
