@@ -1,5 +1,18 @@
 # tsoa-next
 
+## 7.3.4
+
+### Patch Changes
+
+- b5a952b: Trigger a development publish from the main-branch dev build workflow so downstream projects can validate prerelease packages before the next public release.
+- 0bd572e: Restore backward compatibility for nested module tsoa configs and route generation so downstream projects can validate the fixes in a dev build before the next public release.
+- 8be0961: Fix backward-compatible metadata and schema generation for imported aliases, generic aliases, and inherited error models.
+- Updated dependencies [b5a952b]
+- Updated dependencies [0bd572e]
+- Updated dependencies [8be0961]
+  - @tsoa-next/cli@7.3.4
+  - @tsoa-next/runtime@7.3.4
+
 ## 7.3.3
 
 ### Patch Changes
