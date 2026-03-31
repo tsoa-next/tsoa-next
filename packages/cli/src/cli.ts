@@ -253,8 +253,9 @@ export function validateCompilerOptions(configOrCompilerOptions?: Config | Recor
   }
 
   const tsconfigCompilerOptions = loadTsConfigCompilerOptions(configOrCompilerOptions, configBaseDir)
+  const compilerOptionsBaseDir = typeof tsconfigCompilerOptions.configFilePath === 'string' ? dirname(tsconfigCompilerOptions.configFilePath) : configBaseDir
   const explicitCompilerOptions = configOrCompilerOptions.compilerOptions
-    ? parseCompilerOptionsObject(configOrCompilerOptions.compilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config')
+    ? parseCompilerOptionsObject(configOrCompilerOptions.compilerOptions, compilerOptionsBaseDir, 'Invalid compilerOptions in tsoa-next config')
     : {}
 
   return {

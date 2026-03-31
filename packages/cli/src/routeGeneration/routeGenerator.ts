@@ -31,7 +31,7 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
         model = refEnumModel
       } else if (referenceType.dataType === 'refObject') {
         const propertySchemaDictionary: TsoaRoute.RefObjectModelSchema['properties'] = {}
-        referenceType.properties.forEach(property => {
+        ;(referenceType.properties ?? []).forEach(property => {
           propertySchemaDictionary[property.name] = this.buildPropertySchema(property)
         })
 

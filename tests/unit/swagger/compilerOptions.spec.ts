@@ -144,6 +144,38 @@ describe('CompilerOptions', () => {
     expect(compilerOptions.strict).to.equal(true)
   })
 
+  it('resolves explicit compilerOptions paths from the tsconfig root for nested tsoa configs', async () => {
+    await mkdir(join(testDir, 'src', 'modules', 'dice'), { recursive: true })
+    await writeFile(
+      join(testDir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
+      }),
+      'utf8',
+    )
+
+    const compilerOptions = validateCompilerOptions(
+      testConfig({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            'src/*': ['src/*'],
+          },
+        },
+      }),
+      join(testDir, 'src', 'modules', 'dice'),
+    )
+
+    expect(normalizePathForAssertion(compilerOptions.baseUrl!)).to.equal(normalizePathForAssertion(testDir))
+    expect(compilerOptions.paths).to.deep.equal({
+      'src/*': ['src/*'],
+    })
+  })
+
   it('returns only explicit compiler options when no implicit tsconfig exists', () => {
     const compilerOptions = validateCompilerOptions(
       testConfig({

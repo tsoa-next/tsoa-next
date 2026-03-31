@@ -1,4 +1,6 @@
+import { validateCompilerOptions } from '@tsoa-next/cli/cli'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
+import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'
 import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
 import { Swagger, Tsoa } from '@tsoa-next/runtime'
@@ -152,6 +154,339 @@ function getSchema(spec: Swagger.Spec3, name: string) {
   return spec.components?.schemas?.[name]
 }
 
+async function withBackendStyleFixture(
+  run: (paths: {
+    config: {
+      compilerOptions: {
+        baseUrl: string
+        paths: Record<string, string[]>
+      }
+      controllerPathGlobs: string[]
+      entryFile: string
+      routes: {
+        middleware: 'express'
+        routesDir: string
+      }
+      spec: {
+        basePath: string
+        outputDirectory: string
+        specVersion: 3
+      }
+    }
+    configBaseDir: string
+  }) => Promise<void>,
+) {
+  const sourceRepoRoot = resolve(__dirname, '../../..')
+  const repoRoot = await fs.mkdtemp(join(tmpdir(), 'tsoa-backend-style-'))
+
+  try {
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'dice', 'lib', 'controllers'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'dice', 'types', 'domain'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'game', 'lib', 'controllers'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'game', 'types'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'ledger', 'types'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'slide', 'lib'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'slide', 'types'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'blackjack', 'lib'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'blackjack', 'types'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'limbo', 'lib'), { recursive: true })
+    await fs.mkdir(join(repoRoot, 'src', 'modules', 'limbo', 'types'), { recursive: true })
+
+    await fs.writeFile(
+      join(repoRoot, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          emitDecoratorMetadata: true,
+          experimentalDecorators: true,
+          module: 'commonjs',
+          paths: {
+            '@tsoa-next/cli': ['../packages/cli/src/index.ts'],
+            '@tsoa-next/cli/*': ['../packages/cli/src/*'],
+            '@tsoa-next/runtime': ['../packages/runtime/src/index.ts'],
+            '@tsoa-next/runtime/*': ['../packages/runtime/src/*'],
+            'src/*': ['src/*'],
+            'tsoa-next': ['../packages/tsoa/src/index.ts'],
+          },
+          target: 'es2021',
+        },
+      })
+        .replaceAll('../packages/cli/src/index.ts', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/cli/src/index.ts`)
+        .replaceAll('../packages/cli/src/*', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/cli/src/*`)
+        .replaceAll('../packages/runtime/src/index.ts', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/runtime/src/index.ts`)
+        .replaceAll('../packages/runtime/src/*', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/runtime/src/*`)
+        .replaceAll('../packages/tsoa/src/index.ts', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/tsoa/src/index.ts`),
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'game', 'types', 'Config.ts'),
+      `
+        interface SensitiveGameConfig {
+          seed: string
+        }
+
+        export interface BaseGameConfig {
+          edge: number
+          minBet: number
+          maxBet: number
+        }
+
+        export type PrivateGameConfig = BaseGameConfig & SensitiveGameConfig
+
+        export type PublicGameConfig<Config extends PrivateGameConfig> = Omit<Config, keyof SensitiveGameConfig>
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'game', 'types', 'Error.ts'),
+      `
+        export class GameError extends Error {
+          public static readonly httpCode = '400'
+          public static readonly httpStatus = 'Bad Request'
+          public context!: Record<string, unknown>
+        }
+
+        export class GameSystemError extends GameError {
+          public originalError!: { name: string }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'game', 'types', 'index.ts'),
+      `
+        export * from './Config'
+        export * from './Error'
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'game', 'lib', 'controllers', 'gameController.ts'),
+      `
+        import { Controller, Get, Response } from 'tsoa-next'
+        import { GameSystemError, type PrivateGameConfig, type PublicGameConfig } from 'src/modules/game/types'
+
+        export abstract class GamesController<C extends PrivateGameConfig> extends Controller {
+          @Get('config')
+          @Response<GameSystemError>(GameSystemError.httpCode, GameSystemError.httpStatus)
+          public async getConfig(): Promise<PublicGameConfig<C>> {
+            throw new Error('not implemented')
+          }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'dice', 'types', 'domain', 'game.ts'),
+      `
+        import { type PrivateGameConfig, type PublicGameConfig } from 'src/modules/game/types'
+
+        export interface DiceGameConfig extends PrivateGameConfig {
+          maxProfit: number
+        }
+
+        export type DicePublicConfig = PublicGameConfig<DiceGameConfig>
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'dice', 'types', 'index.ts'),
+      `
+        export * from './domain/game'
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'dice', 'lib', 'controllers', 'diceController.ts'),
+      `
+        import { Get, Response, Route } from 'tsoa-next'
+        import { GamesController } from 'src/modules/game/lib/controllers/gameController'
+        import { GameSystemError } from 'src/modules/game/types'
+        import { type DiceGameConfig, type DicePublicConfig } from 'src/modules/dice/types'
+
+        @Route('dice')
+        export class DiceController extends GamesController<DiceGameConfig> {
+          @Get('config')
+          @Response<GameSystemError>(GameSystemError.httpCode, GameSystemError.httpStatus)
+          public override async getConfig(): Promise<DicePublicConfig> {
+            return {
+              edge: 1,
+              minBet: 1,
+              maxBet: 10,
+              maxProfit: 100,
+            }
+          }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'ledger', 'types', 'Balance.ts'),
+      `
+        export interface BalanceTypeConfigEntry {
+          shortCode: string
+        }
+
+        export interface BalanceTypesConfig {
+          [key: string]: BalanceTypeConfigEntry
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'slide', 'types', 'game.ts'),
+      `
+        import { type BalanceTypesConfig } from 'src/modules/ledger/types/Balance'
+
+        export interface SlideConfig {
+          balanceTypes: BalanceTypesConfig
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'slide', 'lib', 'slideController.ts'),
+      `
+        import { Controller, Get, Route } from 'tsoa-next'
+        import { type SlideConfig } from 'src/modules/slide/types/game'
+
+        @Route('slide')
+        export class SlideController extends Controller {
+          @Get('config')
+          public getConfig(): SlideConfig {
+            return {
+              balanceTypes: {
+                cash: { shortCode: 'cash' },
+              },
+            }
+          }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'blackjack', 'types', 'index.ts'),
+      `
+        import type { PrivateGameConfig, PublicGameConfig } from 'src/modules/game/types'
+
+        export interface BlackjackConfig extends PrivateGameConfig {
+          decks: number
+        }
+
+        export type BlackjackPublicConfig = PublicGameConfig<BlackjackConfig>
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'blackjack', 'lib', 'gameController.ts'),
+      `
+        import { Get, Route } from 'tsoa-next'
+        import { GamesController } from 'src/modules/game/lib/controllers/gameController'
+        import { type BlackjackConfig, type BlackjackPublicConfig } from 'src/modules/blackjack/types'
+
+        @Route('blackjack')
+        export class BlackjackController extends GamesController<BlackjackConfig> {
+          @Get('config')
+          public override async getConfig(): Promise<BlackjackPublicConfig> {
+            return {
+              edge: 1,
+              minBet: 1,
+              maxBet: 25,
+              decks: 6,
+            }
+          }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'limbo', 'types', 'index.ts'),
+      `
+        import type { PrivateGameConfig, PublicGameConfig } from 'src/modules/game/types'
+
+        export interface LimboGameConfig extends PrivateGameConfig {
+          maxProfit: number
+        }
+
+        export type LimboPublicConfig = PublicGameConfig<LimboGameConfig>
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'limbo', 'lib', 'gameController.ts'),
+      `
+        import { Get, Route } from 'tsoa-next'
+        import { GamesController } from 'src/modules/game/lib/controllers/gameController'
+        import { type LimboGameConfig, type LimboPublicConfig } from 'src/modules/limbo/types'
+
+        @Route('limbo')
+        export class LimboController extends GamesController<LimboGameConfig> {
+          @Get('config')
+          public override async getConfig(): Promise<LimboPublicConfig> {
+            return {
+              edge: 1,
+              minBet: 1,
+              maxBet: 50,
+              maxProfit: 1000,
+            }
+          }
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'dice', 'tsoa.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            'src/*': ['src/*'],
+          },
+        },
+        controllerPathGlobs: ['src/modules/**/*Controller*.ts'],
+        entryFile: 'src/modules/dice/index.ts',
+        routes: {
+          middleware: 'express',
+          routesDir: join(repoRoot, 'build', 'routes'),
+        },
+        spec: {
+          basePath: '/_api',
+          outputDirectory: join(repoRoot, 'build', 'spec'),
+          specVersion: 3,
+        },
+      }),
+      'utf8',
+    )
+
+    const configBaseDir = join(repoRoot, 'src', 'modules', 'dice')
+    const config = JSON.parse(await fs.readFile(join(configBaseDir, 'tsoa.json'), 'utf8'))
+    const previousWorkingDirectory = process.cwd()
+    process.chdir(repoRoot)
+    try {
+      await run({ config, configBaseDir })
+    } finally {
+      process.chdir(previousWorkingDirectory)
+    }
+  } finally {
+    await fs.rm(repoRoot, { force: true, recursive: true })
+  }
+}
+
 describe('Backward compatibility regressions', () => {
   it('resolves imported named types used within other named return types', async () => {
     await withCompatibilityFixture(async ({ controllerFile }) => {
@@ -224,6 +559,52 @@ describe('Backward compatibility regressions', () => {
     })
   })
 
+  it('generates metadata, specs, and route models for backend-style nested tsoa configs', async () => {
+    await withBackendStyleFixture(async ({ config, configBaseDir }) => {
+      const compilerOptions = validateCompilerOptions(config, configBaseDir)
+      const metadata = new MetadataGenerator(config.entryFile, compilerOptions, undefined, config.controllerPathGlobs).Generate()
+      const specConfig = getDefaultExtendedOptions(config.spec.outputDirectory, config.entryFile)
+      specConfig.basePath = config.spec.basePath
+
+      const spec = new SpecGenerator3(metadata, specConfig).GetSpec()
+      const routeGenerator = new DefaultRouteGenerator(metadata, {
+        basePath: config.spec.basePath,
+        bodyCoercion: true,
+        controllerPathGlobs: config.controllerPathGlobs,
+        entryFile: config.entryFile,
+        middleware: 'express',
+        noImplicitAdditionalProperties: 'ignore',
+        routesDir: config.routes.routesDir,
+      })
+      const models = routeGenerator.buildModels()
+
+      expect(compilerOptions.baseUrl?.replaceAll('\\', '/')).to.equal(resolve(configBaseDir, '../../..').replaceAll('\\', '/'))
+
+      expect(metadata.referenceTypeMap).to.have.property('DicePublicConfig')
+      expect(metadata.referenceTypeMap).to.have.property('GameSystemError')
+      expect(metadata.referenceTypeMap).to.have.property('BalanceTypesConfig')
+      expect(metadata.referenceTypeMap).to.have.property('SlideConfig')
+      expect(metadata.referenceTypeMap).to.have.property('PublicGameConfig_BlackjackConfig_')
+      expect(metadata.referenceTypeMap).to.have.property('BlackjackPublicConfig')
+      expect(metadata.referenceTypeMap).to.have.property('PublicGameConfig_LimboGameConfig_')
+      expect(metadata.referenceTypeMap).to.have.property('LimboPublicConfig')
+
+      expect((getSchema(spec, 'DicePublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_DiceGameConfig_')
+      expect((getSchema(spec, 'BlackjackPublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_BlackjackConfig_')
+      expect((getSchema(spec, 'LimboPublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_LimboGameConfig_')
+
+      const slideSchema = getSchema(spec, 'SlideConfig') as Swagger.Schema3
+      expect((slideSchema.properties!.balanceTypes as Swagger.Schema3).$ref).to.equal('#/components/schemas/BalanceTypesConfig')
+
+      const gameSystemError = getSchema(spec, 'GameSystemError') as Swagger.Schema3
+      expect(gameSystemError.type).to.equal('object')
+
+      expect(models).to.have.property('DicePublicConfig')
+      expect(models).to.have.property('GameSystemError')
+      expect(models).to.have.property('SlideConfig')
+    })
+  })
+
   it('does not crash OpenAPI schema generation when a partial refObject slips into the metadata map', () => {
     const metadata = {
       controllers: [],
@@ -266,5 +647,36 @@ describe('Backward compatibility regressions', () => {
       type: 'object',
     })
     expect(definition.properties).to.deep.equal({})
+  })
+
+  it('does not crash route model generation when a partial refObject slips into the metadata map', () => {
+    const metadata = {
+      controllers: [],
+      referenceTypeMap: {
+        PartialRefObject: {
+          dataType: 'refObject',
+          deprecated: false,
+          refName: 'PartialRefObject',
+        },
+      },
+    } as unknown as Tsoa.Metadata
+
+    const routeGenerator = new DefaultRouteGenerator(metadata, {
+      basePath: '/',
+      bodyCoercion: true,
+      controllerPathGlobs: [],
+      entryFile: '',
+      middleware: 'express',
+      noImplicitAdditionalProperties: 'ignore',
+      routesDir: '/tmp',
+    })
+
+    expect(routeGenerator.buildModels()).to.deep.equal({
+      PartialRefObject: {
+        additionalProperties: true,
+        dataType: 'refObject',
+        properties: {},
+      },
+    })
   })
 })
