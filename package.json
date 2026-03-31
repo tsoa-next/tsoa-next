@@ -18,6 +18,7 @@
     "lint:deps": "syncpack lint && syncpack format --check",
     "lint:fix": "npm run lint -- --fix",
     "prepare": "husky && npm run build",
+    "prepare-dev-publish": "node ./scripts/prepare-dev-publish.cjs",
     "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
     "preversion": "npm run test",
     "release": "npm run build && changeset publish",

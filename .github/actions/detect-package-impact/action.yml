@@ -5,6 +5,15 @@ outputs:
   has-impact:
     description: Whether the changed files affect package builds or published packages.
     value: ${{ steps.detect.outputs.has-impact }}
+  has-changeset:
+    description: Whether the evaluated diff includes a non-README changeset file.
+    value: ${{ steps.detect.outputs.has-changeset }}
+  is-release-pr:
+    description: Whether the current pull request head branch is a changeset release branch.
+    value: ${{ steps.detect.outputs.is-release-pr }}
+  should-publish-dev-build:
+    description: Whether a merged pull request should publish a dev build.
+    value: ${{ steps.detect.outputs.should-publish-dev-build }}
   changed-files:
     description: Newline-delimited list of changed files in the evaluated diff.
     value: ${{ steps.detect.outputs.changed-files }}
@@ -23,5 +32,6 @@ runs:
         BEFORE_SHA: ${{ github.event.before }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         HEAD_SHA: ${{ github.sha }}
+        PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: ./.github/actions/detect-package-impact/detect-impact.sh

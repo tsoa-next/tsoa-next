@@ -1,0 +1,149 @@
+name: Publish Dev Build
+
+on:
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to publish. Defaults to the branch or tag selected in the workflow UI.
+        required: false
+        type: string
+      dist-tag:
+        description: npm dist-tag for the dev build
+        required: false
+        default: dev
+        type: string
+      prerelease-id:
+        description: Prerelease identifier prefix used in the published version
+        required: false
+        default: dev
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.merge_commit_sha || github.event.inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish-dev-build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve publish inputs
+        id: publish-inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "ref=${{ github.event.pull_request.merge_commit_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "display_ref=${{ github.event.pull_request.merge_commit_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "dist_tag=dev" >> "${GITHUB_OUTPUT}"
+            echo "prerelease_id=dev" >> "${GITHUB_OUTPUT}"
+          else
+            selected_ref="${{ github.event.inputs.ref || github.ref }}"
+            echo "ref=${selected_ref}" >> "${GITHUB_OUTPUT}"
+            echo "display_ref=${selected_ref}" >> "${GITHUB_OUTPUT}"
+            echo "dist_tag=${{ github.event.inputs.dist-tag }}" >> "${GITHUB_OUTPUT}"
+            echo "prerelease_id=${{ github.event.inputs.prerelease-id }}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ steps.publish-inputs.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Detect package impact
+        id: detect-impact
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/detect-package-impact
+
+      - name: Setup Node
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        run: npm ci --ignore-scripts
+
+      - name: Build packages
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        run: npm run build
+
+      - name: Prepare dev package manifests
+        id: prepare
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          short_sha="$(git rev-parse --short HEAD)"
+          suffix="${{ steps.publish-inputs.outputs.prerelease_id }}.${{ github.run_number }}.${short_sha}"
+          manifest_path="${RUNNER_TEMP}/dev-publish-manifest.json"
+
+          node ./scripts/prepare-dev-publish.cjs \
+            --suffix "${suffix}" \
+            --out-dir "${RUNNER_TEMP}/dev-publish" > "${manifest_path}"
+
+          {
+            echo "manifest=${manifest_path}"
+            echo "suffix=${suffix}"
+            echo "version=$(jq -r '.version' "${manifest_path}")"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Publish runtime
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/runtime"
+
+      - name: Publish cli
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/cli"
+
+      - name: Publish tsoa-next
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/tsoa"
+
+      - name: Summarize published dev build
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Dev Build Published"
+            echo
+            echo "- ref: \`${{ steps.publish-inputs.outputs.display_ref }}\`"
+            echo "- version: \`${{ steps.prepare.outputs.version }}\`"
+            echo "- dist-tag: \`${{ steps.publish-inputs.outputs.dist_tag }}\`"
+            if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+              echo "- source PR: #${{ github.event.pull_request.number }}"
+            fi
+            echo
+            echo "### Packages"
+            jq -r '.packages[] | "- `\(.name)@\(.version)`"' "${{ steps.prepare.outputs.manifest }}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Summarize skipped dev build
+        if: github.event_name == 'pull_request' && steps.detect-impact.outputs.should-publish-dev-build != 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Dev Build Skipped"
+            echo
+            if [[ "${{ steps.detect-impact.outputs.is-release-pr }}" == 'true' ]]; then
+              echo "Merged PR #${{ github.event.pull_request.number }} is a changeset release PR, so no dev package was published."
+            elif [[ "${{ steps.detect-impact.outputs.has-changeset }}" != 'true' ]]; then
+              echo "Merged PR #${{ github.event.pull_request.number }} did not include a changeset, so no dev package was published."
+            else
+              echo "Merged PR #${{ github.event.pull_request.number }} did not meet the dev publish criteria."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

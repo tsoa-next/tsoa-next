@@ -9,6 +9,7 @@ head_sha="${PR_HEAD_SHA:-${HEAD_SHA:-}}"
 base_sha="${BASE_SHA:-}"
 before_sha="${BEFORE_SHA:-}"
 default_branch="${DEFAULT_BRANCH:-}"
+pr_head_ref="${PR_HEAD_REF:-}"
 
 fetch_commit() {
   local sha="$1"
@@ -111,6 +112,9 @@ set_multiline_output() {
 changed_files=()
 impactful_files=()
 diff_base=''
+has_changeset=false
+is_release_pr=false
+should_publish_dev_build=false
 
 case "$event_name" in
   pull_request)
@@ -129,6 +133,9 @@ case "$event_name" in
     ;;
   *)
     printf 'has-impact=true\n' >> "$GITHUB_OUTPUT"
+    printf 'has-changeset=false\n' >> "$GITHUB_OUTPUT"
+    printf 'is-release-pr=false\n' >> "$GITHUB_OUTPUT"
+    printf 'should-publish-dev-build=false\n' >> "$GITHUB_OUTPUT"
     set_multiline_output changed-files
     set_multiline_output impactful-files
     log_detection_fallback "unsupported event '$event_name'"
@@ -138,6 +145,9 @@ esac
 
 if [[ -z "$diff_base" ]]; then
   printf 'has-impact=true\n' >> "$GITHUB_OUTPUT"
+  printf 'has-changeset=false\n' >> "$GITHUB_OUTPUT"
+  printf 'is-release-pr=false\n' >> "$GITHUB_OUTPUT"
+  printf 'should-publish-dev-build=false\n' >> "$GITHUB_OUTPUT"
   set_multiline_output changed-files
   set_multiline_output impactful-files
   log_detection_fallback 'unable to determine a diff base'
@@ -157,7 +167,25 @@ if ((${#impactful_files[@]} > 0)); then
   has_impact=true
 fi
 
+for path in "${changed_files[@]}"; do
+  if [[ "$path" == .changeset/* && "$path" != '.changeset/README.md' ]]; then
+    has_changeset=true
+    break
+  fi
+done
+
+if [[ "$event_name" == 'pull_request' && "$pr_head_ref" == changeset-release/* ]]; then
+  is_release_pr=true
+fi
+
+if [[ "$event_name" == 'pull_request' && "$has_changeset" == 'true' && "$is_release_pr" == 'false' ]]; then
+  should_publish_dev_build=true
+fi
+
 printf 'has-impact=%s\n' "$has_impact" >> "$GITHUB_OUTPUT"
+printf 'has-changeset=%s\n' "$has_changeset" >> "$GITHUB_OUTPUT"
+printf 'is-release-pr=%s\n' "$is_release_pr" >> "$GITHUB_OUTPUT"
+printf 'should-publish-dev-build=%s\n' "$should_publish_dev_build" >> "$GITHUB_OUTPUT"
 set_multiline_output changed-files "${changed_files[@]}"
 set_multiline_output impactful-files "${impactful_files[@]}"
 log_detection_result "$has_impact" "$diff_base..$head_sha" "${impactful_files[@]}"
@@ -169,6 +197,9 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "- Event: \`$event_name\`"
     echo "- Evaluated diff: \`$diff_base..$head_sha\`"
     echo "- Has package/build impact: \`$has_impact\`"
+    echo "- Has changeset: \`$has_changeset\`"
+    echo "- Is release PR: \`$is_release_pr\`"
+    echo "- Should publish dev build: \`$should_publish_dev_build\`"
     echo
     echo '### Impactful files'
     if ((${#impactful_files[@]} > 0)); then
