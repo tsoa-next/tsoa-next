@@ -1162,7 +1162,7 @@ export class TypeResolver {
         this.addToLocalReferenceTypeCache(name, referenceType)
         return referenceType
       } catch (err) {
-        console.error(`There was a problem resolving type of '${name}'.`)
+        delete inProgressTypes[name]
         throw err
       }
     }

@@ -317,6 +317,43 @@ describe('TypeResolver', () => {
       expect(() => (resolverWithUnresolvedFallback as any).getReferenceType(originalReference, false)).to.throw(GenerateMetadataError, "Could not find declarations for type 'UnresolvedThing<string>'")
     })
 
+    it('clears in-progress markers after failed resolution so later lookups do not return circular placeholders', () => {
+      TypeResolver.clearCache()
+      const originalReference = ts.factory.createTypeReferenceNode('RecoverableThing', [ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)])
+      const fakeCurrent = {
+        AddReferenceType: () => undefined,
+        CheckExpressionUnicity: () => undefined,
+        typeChecker: {},
+      }
+
+      const resolverWithRecoverableFailure = new TypeResolver(originalReference, fakeCurrent as any)
+      const fallbackReference = {
+        dataType: 'refAlias',
+        deprecated: false,
+        refName: 'RecoverableThing_string_',
+        type: { dataType: 'string' },
+        validators: {},
+      }
+
+      let shouldFail = true
+      ;(resolverWithRecoverableFailure as any).calcTypeReferenceTypeName = () => [ts.factory.createIdentifier('RecoverableThing'), 'RecoverableThing<string>']
+      ;(resolverWithRecoverableFailure as any).getRefTypeName = () => 'RecoverableThing_string_'
+      ;(resolverWithRecoverableFailure as any).typeArgumentsToContext = () => ({})
+      ;(resolverWithRecoverableFailure as any).getModelTypeDeclarations = () => {
+        if (shouldFail) {
+          throw new Error('Simulated declaration resolution failure')
+        }
+        return []
+      }
+      ;(resolverWithRecoverableFailure as any).getReferenceTypeFromTypeChecker = () => fallbackReference
+
+      expect(() => (resolverWithRecoverableFailure as any).getReferenceType(originalReference, false)).to.throw('Simulated declaration resolution failure')
+
+      shouldFail = false
+      const recoveredReference = (resolverWithRecoverableFailure as any).getReferenceType(originalReference, false)
+      expect(recoveredReference).to.equal(fallbackReference)
+    })
+
     it('detects equivalent reference nodes only for matching type references', async () => {
       const { metadata, sourceFile } = await createResolverHarness({
         'entry.ts': `

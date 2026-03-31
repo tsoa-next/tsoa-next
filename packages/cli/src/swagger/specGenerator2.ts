@@ -91,10 +91,11 @@ export class SpecGenerator2 extends SpecGenerator {
     Object.keys(this.metadata.referenceTypeMap).forEach(typeName => {
       const referenceType = this.metadata.referenceTypeMap[typeName]
       if (referenceType.dataType === 'refObject') {
-        const required = referenceType.properties.filter(p => this.isRequiredWithoutDefault(p) && !this.hasUndefined(p)).map(p => p.name)
+        const properties = referenceType.properties ?? []
+        const required = properties.filter(p => this.isRequiredWithoutDefault(p) && !this.hasUndefined(p)).map(p => p.name)
         definitions[referenceType.refName] = {
           description: referenceType.description,
-          properties: this.buildProperties(referenceType.properties),
+          properties: this.buildProperties(properties),
           required: required.length > 0 ? Array.from(new Set(required)) : undefined,
           type: 'object',
         }
