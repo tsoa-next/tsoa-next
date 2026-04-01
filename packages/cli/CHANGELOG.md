@@ -1,5 +1,13 @@
 # @tsoa-next/cli
 
+## 8.0.1
+
+### Patch Changes
+
+- 61f5454: Stop defaulting generated OpenAPI specs to an MIT license when the consumer package does not declare a `license` field.
+- Updated dependencies [61f5454]
+  - @tsoa-next/runtime@8.0.1
+
 ## 8.0.0
 
 ### Patch Changes
