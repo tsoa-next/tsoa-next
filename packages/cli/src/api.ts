@@ -31,7 +31,7 @@ const getPackageJsonValue = async (key: string, defaultValue = ''): Promise<stri
 const nameDefault = () => getPackageJsonValue('name', 'TSOA')
 const versionDefault = () => getPackageJsonValue('version', '1.0.0')
 const descriptionDefault = () => getPackageJsonValue('description', 'Build swagger-compliant REST APIs using TypeScript and Node')
-const licenseDefault = () => getPackageJsonValue('license', 'MIT')
+const licenseDefault = () => getPackageJsonValue('license')
 const determineNoImplicitAdditionalSetting = (noImplicitAdditionalProperties: Config['noImplicitAdditionalProperties']): Exclude<Config['noImplicitAdditionalProperties'], undefined> => {
   if (noImplicitAdditionalProperties === 'silently-remove-extras' || noImplicitAdditionalProperties === 'throw-on-extras' || noImplicitAdditionalProperties === 'ignore') {
     return noImplicitAdditionalProperties
@@ -295,7 +295,12 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   const noImplicitAdditionalProperties = determineNoImplicitAdditionalSetting(config.noImplicitAdditionalProperties)
   config.spec.name = config.spec.name || (await nameDefault())
   config.spec.description = config.spec.description || (await descriptionDefault())
-  config.spec.license = config.spec.license || (await licenseDefault())
+  if (!config.spec.license) {
+    const packageLicense = await licenseDefault()
+    if (packageLicense) {
+      config.spec.license = packageLicense
+    }
+  }
   config.spec.basePath = config.spec.basePath || '/'
   // defaults to template that may generate non-unique operation ids.
   // @see https://github.com/lukeautry/tsoa/issues/1005
