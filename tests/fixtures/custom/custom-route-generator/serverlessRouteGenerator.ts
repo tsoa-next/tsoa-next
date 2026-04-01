@@ -1,7 +1,6 @@
- 
 import * as fs from 'fs'
 import * as handlebars from 'handlebars'
-import { ExtendedRoutesConfig } from '@tsoa-next/cli/src/cli'
+import type { ExtendedRoutesConfig } from '@tsoa-next/cli'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
 import { fsReadFile, fsWriteFile, fsExists, fsMkDir } from '@tsoa-next/cli/src/utils/fs'
 import { AbstractRouteGenerator } from '@tsoa-next/cli/src/routeGeneration/routeGenerator'

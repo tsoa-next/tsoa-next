@@ -5,5 +5,9 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "cSpell.words": [
     "tsoa"
-  ]
+  ],
+  "sonarlint.connectedMode.project": {
+    "connectionId": "tsoa-next",
+    "projectKey": "tsoa-next_tsoa-next"
+  }
 }

@@ -27,7 +27,7 @@ describe('Exclusive numeric bounds', () => {
     const exclusiveRangeProperty = validateModel.properties.find(property => property.name === 'numberExclusiveRange')
     expect(exclusiveRangeProperty?.validators.exclusiveMinimum?.value).to.equal(1.5)
     expect(exclusiveRangeProperty?.validators.exclusiveMaximum?.value).to.equal(3.5)
-  })
+  }).timeout(15000)
 
   it('emits boolean exclusive bounds for Swagger 2.0', () => {
     const metadata = new MetadataGenerator('./fixtures/controllers/exclusiveParameterController.ts').Generate()

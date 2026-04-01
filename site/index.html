@@ -65,7 +65,10 @@
 
       <pre><code>npm install tsoa-next reflect-metadata</code></pre>
 
-      <p>The published package includes the CLI entrypoint as <code>tsoa</code>, plus the <code>@tsoa-next/runtime</code> and <code>@tsoa-next/cli</code> packages used internally by the monorepo.</p>
+      <p>
+        The published package exposes runtime decorators and helpers from <code>tsoa-next</code>, programmatic generation APIs from
+        <code>tsoa-next/cli</code>, and the <code>tsoa</code> CLI binary.
+      </p>
 
       <div class="highlight highlight-source-ts">
         <pre><code><span class="pl-k">import</span> { <span class="pl-en">Controller</span>, <span class="pl-en">Get</span>, <span class="pl-en">Route</span> } <span class="pl-k">from</span> <span class="pl-s">'tsoa-next'</span>;

@@ -1,7 +1,7 @@
 import { Swagger, Tsoa } from '@tsoa-next/runtime'
 import { merge as deepMerge } from 'ts-deepmerge'
 
-import { ExtendedSpecConfig } from '../cli'
+import type { ExtendedSpecConfig } from '../api'
 import { recursiveMerge } from '../utils/specMerge'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import { SpecGenerator3 } from './specGenerator3'

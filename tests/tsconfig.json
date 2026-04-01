@@ -15,6 +15,7 @@
     "skipLibCheck": true,
     "paths": {
       "tsoa-next": ["../packages/tsoa/src/index.ts"],
+      "tsoa-next/cli": ["../packages/tsoa/src/cli.ts"],
       "@tsoa-next/cli": ["../packages/cli/src/index.ts"],
       "@tsoa-next/cli/*": ["../packages/cli/src/*"],
       "@tsoa-next/runtime": ["../packages/runtime/src/index.ts"],

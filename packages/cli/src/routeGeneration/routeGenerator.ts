@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { ExtendedRoutesConfig } from '../cli'
+import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
 import { isRefType } from '../utils/internalTypeGuards'
 import { convertBracesPathParams, normalisePath } from '../utils/pathUtils'

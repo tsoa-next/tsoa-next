@@ -115,6 +115,12 @@ This feature is fully opt-in. If you do not use `@Validate(...)`, existing inter
 - [API Reference](https://tsoa-next.dev/reference/)
 - [Getting started guide](https://tsoa-next.dev/getting-started)
 
+## Package Surface
+
+- Import decorators, runtime helpers, and generated route support from `tsoa-next`
+- Import programmatic generation APIs from `tsoa-next/cli`
+- Use the `tsoa` binary for CLI generation commands
+
 ## Examples
 
 Check out the [guides](https://tsoa-next.dev/)

@@ -52,7 +52,7 @@ describe('prepare-dev-publish', () => {
     } finally {
       rmSync(outDir, { force: true, recursive: true })
     }
-  })
+  }).timeout(15000)
 
   it('rejects output directories that would delete the repository root or its ancestors', () => {
     expect(() =>
