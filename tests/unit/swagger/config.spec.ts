@@ -134,6 +134,28 @@ describe('Configuration', () => {
         name: 'Jane Doe',
       })
     })
+
+    it('should not set a default API license when package.json has no license', async () => {
+      const config: Config = getDefaultOptions('some/output/directory')
+      config.entryFile = ''
+      config.controllerPathGlobs = ['/some/path']
+      delete config.spec.license
+
+      const configResult = await withCliModuleForPackageJson({}, (reloadedValidateSpecConfig: typeof validateSpecConfig) => reloadedValidateSpecConfig(config))
+
+      expect(configResult.license).to.equal(undefined)
+    })
+
+    it('should use package.json license when available', async () => {
+      const config: Config = getDefaultOptions('some/output/directory')
+      config.entryFile = ''
+      config.controllerPathGlobs = ['/some/path']
+      delete config.spec.license
+
+      const configResult = await withCliModuleForPackageJson({ license: 'Apache-2.0' }, (reloadedValidateSpecConfig: typeof validateSpecConfig) => reloadedValidateSpecConfig(config))
+
+      expect(configResult.license).to.equal('Apache-2.0')
+    })
   })
 })
 

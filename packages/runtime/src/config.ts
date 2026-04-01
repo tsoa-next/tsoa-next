@@ -156,7 +156,7 @@ export interface SpecConfig {
   }
 
   /**
-   * API license; defaults to npm package license
+   * API license; defaults to npm package license when present
    */
   license?: string
 
