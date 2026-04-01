@@ -2,7 +2,7 @@ import { merge as deepMerge } from 'ts-deepmerge'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 
 import { SpecGenerator } from './specGenerator'
-import { ExtendedSpecConfig } from '../cli'
+import type { ExtendedSpecConfig } from '../api'
 import { isVoidType } from '../utils/isVoidType'
 import { convertColonPathParams, normalisePath } from '../utils/pathUtils'
 import { recursiveMerge } from '../utils/specMerge'

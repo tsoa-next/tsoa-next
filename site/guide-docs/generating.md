@@ -45,8 +45,10 @@ For information on the configuration object (tsoa.json), you may also me interes
 
 ## Programmatic
 
+Import programmatic generation APIs from `tsoa-next/cli`. The root `tsoa-next` entrypoint is runtime-only and should be used for decorators and runtime helpers.
+
 ```typescript
-import { generateRoutes, generateSpec, ExtendedRoutesConfig, ExtendedSpecConfig } from 'tsoa-next'
+import { generateRoutes, generateSpec, ExtendedRoutesConfig, ExtendedSpecConfig } from 'tsoa-next/cli'
 
 ;(async () => {
   const specOptions: ExtendedSpecConfig = {

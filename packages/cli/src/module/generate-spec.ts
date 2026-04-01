@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 import * as YAML from 'yaml'
-import { ExtendedSpecConfig } from '../cli'
+import type { ExtendedSpecConfig } from '../api'
 import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
 import { Tsoa, Swagger, Config } from '@tsoa-next/runtime'
 import { SpecGenerator2 } from '../swagger/specGenerator2'

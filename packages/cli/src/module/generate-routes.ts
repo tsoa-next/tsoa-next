@@ -1,5 +1,5 @@
 import * as ts from 'typescript'
-import { ExtendedRoutesConfig, RouteGeneratorModule } from '../cli'
+import type { ExtendedRoutesConfig, RouteGeneratorModule } from '../api'
 import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
 import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'

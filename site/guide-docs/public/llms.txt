@@ -68,6 +68,7 @@ Generation commands
   - `tsoa spec`
   - `tsoa routes`
 - Programmatic:
+  - import from `tsoa-next/cli`
   - `generateSpec(...)`
   - `generateRoutes(...)`
 

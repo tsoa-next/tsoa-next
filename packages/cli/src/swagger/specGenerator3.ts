@@ -1,7 +1,7 @@
 import { Swagger, Tsoa, assertNever } from '@tsoa-next/runtime'
 import { merge as deepMerge } from 'ts-deepmerge'
 
-import { ExtendedSpecConfig } from '../cli'
+import type { ExtendedSpecConfig } from '../api'
 import { isVoidType } from '../utils/isVoidType'
 import { recursiveMerge } from '../utils/specMerge'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'

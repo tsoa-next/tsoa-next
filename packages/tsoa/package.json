@@ -52,5 +52,25 @@
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://tsoa-next.dev"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "require": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "homepage": "https://tsoa-next.dev",
+  "typesVersions": {
+    "*": {
+      "cli": [
+        "dist/cli.d.ts"
+      ]
+    }
+  }
 }

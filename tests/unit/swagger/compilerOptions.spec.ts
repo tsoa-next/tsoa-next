@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import 'mocha'
 import * as ts from 'typescript'
-import { validateCompilerOptions } from '@tsoa-next/cli/cli'
+import { validateCompilerOptions } from '@tsoa-next/cli'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { Config } from '@tsoa-next/runtime/config'
 

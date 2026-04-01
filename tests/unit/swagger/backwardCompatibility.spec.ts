@@ -1,4 +1,4 @@
-import { validateCompilerOptions } from '@tsoa-next/cli/cli'
+import { validateCompilerOptions } from '@tsoa-next/cli'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'

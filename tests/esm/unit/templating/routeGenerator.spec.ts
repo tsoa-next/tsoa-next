@@ -1,7 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import { generateRoutes, type ExtendedRoutesConfig } from 'tsoa-next'
+import { generateRoutes, type ExtendedRoutesConfig } from 'tsoa-next/cli'
 import { DummyRouteGenerator } from '../../fixtures/templating/dummyRouteGenerator'
 
 chai.use(chaiAsPromised)

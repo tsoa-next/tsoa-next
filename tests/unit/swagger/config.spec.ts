@@ -141,7 +141,7 @@ describe('Configuration', () => {
 async function withCliModuleForPackageJson<T>(packageJson: Record<string, unknown>, callback: (reloadedValidateSpecConfig: typeof validateSpecConfig) => Promise<T>): Promise<T> {
   const workingDirectory = mkdtempSync(join(tmpdir(), 'tsoa-cli-config-'))
   const previousWorkingDirectory = process.cwd()
-  const modulePath = require.resolve('../../../packages/cli/src/cli')
+  const modulePath = require.resolve('../../../packages/cli/src/api')
 
   writeFileSync(join(workingDirectory, 'package.json'), JSON.stringify(packageJson), 'utf8')
 

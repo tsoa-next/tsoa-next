@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as handlebars from 'handlebars'
 import * as path from 'path'
-import { ExtendedRoutesConfig } from '../cli'
+import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
 import { fsReadFile, fsWriteFile } from '../utils/fs'
 import { convertBracesPathParams } from '../utils/pathUtils'

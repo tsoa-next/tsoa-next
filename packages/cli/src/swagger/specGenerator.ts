@@ -1,4 +1,4 @@
-import { ExtendedSpecConfig } from '../cli'
+import type { ExtendedSpecConfig } from '../api'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
 import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
