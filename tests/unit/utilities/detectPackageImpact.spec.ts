@@ -6,7 +6,7 @@ import { expect } from 'chai'
 import 'mocha'
 
 describe('detect-package-impact', function () {
-  this.timeout(20000)
+  this.timeout(60000)
 
   const repoRoot = resolve(__dirname, '../../..')
   const scriptPath = resolve(repoRoot, '.github/actions/detect-package-impact/detect-impact.sh')

@@ -1,4 +1,4 @@
-import YAML from 'yaml'
+import { parse as parseYAML } from 'yaml'
 import { Config, RoutesConfig, SpecConfig, Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
@@ -10,7 +10,7 @@ import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { CompilerOptions } from 'typescript'
 
 const workingDir: string = process.cwd()
-const yamlModule = YAML as unknown as { parse(source: string): unknown }
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 let packageJson: Record<string, unknown> | undefined
 const getPackageJsonValue = async (key: string, defaultValue = ''): Promise<string> => {
@@ -18,8 +18,8 @@ const getPackageJsonValue = async (key: string, defaultValue = ''): Promise<stri
     try {
       const packageJsonRaw = await fsReadFile(`${workingDir}/package.json`)
       const parsedPackageJson: unknown = JSON.parse(packageJsonRaw.toString('utf8'))
-      packageJson = typeof parsedPackageJson === 'object' && parsedPackageJson !== null ? (parsedPackageJson as Record<string, unknown>) : {}
-    } catch (_) {
+      packageJson = isRecord(parsedPackageJson) ? parsedPackageJson : {}
+    } catch {
       return defaultValue
     }
   }
@@ -137,13 +137,13 @@ const getConfig = async (configPath = 'tsoa.json'): Promise<ConfigWithContext> =
   try {
     if (isYamlExtension(ext)) {
       const configRaw = await fsReadFile(configFullPath)
-      config = parseConfigValue(yamlModule.parse(configRaw.toString('utf8')))
+      config = parseConfigValue(parseYAML(configRaw.toString('utf8')))
     } else if (isJsExtension(ext)) {
       const importedConfig: unknown = await import(configFullPath)
-      if (typeof importedConfig !== 'object' || importedConfig === null) {
+      if (!isRecord(importedConfig)) {
         throw new Error(`Invalid JS config export at '${configPath}'`)
       }
-      config = parseConfigModule(importedConfig as Record<string, unknown>)
+      config = parseConfigModule(importedConfig)
     } else {
       const configRaw = await fsReadFile(configFullPath)
       config = parseConfigValue(JSON.parse(configRaw.toString('utf8')))
@@ -225,13 +225,13 @@ const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): Com
   return parsed.options
 }
 
-const isConfig = (value: Config | Record<string, unknown> | undefined): value is Config => {
-  return typeof value === 'object' && value !== null && ('entryFile' in value || 'routes' in value || 'spec' in value || 'tsconfig' in value)
+const isConfig = (value: unknown): value is Config => {
+  return isRecord(value) && ('entryFile' in value || 'routes' in value || 'spec' in value || 'tsconfig' in value)
 }
 
 const parseConfigValue = (value: unknown): Config => {
-  if (isConfig(value as Record<string, unknown> | undefined)) {
-    return value as Config
+  if (isConfig(value)) {
+    return value
   }
 
   throw new Error('Invalid tsoa-next config shape')
@@ -277,7 +277,7 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   if (!config.entryFile && (!config.controllerPathGlobs || !config.controllerPathGlobs.length)) {
     throw new Error('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globals.')
   }
-  if (!!config.entryFile && !(await fsExists(config.entryFile))) {
+  if (config.entryFile && !(await fsExists(config.entryFile))) {
     throw new Error(`EntryFile not found: ${config.entryFile} - please check your tsoa config.`)
   }
   config.spec.version = config.spec.version || (await versionDefault())
@@ -335,12 +335,10 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
       throw new Error('spec.rootSecurity must be an array')
     }
 
-    if (config.spec.rootSecurity) {
-      const ok = config.spec.rootSecurity.every(security => typeof security === 'object' && security !== null && Object.values(security).every(scope => Array.isArray(scope)))
+    const ok = config.spec.rootSecurity.every(security => typeof security === 'object' && security !== null && Object.values(security).every(scope => Array.isArray(scope)))
 
-      if (!ok) {
-        throw new Error('spec.rootSecurity must be an array of objects whose keys are security scheme names and values are arrays of scopes')
-      }
+    if (!ok) {
+      throw new Error('spec.rootSecurity must be an array of objects whose keys are security scheme names and values are arrays of scopes')
     }
   }
 
@@ -366,7 +364,7 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   if (!config.entryFile && (!config.controllerPathGlobs || !config.controllerPathGlobs.length)) {
     throw new Error('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globals.')
   }
-  if (!!config.entryFile && !(await fsExists(config.entryFile))) {
+  if (config.entryFile && !(await fsExists(config.entryFile))) {
     throw new Error(`EntryFile not found: ${config.entryFile} - Please check your tsoa config.`)
   }
   if (!config.routes.routesDir) {
@@ -410,81 +408,63 @@ export interface SwaggerArgs extends ConfigArgs {
 }
 
 export async function generateSpecFromArgs(args: SwaggerArgs) {
-  try {
-    const { config, configBaseDir } = await resolveConfig(args.configuration)
-    if (args.basePath) {
-      config.spec.basePath = args.basePath
-    }
-    if (args.host) {
-      config.spec.host = args.host
-    }
-    if (args.yaml) {
-      config.spec.yaml = args.yaml
-    }
-    if (args.json) {
-      config.spec.yaml = false
-    }
-
-    const compilerOptions = validateCompilerOptions(config, configBaseDir)
-    const swaggerConfig = await validateSpecConfig(config)
-
-    await generateSpec(swaggerConfig, compilerOptions, config.ignore)
-  } catch (err) {
-    console.error('Generate swagger error.\n', err)
-    process.exit(1)
-    throw err
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
+  if (args.basePath) {
+    config.spec.basePath = args.basePath
   }
+  if (args.host) {
+    config.spec.host = args.host
+  }
+  if (args.yaml) {
+    config.spec.yaml = args.yaml
+  }
+  if (args.json) {
+    config.spec.yaml = false
+  }
+
+  const compilerOptions = validateCompilerOptions(config, configBaseDir)
+  const swaggerConfig = await validateSpecConfig(config)
+
+  await generateSpec(swaggerConfig, compilerOptions, config.ignore)
 }
 
 export async function generateRoutesFromArgs(args: ConfigArgs) {
-  try {
-    const { config, configBaseDir } = await resolveConfig(args.configuration)
-    if (args.basePath) {
-      config.routes.basePath = args.basePath
-    }
-
-    const compilerOptions = validateCompilerOptions(config, configBaseDir)
-    const routesConfig = await validateRoutesConfig(config)
-
-    await generateRoutes(routesConfig, compilerOptions, config.ignore)
-  } catch (err) {
-    console.error('Generate routes error.\n', err)
-    process.exit(1)
-    throw err
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
+  if (args.basePath) {
+    config.routes.basePath = args.basePath
   }
+
+  const compilerOptions = validateCompilerOptions(config, configBaseDir)
+  const routesConfig = await validateRoutesConfig(config)
+
+  await generateRoutes(routesConfig, compilerOptions, config.ignore)
 }
 
 export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.Metadata) {
-  try {
-    const { config, configBaseDir } = await resolveConfig(args.configuration)
-    if (args.basePath) {
-      config.spec.basePath = args.basePath
-    }
-    if (args.host) {
-      config.spec.host = args.host
-    }
-    if (args.yaml) {
-      config.spec.yaml = args.yaml
-    }
-    if (args.json) {
-      config.spec.yaml = false
-    }
-
-    const compilerOptions = validateCompilerOptions(config, configBaseDir)
-    const routesConfig = await validateRoutesConfig(config)
-    const swaggerConfig = await validateSpecConfig(config)
-
-    if (!metadata) {
-      metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, config.spec.rootSecurity, config.defaultNumberType, config.routes.esm).Generate()
-    }
-
-    await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
-    return metadata
-  } catch (err) {
-    console.error('Generate routes error.\n', err)
-    process.exit(1)
-    throw err
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
+  if (args.basePath) {
+    config.spec.basePath = args.basePath
   }
+  if (args.host) {
+    config.spec.host = args.host
+  }
+  if (args.yaml) {
+    config.spec.yaml = args.yaml
+  }
+  if (args.json) {
+    config.spec.yaml = false
+  }
+
+  const compilerOptions = validateCompilerOptions(config, configBaseDir)
+  const routesConfig = await validateRoutesConfig(config)
+  const swaggerConfig = await validateSpecConfig(config)
+
+  if (!metadata) {
+    metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, config.spec.rootSecurity, config.defaultNumberType, config.routes.esm).Generate()
+  }
+
+  await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
+  return metadata
 }
 
 export type RouteGeneratorModule<Config extends ExtendedRoutesConfig> = {

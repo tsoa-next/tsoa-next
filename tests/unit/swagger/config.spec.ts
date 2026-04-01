@@ -10,9 +10,9 @@ import { getDefaultOptions } from '../../fixtures/defaultOptions'
 describe('Configuration', () => {
   describe('.validateSwaggerConfig', () => {
     it('should reject when spec is not set', done => {
-      const config: Partial<Config> = getDefaultOptions()
-      delete config.spec
-      validateSpecConfig(config as Config).catch(err => {
+      const config: Config = getDefaultOptions()
+      Reflect.deleteProperty(config, 'spec')
+      validateSpecConfig(config).catch(err => {
         expect(err.message).to.equal('Missing spec: configuration must contain spec. Spec used to be called swagger in previous versions of tsoa.')
         done()
       })
@@ -75,8 +75,7 @@ describe('Configuration', () => {
 
     it('should reject an unsupported Spec version', done => {
       const config: Config = getDefaultOptions('some/output/directory', 'tsoa.json')
-      // Do any cast to ignore compile error due to Swagger.SupportedSpecVersion not supporting -2
-      config.spec.specVersion = -2 as any
+      Reflect.set(config.spec, 'specVersion', -2)
       validateSpecConfig(config).then(
         (_configResult: ExtendedSpecConfig) => {
           throw new Error('Should not get here, expecting error regarding unsupported Spec version')
@@ -149,11 +148,19 @@ async function withCliModuleForPackageJson<T>(packageJson: Record<string, unknow
     process.chdir(workingDirectory)
     delete require.cache[modulePath]
 
-    const reloadedCliModule = require(modulePath) as { validateSpecConfig: typeof validateSpecConfig }
+    const reloadedCliModule: unknown = require(modulePath)
+    if (!isCliModule(reloadedCliModule)) {
+      throw new Error('Failed to reload validateSpecConfig from the CLI module.')
+    }
+
     return await callback(reloadedCliModule.validateSpecConfig)
   } finally {
     delete require.cache[modulePath]
     process.chdir(previousWorkingDirectory)
     rmSync(workingDirectory, { force: true, recursive: true })
   }
+}
+
+const isCliModule = (value: unknown): value is { validateSpecConfig: typeof validateSpecConfig } => {
+  return typeof value === 'object' && value !== null && 'validateSpecConfig' in value && typeof value.validateSpecConfig === 'function'
 }

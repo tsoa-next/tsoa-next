@@ -1,33 +1,6 @@
 #!/usr/bin/env node
-import {
-  AbstractRouteGenerator,
-  DefaultRouteGenerator,
-  generateRoutes,
-  generateRoutesFromArgs,
-  generateSpec,
-  generateSpecAndRoutes,
-  generateSpecFromArgs,
-  getSwaggerOutputPath,
-  runCLI,
-  validateCompilerOptions,
-  validateRoutesConfig,
-  validateSpecConfig,
-} from '@tsoa-next/cli'
 export * from '@tsoa-next/cli'
-export {
-  AbstractRouteGenerator,
-  DefaultRouteGenerator,
-  generateRoutes,
-  generateRoutesFromArgs,
-  generateSpec,
-  generateSpecAndRoutes,
-  generateSpecFromArgs,
-  getSwaggerOutputPath,
-  runCLI,
-  validateCompilerOptions,
-  validateRoutesConfig,
-  validateSpecConfig,
-}
+import { runCLI } from '@tsoa-next/cli'
 
 if (require.main === module) {
   void (async () => {
