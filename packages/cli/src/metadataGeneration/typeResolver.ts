@@ -34,15 +34,12 @@ type DeclarationWithTypeParameters = ts.Declaration & {
 type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 
 const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
+const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
 
 const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
   const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
   return symbolWithLinks.links?.syntheticOrigin
 }
-
-const hasOwnProperty = (value: object, key: PropertyKey): boolean => Object.prototype.hasOwnProperty.call(value, key)
-
-const getLastCharacter = (value: string): string | undefined => (value.length > 0 ? value[value.length - 1] : undefined)
 
 const isAsciiLetter = (char: string | undefined): boolean => {
   if (!char) {
@@ -119,7 +116,7 @@ const replaceIndexedAccessSegments = (value: string): string => {
       continue
     }
 
-    const previousCharacter = getLastCharacter(formatted)
+    const previousCharacter = (formatted as string & { at(index: number): string | undefined }).at(-1)
     if (!(isAsciiLetter(previousCharacter) || previousCharacter === '}' || previousCharacter === ']' || previousCharacter === ')')) {
       formatted += value[index]
       index += 1
@@ -589,7 +586,7 @@ export class TypeResolver {
       return new TypeResolver(typeChecker.typeToTypeNode(type, objectType, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
     } else if (ts.isLiteralTypeNode(indexType) && (ts.isStringLiteral(indexType.literal) || ts.isNumericLiteral(indexType.literal))) {
       // Indexed by literal
-      const hasType = (node: ts.Node | undefined): node is ts.HasType => node !== undefined && hasOwnProperty(node, 'type')
+      const hasType = (node: ts.Node | undefined): node is ts.HasType => node !== undefined && objectHasOwn(node, 'type')
       const symbol = typeChecker.getPropertyOfType(typeChecker.getTypeFromTypeNode(objectType), indexType.literal.text)
       throwUnless(symbol, new GenerateMetadataError(`Could not determine the keys on ${typeChecker.typeToString(typeChecker.getTypeFromTypeNode(objectType))}`, typeNode))
       if (hasType(symbol.valueDeclaration) && symbol.valueDeclaration.type) {
@@ -836,7 +833,7 @@ export class TypeResolver {
       case ts.SyntaxKind.NullKeyword:
         return null
       default:
-        throwUnless(hasOwnProperty(typeNode.literal, 'text'), new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
+        throwUnless(objectHasOwn(typeNode.literal, 'text'), new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
         return (typeNode.literal as ts.LiteralExpression).text
     }
   }
@@ -1586,9 +1583,11 @@ export class TypeResolver {
   public getPropertyName(prop: ts.PropertySignature | ts.PropertyDeclaration | ts.ParameterDeclaration): string {
     if (ts.isComputedPropertyName(prop.name) && ts.isPropertyAccessExpression(prop.name.expression)) {
       const initializerValue = getInitializerValue(prop.name.expression, this.current.typeChecker)
-      if (initializerValue) {
-        return String(initializerValue)
+      if (typeof initializerValue === 'string' || typeof initializerValue === 'number' || typeof initializerValue === 'boolean') {
+        return `${initializerValue}`
       }
+
+      return prop.name.expression.getText()
     }
     return (prop.name as ts.Identifier).text
   }

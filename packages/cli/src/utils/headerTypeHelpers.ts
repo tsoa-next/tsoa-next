@@ -22,9 +22,5 @@ export function getHeaderType(typeArgumentNodes: NodeArray<TypeNode> | undefined
 
 export function isSupportedHeaderDataType(parameterType: Tsoa.Type): parameterType is Tsoa.HeaderType {
   const supportedPathDataTypes: Tsoa.TypeStringLiteral[] = ['nestedObjectLiteral', 'refObject']
-  if (supportedPathDataTypes.some(t => t === parameterType.dataType)) {
-    return true
-  }
-
-  return false
+  return supportedPathDataTypes.includes(parameterType.dataType)
 }

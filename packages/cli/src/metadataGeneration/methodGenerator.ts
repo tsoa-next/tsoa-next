@@ -14,7 +14,7 @@ import { getHeaderType } from '../utils/headerTypeHelpers'
 import type { InitializerValue } from './initializer-value'
 
 type HttpMethod = 'options' | 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head'
-const httpMethods: readonly string[] = ['options', 'get', 'post', 'put', 'patch', 'delete', 'head']
+const httpMethods = new Set<HttpMethod>(['options', 'get', 'post', 'put', 'patch', 'delete', 'head'])
 const toExampleLabel = (value: InitializerValue | undefined): string | undefined => (typeof value === 'string' ? value : undefined)
 const isResponseName = (value: InitializerValue | undefined): value is Tsoa.Response['name'] => typeof value === 'string' || typeof value === 'number'
 const isExampleValue = (value: InitializerValue | undefined, allowUndefined = false): value is Tsoa.Example => {
@@ -107,18 +107,16 @@ export class MethodGenerator {
 
     const fullPath = path.join(this.parentPath || '', this.path)
     const method = this.method
-    const parameters = this.node.parameters
-      .map(p => {
-        try {
-          return new ParameterGenerator(p, method, fullPath, this.current).Generate()
-        } catch (e) {
-          const methodId = this.node.name as ts.Identifier
-          const controllerId = (this.node.parent as ts.ClassDeclaration).name as ts.Identifier
-          const message = e instanceof Error ? e.message : String(e)
-          throw new GenerateMetadataError(`${message} \n in '${controllerId.text}.${methodId.text}'`)
-        }
-      })
-      .flat()
+    const parameters = this.node.parameters.flatMap(p => {
+      try {
+        return new ParameterGenerator(p, method, fullPath, this.current).Generate()
+      } catch (e) {
+        const methodId = this.node.name as ts.Identifier
+        const controllerId = (this.node.parent as ts.ClassDeclaration).name as ts.Identifier
+        const message = e instanceof Error ? e.message : String(e)
+        throw new GenerateMetadataError(`${message} \n in '${controllerId.text}.${methodId.text}'`)
+      }
+    })
 
     this.validateBodyParameters(parameters)
     this.validateQueryParameters(parameters)
@@ -320,7 +318,7 @@ export class MethodGenerator {
       return false
     }
 
-    return httpMethods.includes(method.toLowerCase())
+    return httpMethods.has(method.toLowerCase() as HttpMethod)
   }
 
   private getIsDeprecated() {

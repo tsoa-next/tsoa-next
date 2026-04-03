@@ -14,24 +14,10 @@ import type { InitializerValue } from './initializer-value'
 type QueriesType = Tsoa.RefObjectType | Tsoa.NestedObjectLiteralType
 
 const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
-const bodyMethods: readonly string[] = ['post', 'put', 'patch', 'delete']
-const supportedParameterDecorators: readonly string[] = [
-  'header',
-  'query',
-  'queries',
-  'path',
-  'body',
-  'bodyprop',
-  'request',
-  'requestprop',
-  'res',
-  'inject',
-  'uploadedfile',
-  'uploadedfiles',
-  'formfield',
-]
-const validateDecoratorLocations: readonly string[] = ['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield']
-const supportedPathDataTypes: readonly Tsoa.TypeStringLiteral[] = ['string', 'integer', 'long', 'float', 'double', 'date', 'datetime', 'buffer', 'boolean', 'enum', 'refEnum', 'file', 'any']
+const bodyMethods = new Set(['post', 'put', 'patch', 'delete'])
+const supportedParameterDecorators = new Set(['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'])
+const validateDecoratorLocations = new Set(['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'])
+const supportedPathDataTypes = new Set<Tsoa.TypeStringLiteral>(['string', 'integer', 'long', 'float', 'double', 'date', 'datetime', 'buffer', 'boolean', 'enum', 'refEnum', 'file', 'any'])
 
 const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
   if (value === null || value instanceof Date) {
@@ -592,7 +578,7 @@ export class ParameterGenerator {
   }
 
   private supportBodyMethod(method: string) {
-    return bodyMethods.includes(method.toLowerCase())
+    return bodyMethods.has(method.toLowerCase())
   }
 
   private assertValidateDecoratorCompatibility(decoratorName?: string) {
@@ -603,7 +589,7 @@ export class ParameterGenerator {
 
     const resolvedLocation = decoratorName ? decoratorName.toLowerCase() : 'path'
     const normalizedLocation = ['uploadedfile', 'uploadedfiles'].includes(resolvedLocation) ? 'formfield' : resolvedLocation
-    if (!validateDecoratorLocations.includes(normalizedLocation)) {
+    if (!validateDecoratorLocations.has(normalizedLocation)) {
       throw new GenerateMetadataError(`@Validate is not supported on '${normalizedLocation}' parameters in this release.`, this.parameter)
     }
   }
@@ -627,11 +613,11 @@ export class ParameterGenerator {
       return false
     }
 
-    return supportedParameterDecorators.includes(decoratorName.toLowerCase())
+    return supportedParameterDecorators.has(decoratorName.toLowerCase())
   }
 
   private supportPathDataType(parameterType: Tsoa.Type): boolean {
-    if (supportedPathDataTypes.includes(parameterType.dataType)) {
+    if (supportedPathDataTypes.has(parameterType.dataType)) {
       return true
     }
 

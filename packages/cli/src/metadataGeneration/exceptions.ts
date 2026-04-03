@@ -37,7 +37,7 @@ export function prettyLocationOfNode(node: Node | TypeNode) {
 
 export function prettyTroubleCause(node: Node | TypeNode, onlyCurrent = false) {
   const targetNode = !onlyCurrent && node.parent ? node.parent : node
-  const name = targetNode.pos !== -1 ? targetNode.getText() : getNamedNodeText(targetNode) || '<unknown name>'
+  const name = targetNode.pos === -1 ? getNamedNodeText(targetNode) || '<unknown name>' : targetNode.getText()
 
   return `This was caused by '${name}'`
 }

@@ -4,7 +4,7 @@ import validator from 'validator'
 import { GenerateMetadataError } from './../metadataGeneration/exceptions'
 import { commentToString, getJSDocTags } from './jsDocUtils'
 
-const parameterTagSupport: readonly string[] = [
+const parameterTagSupport = new Set([
   'isString',
   'isBoolean',
   'isInt',
@@ -26,7 +26,7 @@ const parameterTagSupport: readonly string[] = [
   'minDate',
   'maxDate',
   'title',
-]
+])
 
 function getCommentValue(comment?: string) {
   return comment?.split(' ')[0]
@@ -65,7 +65,7 @@ export function getParameterValidators(parameter: ts.ParameterDeclaration, param
 
   const tags = getJSDocTags(parameter.parent, tag => {
     const comment = commentToString(tag.comment)
-    return Boolean(comment) && parameterTagSupport.includes(tag.tagName.text) && getCommentValue(comment) === parameterName
+    return Boolean(comment) && parameterTagSupport.has(tag.tagName.text) && getCommentValue(comment) === parameterName
   })
 
   return tags.reduce(
@@ -138,7 +138,7 @@ export function getParameterValidators(parameter: ts.ParameterDeclaration, param
 
 export function getPropertyValidators(property: ts.Node): Tsoa.Validators | undefined {
   const tags = getJSDocTags(property, tag => {
-    return parameterTagSupport.includes(tag.tagName.text)
+    return parameterTagSupport.has(tag.tagName.text)
   })
 
   return tags.reduce(

@@ -60,7 +60,7 @@ type DateRangeValidators = {
   maxDate?: { value: string; errorMsg?: string }
 }
 
-const hasOwnProperty = (value: object, key: PropertyKey): boolean => Object.prototype.hasOwnProperty.call(value, key)
+const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
 
 // for backwards compatibility with custom templates
 export function ValidateParam<TValue>( // NOSONAR: legacy public wrapper preserves the historical custom-template signature.
@@ -1205,7 +1205,7 @@ export class ValidationService {
     // Handle plain objects
     const cloneObj: Record<string, unknown> = {}
     for (const key in obj) {
-      if (hasOwnProperty(obj, key)) {
+      if (objectHasOwn(obj, key)) {
         cloneObj[key] = this.deepClone((obj as Record<string, unknown>)[key])
       }
     }

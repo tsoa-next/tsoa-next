@@ -74,10 +74,8 @@ export class PropertyTransformer extends Transformer {
 
     const tsType = resolver.current.typeChecker.getTypeAtLocation(propertyDeclaration)
 
-    if (typeNode === undefined) {
-      // Type is from initializer
-      typeNode = resolver.current.typeChecker.typeToTypeNode(tsType, undefined, NodeBuilderFlags.NoTruncation)!
-    }
+    // Type is from initializer
+    typeNode ??= resolver.current.typeChecker.typeToTypeNode(tsType, undefined, NodeBuilderFlags.NoTruncation)!
 
     const type = new TypeResolver(typeNode, resolver.current, propertyDeclaration, resolver.context, tsType).resolve()
 
