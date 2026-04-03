@@ -1,4 +1,4 @@
-import type { Token, InterfaceDeclaration, ClassDeclaration, PropertyDeclaration, ParameterDeclaration, ConstructorDeclaration, TypeElement, ClassElement, PropertySignature } from 'typescript'
+import type { Token, InterfaceDeclaration, ClassDeclaration, PropertyDeclaration, ParameterDeclaration, TypeElement, ClassElement, PropertySignature } from 'typescript'
 import { NodeFlags, NodeBuilderFlags, SyntaxKind, isInterfaceDeclaration, isPropertyDeclaration, isConstructorDeclaration, isPropertySignature } from 'typescript'
 import { Tsoa } from '@tsoa-next/runtime'
 
@@ -35,9 +35,9 @@ export class PropertyTransformer extends Transformer {
       }
     }
 
-    const classConstructor = node.members.find(member => isConstructorDeclaration(member)) as ConstructorDeclaration
+    const classConstructor = node.members.find(member => isConstructorDeclaration(member))
 
-    if (classConstructor && classConstructor.parameters) {
+    if (classConstructor?.parameters) {
       const constructorProperties = classConstructor.parameters.filter(parameter => this.isAccessibleParameter(parameter))
 
       properties.push(...constructorProperties)
@@ -49,12 +49,7 @@ export class PropertyTransformer extends Transformer {
   private propertyFromSignature(resolver: TypeResolver, propertySignature: PropertySignature, overrideToken?: OverrideToken): Tsoa.Property {
     throwUnless(propertySignature.type, new GenerateMetadataError(`No valid type found for property declaration.`))
 
-    let required = !propertySignature.questionToken
-    if (overrideToken && overrideToken.kind === SyntaxKind.MinusToken) {
-      required = true
-    } else if (overrideToken && overrideToken.kind === SyntaxKind.QuestionToken) {
-      required = false
-    }
+    const required = this.resolveRequiredState(!propertySignature.questionToken, overrideToken)
 
     const def = TypeResolver.getDefault(propertySignature)
 
@@ -79,19 +74,14 @@ export class PropertyTransformer extends Transformer {
 
     const tsType = resolver.current.typeChecker.getTypeAtLocation(propertyDeclaration)
 
-    if (!typeNode) {
+    if (typeNode === undefined) {
       // Type is from initializer
       typeNode = resolver.current.typeChecker.typeToTypeNode(tsType, undefined, NodeBuilderFlags.NoTruncation)!
     }
 
     const type = new TypeResolver(typeNode, resolver.current, propertyDeclaration, resolver.context, tsType).resolve()
 
-    let required = !propertyDeclaration.questionToken && !propertyDeclaration.initializer
-    if (overrideToken && overrideToken.kind === SyntaxKind.MinusToken) {
-      required = true
-    } else if (overrideToken && overrideToken.kind === SyntaxKind.QuestionToken) {
-      required = false
-    }
+    const required = this.resolveRequiredState(!propertyDeclaration.questionToken && !propertyDeclaration.initializer, overrideToken)
     let def: unknown = getInitializerValue(propertyDeclaration.initializer, resolver.current.typeChecker)
     if (def === undefined) {
       def = TypeResolver.getDefault(propertyDeclaration)
@@ -114,5 +104,17 @@ export class PropertyTransformer extends Transformer {
       extensions: resolver.getNodeExtension(propertyDeclaration),
     }
     return property
+  }
+
+  private resolveRequiredState(required: boolean, overrideToken?: OverrideToken): boolean {
+    if (overrideToken?.kind === SyntaxKind.MinusToken) {
+      return true
+    }
+
+    if (overrideToken?.kind === SyntaxKind.QuestionToken) {
+      return false
+    }
+
+    return required
   }
 }

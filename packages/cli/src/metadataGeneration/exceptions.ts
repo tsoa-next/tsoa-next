@@ -1,4 +1,4 @@
-import { normalize } from 'path'
+import { normalize } from 'node:path'
 import { Node, TypeNode, isIdentifier } from 'typescript'
 
 export class GenerateMetadataError extends Error {
@@ -12,9 +12,9 @@ export class GenerateMetadataError extends Error {
 
 export class GenerateMetaDataWarning {
   constructor(
-    private message: string,
-    private node: Node | TypeNode,
-    private onlyCurrent = false,
+    private readonly message: string,
+    private readonly node: Node | TypeNode,
+    private readonly onlyCurrent = false,
   ) {}
 
   toString() {
@@ -30,18 +30,15 @@ export function prettyLocationOfNode(node: Node | TypeNode) {
     const end = token ? `:${sourceFile.getLineAndCharacterOfPosition(token.getEnd()).line + 1}` : ''
     const normalizedPath = normalize(`${sourceFile.fileName}${start}${end}`)
     return `At: ${normalizedPath}.`
-  } else {
-    return `At unknown position...`
   }
+
+  return `At unknown position...`
 }
 
 export function prettyTroubleCause(node: Node | TypeNode, onlyCurrent = false) {
-  let name: string
-  if (onlyCurrent || !node.parent) {
-    name = node.pos !== -1 && node.parent ? node.getText() : getNamedNodeText(node) || '<unknown name>'
-  } else {
-    name = node.parent.pos !== -1 ? node.parent.getText() : getNamedNodeText(node.parent) || '<unknown name>'
-  }
+  const targetNode = !onlyCurrent && node.parent ? node.parent : node
+  const name = targetNode.pos !== -1 ? targetNode.getText() : getNamedNodeText(targetNode) || '<unknown name>'
+
   return `This was caused by '${name}'`
 }
 

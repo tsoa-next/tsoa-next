@@ -1,4 +1,4 @@
-import * as path from 'path'
+import * as path from 'node:path'
 import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
 import { isRefType } from '../utils/internalTypeGuards'
@@ -41,11 +41,8 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
         }
         if (referenceType.additionalProperties) {
           refObjModel.additionalProperties = this.buildProperty(referenceType.additionalProperties)
-        } else if (this.options.noImplicitAdditionalProperties !== 'ignore') {
-          refObjModel.additionalProperties = false
         } else {
-          // Since Swagger allows "excess properties" (to use a TypeScript term) by default
-          refObjModel.additionalProperties = true
+          refObjModel.additionalProperties = this.options.noImplicitAdditionalProperties === 'ignore'
         }
         model = refObjModel
       } else if (referenceType.dataType === 'refAlias') {
@@ -113,7 +110,7 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
                 multiple: parameter.type.dataType === 'array' && parameter.type.elementType.dataType === 'file',
               })),
               security: method.security,
-              successStatus: method.successStatus ? method.successStatus : 'undefined',
+              successStatus: method.successStatus ?? 'undefined',
             }
           }),
           modulePath: this.getRelativeImportPath(controller.location),
@@ -125,26 +122,14 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       iocModule,
       minimalSwaggerConfig: { noImplicitAdditionalProperties: this.options.noImplicitAdditionalProperties, bodyCoercion: this.options.bodyCoercion },
       models: this.buildModels(),
-      useFileUploads: this.metadata.controllers.some(controller =>
-        controller.methods.some(
-          method =>
-            !!method.parameters.find(parameter => {
-              if (parameter.type.dataType === 'file') {
-                return true
-              } else if (parameter.type.dataType === 'array' && parameter.type.elementType.dataType === 'file') {
-                return true
-              }
-              return false
-            }),
-        ),
-      ),
+      useFileUploads: this.metadata.controllers.some(controller => controller.methods.some(method => method.parameters.some(parameter => this.isFileUploadParameter(parameter)))),
       multerOpts: {
         limits: {
           fileSize: 8388608, // 8mb
         },
         ...this.options.multerOpts,
       } as Config['multerOpts'],
-      useSecurity: this.metadata.controllers.some(controller => controller.methods.some(method => !!method.security.length)),
+      useSecurity: this.metadata.controllers.some(controller => controller.methods.some(method => method.security.length > 0)),
       esm: this.options.esm,
     }
   }
@@ -154,22 +139,11 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     let newExtension = this.options.rewriteRelativeImportExtensions ? currentExt : ''
 
     if (this.options.esm && !this.options.rewriteRelativeImportExtensions) {
-      switch (currentExt) {
-        case '.ts':
-        default:
-          newExtension = '.js'
-          break
-        case '.mts':
-          newExtension = '.mjs'
-          break
-        case '.cts':
-          newExtension = '.cjs'
-          break
-      }
+      newExtension = this.getEsmImportExtension(currentExt)
     }
 
     fileLocation = fileLocation.replace(/\.(ts|mts|cts)$/, '') // no ts extension in import
-    return `./${path.relative(this.options.routesDir, fileLocation).replace(/\\/g, '/')}${newExtension}`
+    return `./${path.relative(this.options.routesDir, fileLocation).replaceAll('\\', '/')}${newExtension}`
   }
 
   protected buildPropertySchema(source: Tsoa.Property): TsoaRoute.PropertySchema {
@@ -255,5 +229,20 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       }
     }
     return true
+  }
+
+  private getEsmImportExtension(currentExt: string): '.js' | '.mjs' | '.cjs' {
+    switch (currentExt) {
+      case '.mts':
+        return '.mjs'
+      case '.cts':
+        return '.cjs'
+      default:
+        return '.js'
+    }
+  }
+
+  private isFileUploadParameter(parameter: Tsoa.Parameter): boolean {
+    return parameter.type.dataType === 'file' || (parameter.type.dataType === 'array' && parameter.type.elementType.dataType === 'file')
   }
 }
