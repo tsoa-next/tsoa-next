@@ -16,23 +16,14 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
     })
   })
 
-  it('should reject invalid additionalProperties', () => {
+  it('should reject invalid additionalProperties', async () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 
-    return Promise.all(
-      invalidValues.map((value: any) => {
-        return verifyPostRequest(
-          app,
-          basePath + '/PostTest/Object',
-          { obj: value },
-          (err: any, res: any) => {
-            expect(res.status).to.equal(400)
-            expect(err.text).to.be.a('string')
-          },
-          400,
-        )
-      }),
-    )
+    const responses = await Promise.all(invalidValues.map((value: any) => verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, undefined, 400)))
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => typeof response.text === 'string')).to.equal(true)
   })
 
   it('should call out any additionalProperties', () => {
@@ -116,14 +107,11 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
     })
   })
 
-  it('should be okay if there are no additionalProperties', () => {
+  it('should be okay if there are no additionalProperties', async () => {
     const data = getFakeModel()
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(app, basePath + '/PostTest', data, (err: any, res: any) => {
-      expect(err).to.equal(false)
-      const model = res.body as TestModel
-      expect(model).to.deep.equal(data)
-    })
+    expect(response.body as TestModel).to.deep.equal(data)
   })
 
   it('correctly returns status code', () => {
@@ -141,38 +129,28 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
     )
   })
 
-  it('correctly handles OPTIONS requests', () => {
+  it('correctly handles OPTIONS requests', async () => {
     const path = basePath + '/OptionsTest/Current'
-    return verifyRequest(
-      app,
-      (_err, res) => {
-        expect(res.text).to.equal('')
-      },
-      request => request.options(path),
-      204,
-    )
+    const response = await verifyRequest(app, undefined, request => request.options(path), 204)
+
+    expect(response.text).to.equal('')
   })
 
-  it('should reject invalid strings', () => {
+  it('should reject invalid strings', async () => {
     const invalidValues = [null, 1, undefined, {}]
 
-    return Promise.all(
+    const responses = await Promise.all(
       invalidValues.map((value: any) => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(
-          app,
-          basePath + '/PostTest',
-          data,
-          (err, res) => {
-            expect(res.status).to.equal(400)
-            expect(err.text).to.contain('stringValue')
-          },
-          400,
-        )
+        return verifyPostRequest(app, basePath + '/PostTest', data, undefined, 400)
       }),
     )
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => response.text.includes('stringValue'))).to.equal(true)
   })
 
   it('should reject invalid dates', () => {
@@ -237,7 +215,7 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
   })
 
   describe('Validate', () => {
-    it('should valid model validate', () => {
+    it('should valid model validate', async () => {
       const bodyModel = new ValidateModel()
       bodyModel.floatValue = 1.2
       bodyModel.doubleValue = 1.2
@@ -316,71 +294,64 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         nestedNullable: { property: null },
       }
 
-      return verifyPostRequest(
-        app,
-        basePath + `/Validate/body`,
-        bodyModel,
-        (_err, res) => {
-          const { body } = res
+      const response = await verifyPostRequest(app, basePath + `/Validate/body`, bodyModel, undefined, 200)
+      const { body } = response
 
-          expect(body.floatValue).to.equal(bodyModel.floatValue)
-          expect(body.doubleValue).to.equal(bodyModel.doubleValue)
-          expect(body.intValue).to.equal(bodyModel.intValue)
-          expect(body.longValue).to.equal(bodyModel.longValue)
-          expect(body.booleanValue).to.equal(bodyModel.booleanValue)
-          expect(body.arrayValue).to.deep.equal(bodyModel.arrayValue)
+      expect(body.floatValue).to.equal(bodyModel.floatValue)
+      expect(body.doubleValue).to.equal(bodyModel.doubleValue)
+      expect(body.intValue).to.equal(bodyModel.intValue)
+      expect(body.longValue).to.equal(bodyModel.longValue)
+      expect(body.booleanValue).to.equal(bodyModel.booleanValue)
+      expect(body.arrayValue).to.deep.equal(bodyModel.arrayValue)
 
-          expect(new Date(body.dateValue)).to.deep.equal(new Date(bodyModel.dateValue))
-          expect(new Date(body.datetimeValue)).to.deep.equal(new Date(bodyModel.datetimeValue))
+      expect(new Date(body.dateValue)).to.deep.equal(new Date(bodyModel.dateValue))
+      expect(new Date(body.datetimeValue)).to.deep.equal(new Date(bodyModel.datetimeValue))
 
-          expect(body.numberMax10).to.equal(bodyModel.numberMax10)
-          expect(body.numberMin5).to.equal(bodyModel.numberMin5)
-          expect(body.stringMax10Lenght).to.equal(bodyModel.stringMax10Lenght)
-          expect(body.stringMin5Lenght).to.equal(bodyModel.stringMin5Lenght)
-          expect(body.stringPatternAZaz).to.equal(bodyModel.stringPatternAZaz)
-          expect(body.quotedStringPatternA).to.equal(bodyModel.quotedStringPatternA)
+      expect(body.numberMax10).to.equal(bodyModel.numberMax10)
+      expect(body.numberMin5).to.equal(bodyModel.numberMin5)
+      expect(body.stringMax10Lenght).to.equal(bodyModel.stringMax10Lenght)
+      expect(body.stringMin5Lenght).to.equal(bodyModel.stringMin5Lenght)
+      expect(body.stringPatternAZaz).to.equal(bodyModel.stringPatternAZaz)
+      expect(body.quotedStringPatternA).to.equal(bodyModel.quotedStringPatternA)
 
-          expect(body.arrayMax5Item).to.deep.equal(bodyModel.arrayMax5Item)
-          expect(body.arrayMin2Item).to.deep.equal(bodyModel.arrayMin2Item)
-          expect(body.arrayUniqueItem).to.deep.equal(bodyModel.arrayUniqueItem)
-          expect(body.model).to.deep.equal(bodyModel.model)
-          expect(body.mixedUnion).to.deep.equal(bodyModel.mixedUnion)
-          expect(body.intersection).to.deep.equal(bodyModel.intersection)
-          expect(body.singleBooleanEnum).to.deep.equal(bodyModel.singleBooleanEnum)
+      expect(body.arrayMax5Item).to.deep.equal(bodyModel.arrayMax5Item)
+      expect(body.arrayMin2Item).to.deep.equal(bodyModel.arrayMin2Item)
+      expect(body.arrayUniqueItem).to.deep.equal(bodyModel.arrayUniqueItem)
+      expect(body.model).to.deep.equal(bodyModel.model)
+      expect(body.mixedUnion).to.deep.equal(bodyModel.mixedUnion)
+      expect(body.intersection).to.deep.equal(bodyModel.intersection)
+      expect(body.singleBooleanEnum).to.deep.equal(bodyModel.singleBooleanEnum)
 
-          expect(body.nestedObject.floatValue).to.equal(bodyModel.nestedObject.floatValue)
-          expect(body.nestedObject.doubleValue).to.equal(bodyModel.nestedObject.doubleValue)
-          expect(body.nestedObject.intValue).to.equal(bodyModel.nestedObject.intValue)
-          expect(body.nestedObject.longValue).to.equal(bodyModel.nestedObject.longValue)
-          expect(body.nestedObject.booleanValue).to.equal(bodyModel.nestedObject.booleanValue)
-          expect(body.nestedObject.arrayValue).to.deep.equal(bodyModel.nestedObject.arrayValue)
+      expect(body.nestedObject.floatValue).to.equal(bodyModel.nestedObject.floatValue)
+      expect(body.nestedObject.doubleValue).to.equal(bodyModel.nestedObject.doubleValue)
+      expect(body.nestedObject.intValue).to.equal(bodyModel.nestedObject.intValue)
+      expect(body.nestedObject.longValue).to.equal(bodyModel.nestedObject.longValue)
+      expect(body.nestedObject.booleanValue).to.equal(bodyModel.nestedObject.booleanValue)
+      expect(body.nestedObject.arrayValue).to.deep.equal(bodyModel.nestedObject.arrayValue)
 
-          expect(new Date(body.nestedObject.dateValue)).to.deep.equal(new Date(bodyModel.nestedObject.dateValue))
-          expect(new Date(body.nestedObject.datetimeValue)).to.deep.equal(new Date(bodyModel.nestedObject.datetimeValue))
+      expect(new Date(body.nestedObject.dateValue)).to.deep.equal(new Date(bodyModel.nestedObject.dateValue))
+      expect(new Date(body.nestedObject.datetimeValue)).to.deep.equal(new Date(bodyModel.nestedObject.datetimeValue))
 
-          expect(body.nestedObject.numberMax10).to.equal(bodyModel.nestedObject.numberMax10)
-          expect(body.nestedObject.numberMin5).to.equal(bodyModel.nestedObject.numberMin5)
-          expect(body.nestedObject.stringMax10Lenght).to.equal(bodyModel.nestedObject.stringMax10Lenght)
-          expect(body.nestedObject.stringMin5Lenght).to.equal(bodyModel.nestedObject.stringMin5Lenght)
-          expect(body.nestedObject.stringPatternAZaz).to.equal(bodyModel.nestedObject.stringPatternAZaz)
-          expect(body.nestedObject.quotedStringPatternA).to.equal(bodyModel.nestedObject.quotedStringPatternA)
+      expect(body.nestedObject.numberMax10).to.equal(bodyModel.nestedObject.numberMax10)
+      expect(body.nestedObject.numberMin5).to.equal(bodyModel.nestedObject.numberMin5)
+      expect(body.nestedObject.stringMax10Lenght).to.equal(bodyModel.nestedObject.stringMax10Lenght)
+      expect(body.nestedObject.stringMin5Lenght).to.equal(bodyModel.nestedObject.stringMin5Lenght)
+      expect(body.nestedObject.stringPatternAZaz).to.equal(bodyModel.nestedObject.stringPatternAZaz)
+      expect(body.nestedObject.quotedStringPatternA).to.equal(bodyModel.nestedObject.quotedStringPatternA)
 
-          expect(body.nestedObject.arrayMax5Item).to.deep.equal(bodyModel.nestedObject.arrayMax5Item)
-          expect(body.nestedObject.arrayMin2Item).to.deep.equal(bodyModel.nestedObject.arrayMin2Item)
-          expect(body.nestedObject.arrayUniqueItem).to.deep.equal(bodyModel.nestedObject.arrayUniqueItem)
-          expect(body.nestedObject.model).to.deep.equal(bodyModel.nestedObject.model)
-          expect(body.nestedObject.mixedUnion).to.deep.equal(bodyModel.nestedObject.mixedUnion)
-          expect(body.nestedObject.intersection).to.deep.equal(bodyModel.nestedObject.intersection)
-          expect(body.typeAliases).to.deep.equal(bodyModel.typeAliases)
+      expect(body.nestedObject.arrayMax5Item).to.deep.equal(bodyModel.nestedObject.arrayMax5Item)
+      expect(body.nestedObject.arrayMin2Item).to.deep.equal(bodyModel.nestedObject.arrayMin2Item)
+      expect(body.nestedObject.arrayUniqueItem).to.deep.equal(bodyModel.nestedObject.arrayUniqueItem)
+      expect(body.nestedObject.model).to.deep.equal(bodyModel.nestedObject.model)
+      expect(body.nestedObject.mixedUnion).to.deep.equal(bodyModel.nestedObject.mixedUnion)
+      expect(body.nestedObject.intersection).to.deep.equal(bodyModel.nestedObject.intersection)
+      expect(body.typeAliases).to.deep.equal(bodyModel.typeAliases)
 
-          expect(body.nullableTypes.numberOrNull).to.equal(null)
-          expect(body.nullableTypes.wordOrNull).to.equal(bodyModel.nullableTypes.wordOrNull)
-          expect(body.nullableTypes.maybeString).to.equal(bodyModel.nullableTypes.maybeString)
-          expect(body.nullableTypes.justNull).to.equal(bodyModel.nullableTypes.justNull)
-          expect(body.nullableTypes.nestedNullable.property).to.equal(bodyModel.nullableTypes.nestedNullable.property)
-        },
-        200,
-      )
+      expect(body.nullableTypes.numberOrNull).to.equal(null)
+      expect(body.nullableTypes.wordOrNull).to.equal(bodyModel.nullableTypes.wordOrNull)
+      expect(body.nullableTypes.maybeString).to.equal(bodyModel.nullableTypes.maybeString)
+      expect(body.nullableTypes.justNull).to.equal(bodyModel.nullableTypes.justNull)
+      expect(body.nullableTypes.nestedNullable.property).to.equal(bodyModel.nullableTypes.nestedNullable.property)
     })
 
     it('should validate string-to-number dictionary body', () => {
@@ -467,7 +438,7 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
   })
 
   describe('Parameter data', () => {
-    it('parses body parameters', () => {
+    it('parses body parameters', async () => {
       const data: ParameterTestModel = {
         age: 45,
         firstname: 'Tony',
@@ -476,21 +447,15 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         lastname: 'Stark',
         weight: 82.1,
       }
-      return verifyPostRequest(
-        app,
-        basePath + '/ParameterTest/Body',
-        data,
-        (_err, res) => {
-          const model = res.body as ParameterTestModel
-          expect(model.firstname).to.equal('Tony')
-          expect(model.lastname).to.equal('Stark')
-          expect(model.age).to.equal(45)
-          expect(model.weight).to.equal(82.1)
-          expect(model.human).to.equal(true)
-          expect(model.gender).to.equal(Gender.MALE)
-        },
-        200,
-      )
+      const response = await verifyPostRequest(app, basePath + '/ParameterTest/Body', data, undefined, 200)
+      const model = response.body as ParameterTestModel
+
+      expect(model.firstname).to.equal('Tony')
+      expect(model.lastname).to.equal('Stark')
+      expect(model.age).to.equal(45)
+      expect(model.weight).to.equal(82.1)
+      expect(model.human).to.equal(true)
+      expect(model.gender).to.equal(Gender.MALE)
     })
 
     it('parses body props parameters', () => {

@@ -4,6 +4,8 @@ import { Agent } from 'http'
 import { resolve } from 'path'
 import { App } from 'supertest/types'
 
+type VerifyResponse = (err: any, res: request.Response) => any
+
 function parseResponseError(response: { error?: unknown } | undefined): unknown {
   if (typeof response?.error !== 'string') {
     return response?.error
@@ -20,8 +22,10 @@ function parseResponseError(response: { error?: unknown } | undefined): unknown 
   }
 }
 
-export function verifyRequest(app: App, verifyResponse: (err: any, res: request.Response) => any, methodOperation: (request: TestAgent<request.Test>) => request.Test, expectedStatus = 200) {
-  return new Promise<void>((resolve, reject) => {
+const noopVerifyResponse: VerifyResponse = () => undefined
+
+export function verifyRequest(app: App, verifyResponse: VerifyResponse = noopVerifyResponse, methodOperation: (request: TestAgent<request.Test>) => request.Test, expectedStatus = 200) {
+  return new Promise<request.Response>((resolve, reject) => {
     const attemptRequest = (remainingRetries: number) => {
       methodOperation(request(app))
         .expect(expectedStatus)
@@ -49,7 +53,7 @@ export function verifyRequest(app: App, verifyResponse: (err: any, res: request.
             }
 
             verifyResponse(parsedError, res)
-            resolve()
+            resolve(res)
           } catch (verificationError) {
             reject(verificationError)
           }
@@ -60,23 +64,15 @@ export function verifyRequest(app: App, verifyResponse: (err: any, res: request.
   })
 }
 
-export function verifyGetRequest(app: App, path: string, verifyResponse: (err: any, res: request.Response) => any, expectedStatus?: number) {
+export function verifyGetRequest(app: App, path: string, verifyResponse: VerifyResponse = noopVerifyResponse, expectedStatus?: number) {
   return verifyRequest(app, verifyResponse, request => request.get(path), expectedStatus)
 }
 
-export function verifyPostRequest(app: App, path: string, data: any, verifyResponse: (err: any, res: request.Response) => any, expectedStatus?: number) {
+export function verifyPostRequest(app: App, path: string, data: any, verifyResponse: VerifyResponse = noopVerifyResponse, expectedStatus?: number) {
   return verifyRequest(app, verifyResponse, request => request.post(path).send(data), expectedStatus)
 }
 
-export function verifyFileUploadRequest(
-  app: App,
-  path: string,
-  formData: any,
-  verifyResponse: (err: any, res: request.Response) => any = () => {
-    /**/
-  },
-  expectedStatus?: number,
-) {
+export function verifyFileUploadRequest(app: App, path: string, formData: any, verifyResponse: VerifyResponse = noopVerifyResponse, expectedStatus?: number) {
   const agent = new Agent({
     keepAlive: true,
     maxSockets: Infinity,

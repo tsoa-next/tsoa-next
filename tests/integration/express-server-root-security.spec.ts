@@ -16,15 +16,10 @@ describe('Express Server with api_key Root Security', () => {
     })
 
     it('returns 401 for an invalid key', () => {
-      return verifyGetRequest(
-        app,
-        basePath + '/Current?access_token=invalid',
-        (err, res) => {
-          expect(res.status).to.equal(401)
-          expect(JSON.parse(err.text).message).to.equal('api_key')
-        },
-        401,
-      )
+      return verifyGetRequest(app, basePath + '/Current?access_token=invalid', undefined, 401).then(response => {
+        expect(response.status).to.equal(401)
+        expect(JSON.parse(response.text).message).to.equal('api_key')
+      })
     })
   })
 
@@ -38,15 +33,10 @@ describe('Express Server with api_key Root Security', () => {
 
     describe('method with @Security(api_key)', () => {
       it('returns 401 for an invalid key', () => {
-        return verifyGetRequest(
-          app,
-          basePath + '/NoSecurity?access_token=invalid',
-          (err, res) => {
-            expect(res.status).to.equal(401)
-            expect(JSON.parse(err.text).message).to.equal('api_key')
-          },
-          401,
-        )
+        return verifyGetRequest(app, basePath + '/NoSecurity?access_token=invalid', undefined, 401).then(response => {
+          expect(response.status).to.equal(401)
+          expect(JSON.parse(response.text).message).to.equal('api_key')
+        })
       })
 
       it('returns a model with a valid key', () => {

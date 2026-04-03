@@ -198,7 +198,7 @@ describe('CompilerOptions', () => {
         }),
         testDir,
       ),
-    ).to.throw(Error, `Failed to read tsconfig at '${expectedPath}'`)
+    ).to.throw(`Failed to read tsconfig at '${expectedPath}'`)
   })
 
   it('throws for invalid tsconfig json', async () => {
@@ -206,7 +206,7 @@ describe('CompilerOptions', () => {
 
     const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
 
-    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(Error, `Failed to read tsconfig at '${expectedPath}'`)
+    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to read tsconfig at '${expectedPath}'`)
   })
 
   it('throws for broken tsconfig extends', async () => {
@@ -220,7 +220,7 @@ describe('CompilerOptions', () => {
 
     const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
 
-    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(Error, `Failed to resolve tsconfig at '${expectedPath}'`)
+    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to resolve tsconfig at '${expectedPath}'`)
   })
 
   it('uses merged tsconfig path mapping during metadata generation', async () => {

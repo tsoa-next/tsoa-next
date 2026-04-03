@@ -55,8 +55,11 @@ describe('Koa Server (with multerOpts)', () => {
     })
   })
 
-  it('shutdown server', () => {
+  it('shutdown server', done => {
     expect(server.listening).to.equal(true)
-    server.close()
+    server.close(() => {
+      expect(server.listening).to.equal(false)
+      done()
+    })
   })
 })

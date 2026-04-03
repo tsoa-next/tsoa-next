@@ -277,11 +277,11 @@ describe('Express Server', () => {
     })
   })
 
-  it('parses buffer parameter', () => {
-    return verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`, (_err, res) => {
-      const returnedBuffer = Buffer.from(res.body.data ?? res.body)
-      expect(returnedBuffer.toString('utf8')).to.equal('testbuffer')
-    })
+  it('parses buffer parameter', async () => {
+    const response = await verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`)
+    const returnedBuffer = Buffer.from(response.body.data ?? response.body)
+
+    expect(returnedBuffer.toString('utf8')).to.equal('testbuffer')
   })
 
   it('returns streamed responses', () => {
@@ -298,23 +298,14 @@ describe('Express Server', () => {
     })
   })
 
-  it('should reject invalid additionalProperties', () => {
+  it('should reject invalid additionalProperties', async () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 
-    return Promise.all(
-      invalidValues.map((value: any) => {
-        return verifyPostRequest(
-          app,
-          basePath + '/PostTest/Object',
-          { obj: value },
-          (err: any, res: any) => {
-            expect(res.status).to.equal(400)
-            expect(err.text).to.be.a('string')
-          },
-          400,
-        )
-      }),
-    )
+    const responses = await Promise.all(invalidValues.map((value: any) => verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, undefined, 400)))
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => typeof response.text === 'string')).to.equal(true)
   })
 
   it('parsed body parameters', () => {
@@ -326,7 +317,7 @@ describe('Express Server', () => {
     })
   })
 
-  it('removes additional properties', () => {
+  it('removes additional properties', async () => {
     const model = getFakeModel()
     const data = {
       ...model,
@@ -340,21 +331,19 @@ describe('Express Server', () => {
         },
       },
     }
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, res: any) => {
-      const resModel = res.body as TestModel
-      expect(resModel).to.deep.equal({
-        ...model,
-        objLiteral: {
-          ...model.objLiteral,
-          nested: {
-            bool: true,
-            allNestedOptional: {},
-          },
+    expect(response.body as TestModel).to.deep.equal({
+      ...model,
+      objLiteral: {
+        ...model.objLiteral,
+        nested: {
+          bool: true,
+          allNestedOptional: {},
         },
-      })
-      expect(res.status).to.eq(200)
+      },
     })
+    expect(response.status).to.eq(200)
   })
 
   it('correctly returns status code', () => {
@@ -432,16 +421,11 @@ describe('Express Server', () => {
     )
   })
 
-  it('correctly handles OPTIONS requests', () => {
+  it('correctly handles OPTIONS requests', async () => {
     const path = basePath + '/OptionsTest/Current'
-    return verifyRequest(
-      app,
-      (_err, res) => {
-        expect(res.text).to.equal('')
-      },
-      request => request.options(path),
-      204,
-    )
+    const response = await verifyRequest(app, undefined, request => request.options(path), 204)
+
+    expect(response.text).to.equal('')
   })
 
   it('should reject invalid strings', () => {
@@ -466,30 +450,18 @@ describe('Express Server', () => {
     )
   })
 
-  it('should parse valid date', () => {
+  it('should parse valid date', async () => {
     const data = getFakeModel()
     data.dateValue = '2016-01-01T00:00:00Z' as any
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(
-      app,
-      basePath + '/PostTest',
-      data,
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
-  it('should parse valid date as query param', () => {
-    return verifyGetRequest(
-      app,
-      basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z',
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+  it('should parse valid date as query param', async () => {
+    const response = await verifyGetRequest(app, basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z')
+
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
   it('should reject invalid dates', () => {
@@ -1435,18 +1407,16 @@ describe('Express Server', () => {
 
   describe('Security', () => {
     describe('Only API key', () => {
-      it('returns the correct user for user id 1', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=abc123456', (_err, res) => {
-          const model = res.body as UserResponseModel
-          expect(model.id).to.equal(1)
-        })
+      it('returns the correct user for user id 1', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=abc123456')
+
+        expect((response.body as UserResponseModel).id).to.equal(1)
       })
 
-      it('returns the correct user for user id 2', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=xyz123456', (_err, res) => {
-          const model = res.body as UserResponseModel
-          expect(model.id).to.equal(2)
-        })
+      it('returns the correct user for user id 2', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=xyz123456')
+
+        expect((response.body as UserResponseModel).id).to.equal(2)
       })
 
       it('returns response with header set in authentication middleware', () => {
@@ -1455,27 +1425,17 @@ describe('Express Server', () => {
         })
       })
 
-      it('returns custom response set in authentication middleware', () => {
-        return verifyGetRequest(
-          app,
-          basePath + '/SecurityTest?access_token=ghi123456',
-          (_err, res) => {
-            expect(res.text).to.equal('some custom response')
-          },
-          401,
-        )
+      it('returns custom response set in authentication middleware', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=ghi123456', undefined, 401)
+
+        expect(response.text).to.equal('some custom response')
       })
 
-      it('returns 401 for an invalid key', () => {
-        return verifyGetRequest(
-          app,
-          basePath + '/SecurityTest?access_token=invalid',
-          (err, res) => {
-            expect(res.status).to.equal(401)
-            expect(JSON.parse(err.text).message).to.equal('api_key')
-          },
-          401,
-        )
+      it('returns 401 for an invalid key', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=invalid', undefined, 401)
+
+        expect(response.status).to.equal(401)
+        expect(JSON.parse(response.text).message).to.equal('api_key')
       })
     })
 

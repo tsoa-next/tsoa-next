@@ -185,19 +185,13 @@ describe('Hapi Server', () => {
     })
   })
 
-  it('correctly returns status code', () => {
+  it('correctly returns status code', async () => {
     const data = getFakeModel()
     const path = basePath + '/PostTest/WithDifferentReturnCode'
-    return verifyPostRequest(
-      app,
-      path,
-      data,
-      (_err, res) => {
-        expect(res.status).to.equal(201)
-        expect(res.body).to.deep.equal(data)
-      },
-      201,
-    )
+    const response = await verifyPostRequest(app, path, data, undefined, 201)
+
+    expect(response.status).to.equal(201)
+    expect(response.body).to.deep.equal(data)
   })
 
   it('parses class model as body parameter', () => {
@@ -256,71 +250,45 @@ describe('Hapi Server', () => {
     )
   })
 
-  it('should reject invalid strings', () => {
+  it('should reject invalid strings', async () => {
     const invalidValues = [null, 1, undefined, {}]
 
-    return Promise.all(
+    const responses = await Promise.all(
       invalidValues.map((value: any) => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(
-          app,
-          basePath + '/PostTest',
-          data,
-          (err: any, res: any) => {
-            expect(res.status).to.equal(400)
-            expect(err.text).to.contain('stringValue')
-          },
-          400,
-        )
+        return verifyPostRequest(app, basePath + '/PostTest', data, undefined, 400)
       }),
     )
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => response.text.includes('stringValue'))).to.equal(true)
   })
 
-  it('should parse valid date', () => {
+  it('should parse valid date', async () => {
     const data = getFakeModel()
     data.dateValue = '2016-01-01T00:00:00Z' as any
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(
-      app,
-      basePath + '/PostTest',
-      data,
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
-  it('should parse valid date as query param', () => {
-    return verifyGetRequest(
-      app,
-      basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z',
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+  it('should parse valid date as query param', async () => {
+    const response = await verifyGetRequest(app, basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z')
+
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
-  it('should reject invalid additionalProperties', () => {
+  it('should reject invalid additionalProperties', async () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 
-    return Promise.all(
-      invalidValues.map((value: any) => {
-        return verifyPostRequest(
-          app,
-          basePath + '/PostTest/Object',
-          { obj: value },
-          (err: any, res: any) => {
-            expect(res.status).to.equal(400)
-            expect(err.text).to.be.a('string')
-          },
-          400,
-        )
-      }),
-    )
+    const responses = await Promise.all(invalidValues.map((value: any) => verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, undefined, 400)))
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => typeof response.text === 'string')).to.equal(true)
   })
 
   it('should reject invalid dates', () => {
@@ -1240,24 +1208,17 @@ describe('Hapi Server', () => {
       })
     })
 
-    it('can handle get request with access_token user id == 2', () => {
-      return verifyGetRequest(app, basePath + '/SecurityTest/Hapi?access_token=xyz123456', (_err, res) => {
-        const model = res.body as Model
-        expect(model.id).to.equal(2)
-      })
+    it('can handle get request with access_token user id == 2', async () => {
+      const response = await verifyGetRequest(app, basePath + '/SecurityTest/Hapi?access_token=xyz123456')
+
+      expect((response.body as Model).id).to.equal(2)
     })
 
-    it('resolves right away after first success', () => {
+    it('resolves right away after first success', async () => {
       const path = '/SecurityTest/ApiKeyOrTimesOut?access_token=abc123456'
-      return verifyGetRequest(
-        app,
-        basePath + path,
-        (_err, res) => {
-          const model = res.body as Model
-          expect(model.id).to.equal(1)
-        },
-        200,
-      )
+      const response = await verifyGetRequest(app, basePath + path, undefined, 200)
+
+      expect((response.body as Model).id).to.equal(1)
     })
 
     describe('API key or tsoa auth', () => {
@@ -1287,17 +1248,12 @@ describe('Hapi Server', () => {
         )
       })
 
-      it('returns 200 if multiple auth handlers are correct', () => {
+      it('returns 200 if multiple auth handlers are correct', async () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=abc123456&tsoa=abc123456'
-        return verifyGetRequest(
-          app,
-          basePath + path,
-          (_err, res) => {
-            expect(res.status).to.equal(200)
-            expect(res.body).to.be.an('object')
-          },
-          200,
-        )
+        const response = await verifyGetRequest(app, basePath + path, undefined, 200)
+
+        expect(response.status).to.equal(200)
+        expect(response.body).to.be.an('object')
       })
 
       it('returns 401 if neither API key nor tsoa auth are correct, last error to resolve is returned', () => {
