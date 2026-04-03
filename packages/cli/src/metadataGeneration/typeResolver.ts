@@ -1256,7 +1256,7 @@ export class TypeResolver {
       .replaceAll('&', '-and-')
       .replaceAll('|', '-or-')
       .replaceAll('[]', '-Array')
-      .replace(/[{}]/g, '_') // SuccessResponse_{indexesCreated-number}_ -> SuccessResponse__indexesCreated-number__
+      .replaceAll(/[{}]/g, '_') // SuccessResponse_{indexesCreated-number}_ -> SuccessResponse__indexesCreated-number__
 
     preformattedName = replaceTypeLiteralPropertySeparators(preformattedName) // SuccessResponse_indexesCreated:number_ -> SuccessResponse_indexesCreated-number_
     preformattedName = preformattedName.replace(/;/g, '--')
