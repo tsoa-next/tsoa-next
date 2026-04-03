@@ -5,6 +5,11 @@ import { join, resolve } from 'node:path'
 import { expect } from 'chai'
 import 'mocha'
 
+const TEST_GIT_ENV = {
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
+}
+
 describe('detect-package-impact', function () {
   this.timeout(60000)
 
@@ -16,9 +21,9 @@ describe('detect-package-impact', function () {
   }
 
   function git(cwd: string, args: string[], env?: NodeJS.ProcessEnv) {
-    return execFileSync('git', args, {
+    return execFileSync('git', ['-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false', ...args], {
       cwd,
-      env: env ? { ...process.env, ...env } : process.env,
+      env: env ? { ...process.env, ...TEST_GIT_ENV, ...env } : { ...process.env, ...TEST_GIT_ENV },
       encoding: 'utf8',
       stdio: 'pipe',
     }).trim()

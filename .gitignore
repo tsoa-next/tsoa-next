@@ -14,3 +14,4 @@ codealike.json
 site/guide-docs/.vitepress/.temp
 site/guide-docs/.vitepress/dist
 coverage/
+.vscode/mcp.json

@@ -3,6 +3,7 @@
 const { execFileSync, spawnSync } = require('node:child_process')
 const { existsSync, readFileSync } = require('node:fs')
 const path = require('node:path')
+const { getAffectedTestsForFiles } = require('./lib/pre-push-impact.cjs')
 
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const BUILD_WORKSPACES = ['@tsoa-next/cli', '@tsoa-next/runtime', 'tsoa-next']
@@ -11,23 +12,6 @@ const TEST_DEPENDENCIES = {
   'tsoa-tests-esm': BUILD_WORKSPACES,
 }
 const ZERO_SHA_PATTERN = /^0+$/
-const NON_TEST_PATH_PREFIXES = ['.github/', '.vscode/', 'site/']
-const NON_TEST_ROOT_FILES = new Set(['README.MD', 'README.md', 'LICENSE'])
-const GLOBAL_TEST_PATHS = new Set([
-  '.c8rc.json',
-  '.gitignore',
-  '.husky/pre-push',
-  '.husky/pre-commit',
-  '.nvmrc',
-  '.npmrc',
-  '.syncpackrc.json',
-  'commitlint.config.cjs',
-  'eslint.config.ts',
-  'package-lock.json',
-  'package.json',
-  'prettier.config.ts',
-  'turbo.json',
-])
 const TRUSTED_GIT_EXECUTABLES = ['/opt/homebrew/bin/git', '/usr/local/bin/git', '/usr/bin/git']
 const GIT_EXECUTABLE = resolveGitExecutable()
 const NPM_CLI = resolveNpmCliPath()
@@ -44,7 +28,7 @@ const stdin = process.stdin.isTTY ? '' : readStdin()
 
 const pushSpecs = parsePushSpecs(stdin)
 const changedFiles = pushSpecs.length > 0 ? collectChangedFilesFromPushSpecs(pushSpecs, remoteName) : collectChangedFilesFromFallback(remoteName)
-const affectedTests = getAffectedTests(changedFiles)
+const affectedTests = getAffectedTestsForFiles(changedFiles)
 
 if (changedFiles.length === 0) {
   console.log('No changed files detected for this push; skipping pre-push tests.')
@@ -144,18 +128,6 @@ function diffFiles(base, head) {
   return output ? output.split('\n').filter(Boolean) : []
 }
 
-function getAffectedTests(files) {
-  const affected = new Set()
-
-  for (const file of files) {
-    for (const workspace of getAffectedTestWorkspacesForFile(file)) {
-      affected.add(workspace)
-    }
-  }
-
-  return Array.from(affected).sort(comparePaths)
-}
-
 function toTurboFilters(workspaces) {
   return workspaces.flatMap(workspace => ['--filter', workspace])
 }
@@ -185,38 +157,6 @@ function tryRunGit(args) {
   } catch {
     return undefined
   }
-}
-
-function getAffectedTestWorkspacesForFile(file) {
-  if (NON_TEST_PATH_PREFIXES.some(prefix => file.startsWith(prefix))) {
-    return []
-  }
-
-  if (file.startsWith('tests/esm/')) {
-    return ['tsoa-tests-esm']
-  }
-
-  if (file.startsWith('tests/')) {
-    return ['tsoa-tests']
-  }
-
-  if (startsWithAny(file, ['packages/cli/', 'packages/runtime/', 'packages/tsoa/', 'scripts/', '.husky/'])) {
-    return ['tsoa-tests', 'tsoa-tests-esm']
-  }
-
-  if (GLOBAL_TEST_PATHS.has(file)) {
-    return ['tsoa-tests', 'tsoa-tests-esm']
-  }
-
-  if (!file.includes('/')) {
-    return NON_TEST_ROOT_FILES.has(file) ? [] : ['tsoa-tests', 'tsoa-tests-esm']
-  }
-
-  return []
-}
-
-function startsWithAny(value, prefixes) {
-  return prefixes.some(prefix => value.startsWith(prefix))
 }
 
 function comparePaths(left, right) {
