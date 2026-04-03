@@ -19,18 +19,13 @@ export class EnumTransformer extends Transformer {
     if (!first) return second
     if (!second) return first
 
-    const description = first.description ? (second.description ? `${first.description}\n${second.description}` : first.description) : second.description
-
+    const description = this.mergeDescription(first.description, second.description)
     const deprecated = first.deprecated || second.deprecated
-
-    const enums = first.enums ? (second.enums ? [...first.enums, ...second.enums] : first.enums) : second.enums
-
-    const enumVarnames = first.enumVarnames ? (second.enumVarnames ? [...first.enumVarnames, ...second.enumVarnames] : first.enumVarnames) : second.enumVarnames
-
-    const example = first.example || second.example
-    const title = first.title || second.title
-
-    return {
+    const enums = this.mergeRequiredArray(first.enums, second.enums)
+    const enumVarnames = this.mergeOptionalArray(first.enumVarnames, second.enumVarnames)
+    const example = first.example ?? second.example
+    const title = first.title ?? second.title
+    const merged: Tsoa.RefEnumType = {
       dataType: 'refEnum',
       description,
       enums,
@@ -38,8 +33,13 @@ export class EnumTransformer extends Transformer {
       refName: first.refName,
       deprecated,
       example,
-      ...(title && { title }),
     }
+
+    if (title !== undefined) {
+      merged.title = title
+    }
+
+    return merged
   }
 
   public static transformable(declaration: Node): declaration is EnumDeclaration | EnumMember {
@@ -54,14 +54,11 @@ export class EnumTransformer extends Transformer {
   }
 
   private transformDeclaration(resolver: TypeResolver, declaration: EnumDeclaration, enumName: string): Tsoa.RefEnumType {
-    const isNotUndefined = <T>(item: T): item is Exclude<T, undefined> => {
-      return item === undefined ? false : true
-    }
+    const isNotUndefined = <T>(item: T): item is Exclude<T, undefined> => item !== undefined
     const enums = declaration.members.map(e => resolver.current.typeChecker.getConstantValue(e)).filter(isNotUndefined)
     const enumVarnames = declaration.members.map(e => e.name.getText()).filter(isNotUndefined)
     const title = resolver.getNodeTitle(declaration)
-
-    return {
+    const refEnum: Tsoa.RefEnumType = {
       dataType: 'refEnum',
       description: resolver.getNodeDescription(declaration),
       example: resolver.getNodeExample(declaration),
@@ -69,8 +66,13 @@ export class EnumTransformer extends Transformer {
       enumVarnames,
       refName: enumName,
       deprecated: isExistJSDocTag(declaration, tag => tag.tagName.text === 'deprecated'),
-      ...(title && { title }),
     }
+
+    if (title !== undefined) {
+      refEnum.title = title
+    }
+
+    return refEnum
   }
 
   private transformMember(resolver: TypeResolver, declaration: EnumMember, enumName: string): Tsoa.RefEnumType {
@@ -81,5 +83,33 @@ export class EnumTransformer extends Transformer {
       enumVarnames: [declaration.name.getText()],
       deprecated: isExistJSDocTag(declaration, tag => tag.tagName.text === 'deprecated'),
     }
+  }
+
+  private static mergeDescription(first?: string, second?: string) {
+    if (first === undefined) {
+      return second
+    }
+
+    if (second === undefined) {
+      return first
+    }
+
+    return `${first}\n${second}`
+  }
+
+  private static mergeRequiredArray<T>(first: T[], second: T[]) {
+    return [...first, ...second]
+  }
+
+  private static mergeOptionalArray<T>(first?: T[], second?: T[]) {
+    if (first === undefined) {
+      return second
+    }
+
+    if (second === undefined) {
+      return first
+    }
+
+    return [...first, ...second]
   }
 }

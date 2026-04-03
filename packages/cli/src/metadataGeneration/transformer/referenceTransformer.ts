@@ -40,27 +40,13 @@ export class ReferenceTransformer extends Transformer {
   }
 
   public static mergeRefObj(first: Tsoa.RefObjectType, second: Tsoa.RefObjectType): Tsoa.RefObjectType {
-    const description = first.description ? (second.description ? `${first.description}\n${second.description}` : first.description) : second.description
-
+    const description = this.mergeDescription(first.description, second.description)
     const deprecated = first.deprecated || second.deprecated
-    const example = first.example || second.example
+    const example = first.example ?? second.example
 
     const properties = [...first.properties, ...second.properties.filter(prop => first.properties.every(firstProp => firstProp.name !== prop.name))]
-
-    const mergeAdditionalTypes = (first: Tsoa.Type, second: Tsoa.Type): Tsoa.Type => {
-      return {
-        dataType: 'union',
-        types: [first, second],
-      }
-    }
-
-    const additionalProperties = first.additionalProperties
-      ? second.additionalProperties
-        ? mergeAdditionalTypes(first.additionalProperties, second.additionalProperties)
-        : first.additionalProperties
-      : second.additionalProperties
-
-    const title = first.title || second.title
+    const additionalProperties = this.mergeAdditionalProperties(first.additionalProperties, second.additionalProperties)
+    const title = first.title ?? second.title
     const result: Tsoa.RefObjectType = {
       dataType: 'refObject',
       description,
@@ -69,7 +55,10 @@ export class ReferenceTransformer extends Transformer {
       refName: first.refName,
       deprecated,
       example,
-      ...(title && { title }),
+    }
+
+    if (title !== undefined) {
+      result.title = title
     }
 
     return result
@@ -77,7 +66,6 @@ export class ReferenceTransformer extends Transformer {
 
   public transform(declaration: TypeAliasDeclaration, refTypeName: string, resolver: TypeResolver, referencer?: Type): Tsoa.ReferenceType {
     const example = resolver.getNodeExample(declaration)
-
     const title = resolver.getNodeTitle(declaration)
     const referenceType: Tsoa.ReferenceType = {
       dataType: 'refAlias',
@@ -88,9 +76,43 @@ export class ReferenceTransformer extends Transformer {
       format: resolver.getNodeFormat(declaration),
       type: new TypeResolver(declaration.type, resolver.current, declaration, resolver.context, resolver.referencer || referencer).resolve(),
       validators: getPropertyValidators(declaration) || {},
-      ...(example !== undefined ? { example } : {}),
-      ...(title !== undefined ? { title } : {}),
     }
+
+    if (example !== undefined) {
+      referenceType.example = example
+    }
+
+    if (title !== undefined) {
+      referenceType.title = title
+    }
+
     return referenceType
+  }
+
+  private static mergeDescription(first?: string, second?: string) {
+    if (first === undefined) {
+      return second
+    }
+
+    if (second === undefined) {
+      return first
+    }
+
+    return `${first}\n${second}`
+  }
+
+  private static mergeAdditionalProperties(first?: Tsoa.Type, second?: Tsoa.Type) {
+    if (first === undefined) {
+      return second
+    }
+
+    if (second === undefined) {
+      return first
+    }
+
+    return {
+      dataType: 'union',
+      types: [first, second],
+    } satisfies Tsoa.Type
   }
 }
