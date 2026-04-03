@@ -21,7 +21,7 @@ export class EnumTransformer extends Transformer {
 
     const description = this.mergeDescription(first.description, second.description)
     const deprecated = first.deprecated || second.deprecated
-    const enums = this.mergeRequiredArray(first.enums, second.enums)
+    const enums = this.mergeOptionalArray(first.enums, second.enums) as Tsoa.RefEnumType['enums']
     const enumVarnames = this.mergeOptionalArray(first.enumVarnames, second.enumVarnames)
     const example = first.example ?? second.example
     const title = first.title ?? second.title
@@ -95,10 +95,6 @@ export class EnumTransformer extends Transformer {
     }
 
     return `${first}\n${second}`
-  }
-
-  private static mergeRequiredArray<T>(first: T[], second: T[]) {
-    return [...first, ...second]
   }
 
   private static mergeOptionalArray<T>(first?: T[], second?: T[]) {

@@ -10,13 +10,10 @@ import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } fro
 import { SpecGenerator } from './specGenerator'
 
 /**
- * TODO:
- * Handle formData parameters
- * Handle requestBodies of type other than json
- * Handle requestBodies as reusable objects
- * Handle headers, examples, responses, etc.
- * Cleaner interface between SpecGenerator2 and SpecGenerator3
- * Also accept OpenAPI 3.0.0 metadata, like components/securitySchemes instead of securityDefinitions
+ * Known follow-up areas remain in this generator:
+ * Handle richer form-data/request-body shapes, reusable request bodies,
+ * response/header examples, cleaner SpecGenerator2/3 boundaries,
+ * and OpenAPI 3-native metadata inputs such as components/securitySchemes.
  */
 export class SpecGenerator3 extends SpecGenerator {
   protected buildAdditionalProperties(type: Tsoa.Type) {
@@ -154,88 +151,9 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected buildSchema() {
     const schema: { [name: string]: Swagger.Schema3 } = {}
-    Object.keys(this.metadata.referenceTypeMap).forEach(typeName => {
-      const referenceType = this.metadata.referenceTypeMap[typeName]
-
-      if (referenceType.dataType === 'refObject') {
-        const properties = referenceType.properties ?? []
-        const required = properties.filter(p => this.isRequiredWithoutDefault(p) && !this.hasUndefined(p)).map(p => p.name)
-        schema[referenceType.refName] = {
-          description: referenceType.description,
-          properties: this.buildProperties(properties),
-          required: required.length > 0 ? Array.from(new Set(required)) : undefined,
-          type: 'object',
-        }
-
-        if (referenceType.additionalProperties) {
-          schema[referenceType.refName].additionalProperties = this.buildAdditionalProperties(referenceType.additionalProperties)
-        } else {
-          // Since additionalProperties was not explicitly set in the TypeScript interface for this model
-          //      ...we need to make a decision
-          schema[referenceType.refName].additionalProperties = this.determineImplicitAdditionalPropertiesValue()
-        }
-
-        if (referenceType.example) {
-          schema[referenceType.refName].example = referenceType.example
-        }
-
-        if (referenceType.title) {
-          schema[referenceType.refName].title = referenceType.title
-        }
-      } else if (referenceType.dataType === 'refEnum') {
-        const enumTypes = this.determineTypesUsedInEnum(referenceType.enums)
-
-        if (enumTypes.size === 1) {
-          schema[referenceType.refName] = {
-            description: referenceType.description,
-            enum: referenceType.enums,
-            type: enumTypes.has('string') ? 'string' : 'number',
-          }
-          if (this.config.xEnumVarnames && referenceType.enumVarnames?.length === referenceType.enums.length) {
-            schema[referenceType.refName]['x-enum-varnames'] = referenceType.enumVarnames
-          }
-        } else {
-          schema[referenceType.refName] = {
-            description: referenceType.description,
-            anyOf: [
-              {
-                type: 'number',
-                enum: referenceType.enums.filter(e => typeof e === 'number'),
-              },
-              {
-                type: 'string',
-                enum: referenceType.enums.filter(e => typeof e === 'string'),
-              },
-            ],
-          }
-        }
-        if (referenceType.example) {
-          schema[referenceType.refName].example = referenceType.example
-        }
-        if (referenceType.title) {
-          schema[referenceType.refName].title = referenceType.title
-        }
-      } else if (referenceType.dataType === 'refAlias') {
-        const swaggerType = this.getSwaggerType(referenceType.type)
-        const format = referenceType.format as Swagger.DataFormat
-        const validators = this.getSchemaValidators(referenceType.validators) as Partial<Swagger.Schema3>
-
-        schema[referenceType.refName] = {
-          ...(swaggerType as Swagger.Schema3),
-          default: referenceType.default || swaggerType.default,
-          example: referenceType.example,
-          format: format || swaggerType.format,
-          description: referenceType.description,
-          ...(referenceType.title && { title: referenceType.title }),
-          ...validators,
-        }
-      } else {
-        assertNever(referenceType)
-      }
-      if (referenceType.deprecated) {
-        schema[referenceType.refName].deprecated = true
-      }
-    })
+    for (const referenceType of Object.values(this.metadata.referenceTypeMap)) {
+      schema[referenceType.refName] = this.buildReferenceSchema(referenceType)
+    }
 
     return schema
   }
@@ -285,7 +203,7 @@ export class SpecGenerator3 extends SpecGenerator {
 
     pathMethod.parameters = method.parameters
       .filter(p => {
-        return ['body', 'formData', 'request', 'body-prop', 'res', 'queries', 'request-prop'].indexOf(p.in) === -1
+        return !['body', 'formData', 'request', 'body-prop', 'res', 'queries', 'request-prop'].includes(p.in)
       })
       .map(p => this.buildParameter(p))
 
@@ -339,60 +257,8 @@ export class SpecGenerator3 extends SpecGenerator {
   protected buildOperation(controllerName: string, method: Tsoa.Method, defaultProduces?: string[]): Swagger.Operation3 {
     const swaggerResponses: { [name: string]: Swagger.Response3 } = {}
 
-    method.responses.forEach((res: Tsoa.Response) => {
-      swaggerResponses[res.name] = {
-        description: res.description,
-      }
-
-      if (res.schema && !isVoidType(res.schema)) {
-        swaggerResponses[res.name].content = {}
-        const produces: string[] = res.produces || defaultProduces || [DEFAULT_RESPONSE_MEDIA_TYPE]
-        for (const p of produces) {
-          const { content } = swaggerResponses[res.name]
-          swaggerResponses[res.name].content = {
-            ...content,
-            [p]: {
-              schema: this.getSwaggerType(res.schema, this.config.useTitleTagsForInlineObjects ? this.getOperationId(controllerName, method) + 'Response' : undefined) as Swagger.Schema3,
-            },
-          }
-        }
-
-        if (res.examples) {
-          let exampleCounter = 1
-          const examples = res.examples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
-            const exampleLabel = res.exampleLabels?.[currentIndex]
-            acc[exampleLabel ?? `Example ${exampleCounter++}`] = { value: ex }
-            return acc
-          }, {})
-          const content = swaggerResponses[res.name].content
-          if (content) {
-            for (const p of produces) {
-              content[p].examples = examples
-            }
-          }
-        }
-      }
-
-      if (res.headers) {
-        const headers: { [name: string]: Swagger.Header3 } = {}
-        if (res.headers.dataType === 'refObject') {
-          headers[res.headers.refName] = {
-            schema: this.getSwaggerTypeForReferenceType(res.headers) as Swagger.Schema3,
-            description: res.headers.description,
-          }
-        } else if (res.headers.dataType === 'nestedObjectLiteral') {
-          res.headers.properties.forEach((each: Tsoa.Property) => {
-            headers[each.name] = {
-              schema: this.getSwaggerType(each.type) as Swagger.Schema3,
-              description: each.description,
-              required: this.isRequiredWithoutDefault(each),
-            }
-          })
-        } else {
-          assertNever(res.headers)
-        }
-        swaggerResponses[res.name].headers = headers
-      }
+    method.responses.forEach((response: Tsoa.Response) => {
+      swaggerResponses[response.name] = this.buildResponse(controllerName, method, response, defaultProduces)
     })
 
     const operation: Swagger.Operation3 = {
@@ -513,7 +379,7 @@ export class SpecGenerator3 extends SpecGenerator {
 
     if (parameterType.$ref) {
       parameter.schema = this.mergeSchemaExtensions(parameterType as Swagger.Schema3, this.getExternalValidatorExtension(source))
-      return Object.assign(parameter, this.buildExamples(source))
+      return { ...parameter, ...this.buildExamples(source) }
     }
 
     const validatorObjs = this.getSchemaValidators(source.validators) as Partial<Swagger.Schema3>
@@ -530,9 +396,9 @@ export class SpecGenerator3 extends SpecGenerator {
       parameter.schema.enum = parameterType.enum
     }
 
-    parameter.schema = Object.assign({}, parameter.schema, validatorObjs)
+    parameter.schema = { ...parameter.schema, ...validatorObjs }
 
-    return Object.assign(parameter, this.buildExamples(source))
+    return { ...parameter, ...this.buildExamples(source) }
   }
 
   private mergeSchemaExtensions(schema: Swagger.Schema3, extensions: Partial<Swagger.Schema3>): Swagger.Schema3 {
@@ -712,7 +578,7 @@ export class SpecGenerator3 extends SpecGenerator {
     }
   }
 
-  protected getSwaggerTypeForUnionType(type: Tsoa.UnionType, title?: string) {
+  protected getSwaggerTypeForUnionType(type: Tsoa.UnionType, title?: string): Swagger.Schema3 {
     // Filter out nulls and undefineds
     const actualSwaggerTypes = this.removeDuplicateSwaggerTypes(
       this.groupEnums(
@@ -721,36 +587,14 @@ export class SpecGenerator3 extends SpecGenerator {
           .filter(x => x.dataType !== 'undefined')
           .map(x => this.getSwaggerType(x)),
       ),
-    )
+    ) as Swagger.Schema3[]
     const nullable = type.types.some(x => this.isNull(x))
 
     if (nullable) {
-      if (actualSwaggerTypes.length === 1) {
-        const [swaggerType] = actualSwaggerTypes
-        // for ref union with null, use an allOf with a single
-        // element since you can't attach nullable directly to a ref.
-        // https://swagger.io/docs/specification/using-ref/#syntax
-        if (swaggerType.$ref) {
-          return { allOf: [swaggerType], nullable }
-        }
-
-        // Note that null must be explicitly included in the list of enum values. Using nullable: true alone is not enough here.
-        // https://swagger.io/docs/specification/data-models/enums/
-        if (swaggerType.enum) {
-          swaggerType.enum.push(null)
-        }
-
-        return { ...(title && { title }), ...swaggerType, nullable }
-      } else {
-        return { ...(title && { title }), anyOf: actualSwaggerTypes, nullable }
-      }
-    } else {
-      if (actualSwaggerTypes.length === 1) {
-        return { ...(title && { title }), ...actualSwaggerTypes[0] }
-      } else {
-        return { ...(title && { title }), anyOf: actualSwaggerTypes }
-      }
+      return this.buildNullableUnionType(actualSwaggerTypes, title)
     }
+
+    return this.buildNonNullableUnionType(actualSwaggerTypes, title)
   }
 
   protected getSwaggerTypeForIntersectionType(type: Tsoa.IntersectionType, title?: string) {
@@ -762,7 +606,7 @@ export class SpecGenerator3 extends SpecGenerator {
 
     if (types.size === 1) {
       const type = types.values().next().value
-      const nullable = enumType.enums.includes(null) ? true : false
+      const nullable = enumType.enums.includes(null)
       return { ...(title && { title }), type, enum: enumType.enums.map(member => getValue(type, member)), nullable }
     } else {
       const valuesDelimited = Array.from(types).join(',')
@@ -772,5 +616,202 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
     return this.transformExclusiveNumericValidatorsForLegacySpec(validators)
+  }
+
+  private buildReferenceSchema(referenceType: Tsoa.ReferenceType): Swagger.Schema3 {
+    let schema: Swagger.Schema3
+
+    switch (referenceType.dataType) {
+      case 'refObject':
+        schema = this.buildRefObjectSchema(referenceType)
+        break
+      case 'refEnum':
+        schema = this.buildRefEnumSchema(referenceType)
+        break
+      case 'refAlias':
+        schema = this.buildRefAliasSchema(referenceType)
+        break
+      default:
+        return assertNever(referenceType)
+    }
+
+    return this.applyReferenceSchemaMetadata(schema, referenceType)
+  }
+
+  private buildRefObjectSchema(referenceType: Tsoa.RefObjectType): Swagger.Schema3 {
+    const properties = referenceType.properties ?? []
+    return {
+      description: referenceType.description,
+      properties: this.buildProperties(properties),
+      required: this.getRequiredPropertyNames(properties),
+      type: 'object',
+      additionalProperties: referenceType.additionalProperties ? this.buildAdditionalProperties(referenceType.additionalProperties) : this.determineImplicitAdditionalPropertiesValue(),
+    }
+  }
+
+  private buildRefEnumSchema(referenceType: Tsoa.RefEnumType): Swagger.Schema3 {
+    const enumTypes = this.determineTypesUsedInEnum(referenceType.enums)
+    const schema: Swagger.Schema3 =
+      enumTypes.size === 1
+        ? {
+            description: referenceType.description,
+            enum: referenceType.enums,
+            type: enumTypes.has('string') ? 'string' : 'number',
+          }
+        : {
+            description: referenceType.description,
+            anyOf: [
+              {
+                type: 'number',
+                enum: referenceType.enums.filter(e => typeof e === 'number'),
+              },
+              {
+                type: 'string',
+                enum: referenceType.enums.filter(e => typeof e === 'string'),
+              },
+            ],
+          }
+
+    if (this.config.xEnumVarnames && referenceType.enumVarnames?.length === referenceType.enums.length) {
+      schema['x-enum-varnames'] = referenceType.enumVarnames
+    }
+
+    return schema
+  }
+
+  private buildRefAliasSchema(referenceType: Tsoa.RefAliasType): Swagger.Schema3 {
+    const swaggerType = this.getSwaggerType(referenceType.type)
+    const format = referenceType.format as Swagger.DataFormat
+    const validators = this.getSchemaValidators(referenceType.validators) as Partial<Swagger.Schema3>
+    const schema: Swagger.Schema3 = {
+      ...(swaggerType as Swagger.Schema3),
+      default: referenceType.default || swaggerType.default,
+      example: referenceType.example,
+      format: format || swaggerType.format,
+      description: referenceType.description,
+      ...validators,
+    }
+
+    if (referenceType.title) {
+      schema.title = referenceType.title
+    }
+
+    return schema
+  }
+
+  private applyReferenceSchemaMetadata(schema: Swagger.Schema3, referenceType: Tsoa.ReferenceType): Swagger.Schema3 {
+    if (referenceType.example) {
+      schema.example = referenceType.example
+    }
+
+    if (referenceType.title) {
+      schema.title = referenceType.title
+    }
+
+    if (referenceType.deprecated) {
+      schema.deprecated = true
+    }
+
+    return schema
+  }
+
+  private getRequiredPropertyNames(properties: Tsoa.Property[]): string[] | undefined {
+    const required = properties.filter(p => this.isRequiredWithoutDefault(p) && !this.hasUndefined(p)).map(p => p.name)
+    return required.length > 0 ? Array.from(new Set(required)) : undefined
+  }
+
+  private buildResponse(controllerName: string, method: Tsoa.Method, response: Tsoa.Response, defaultProduces?: string[]): Swagger.Response3 {
+    const swaggerResponse: Swagger.Response3 = {
+      description: response.description,
+    }
+
+    if (response.schema && !isVoidType(response.schema)) {
+      const produces = response.produces || defaultProduces || [DEFAULT_RESPONSE_MEDIA_TYPE]
+      swaggerResponse.content = this.buildResponseContent(controllerName, method, response, produces)
+
+      if (response.examples && swaggerResponse.content) {
+        this.applyResponseExamples(swaggerResponse.content, produces, response.examples, response.exampleLabels)
+      }
+    }
+
+    if (response.headers) {
+      swaggerResponse.headers = this.buildResponseHeaders(response.headers)
+    }
+
+    return swaggerResponse
+  }
+
+  private buildResponseContent(controllerName: string, method: Tsoa.Method, response: Tsoa.Response, produces: string[]): NonNullable<Swagger.Response3['content']> {
+    const content: NonNullable<Swagger.Response3['content']> = {}
+
+    for (const mediaType of produces) {
+      content[mediaType] = {
+        schema: this.getSwaggerType(response.schema!, this.config.useTitleTagsForInlineObjects ? this.getOperationId(controllerName, method) + 'Response' : undefined) as Swagger.Schema3,
+      }
+    }
+
+    return content
+  }
+
+  private applyResponseExamples(content: NonNullable<Swagger.Response3['content']>, produces: string[], examples: Tsoa.Example[], exampleLabels?: Array<string | undefined>) {
+    let exampleCounter = 1
+    const responseExamples = examples.reduce<Record<string, Swagger.Example3>>((acc, example, currentIndex) => {
+      const exampleLabel = exampleLabels?.[currentIndex]
+      acc[exampleLabel ?? `Example ${exampleCounter++}`] = { value: example }
+      return acc
+    }, {})
+
+    for (const mediaType of produces) {
+      content[mediaType].examples = responseExamples
+    }
+  }
+
+  private buildResponseHeaders(headers: Tsoa.HeaderType): Record<string, Swagger.Header3> {
+    if (headers.dataType === 'refObject') {
+      return {
+        [headers.refName]: {
+          schema: this.getSwaggerTypeForReferenceType(headers) as Swagger.Schema3,
+          description: headers.description,
+        },
+      }
+    }
+
+    if (headers.dataType === 'nestedObjectLiteral') {
+      return headers.properties.reduce<Record<string, Swagger.Header3>>((headerMap: Record<string, Swagger.Header3>, property: Tsoa.Property) => {
+        headerMap[property.name] = {
+          schema: this.getSwaggerType(property.type) as Swagger.Schema3,
+          description: property.description,
+          required: this.isRequiredWithoutDefault(property),
+        }
+        return headerMap
+      }, {})
+    }
+
+    return assertNever(headers)
+  }
+
+  private buildNullableUnionType(actualSwaggerTypes: Swagger.Schema3[], title?: string): Swagger.Schema3 {
+    if (actualSwaggerTypes.length !== 1) {
+      return { ...(title && { title }), anyOf: actualSwaggerTypes, nullable: true }
+    }
+
+    const [swaggerType] = actualSwaggerTypes
+    if (swaggerType.$ref) {
+      return { allOf: [swaggerType], nullable: true }
+    }
+
+    if (swaggerType.enum) {
+      swaggerType.enum.push(null)
+    }
+
+    return { ...(title && { title }), ...swaggerType, nullable: true }
+  }
+
+  private buildNonNullableUnionType(actualSwaggerTypes: Swagger.Schema3[], title?: string): Swagger.Schema3 {
+    if (actualSwaggerTypes.length === 1) {
+      return { ...(title && { title }), ...actualSwaggerTypes[0] }
+    }
+
+    return { ...(title && { title }), anyOf: actualSwaggerTypes }
   }
 }

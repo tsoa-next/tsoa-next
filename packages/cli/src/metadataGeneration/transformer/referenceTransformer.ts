@@ -45,13 +45,13 @@ export class ReferenceTransformer extends Transformer {
     const example = first.example ?? second.example
 
     const properties = [...first.properties, ...second.properties.filter(prop => first.properties.every(firstProp => firstProp.name !== prop.name))]
-    const additionalProperties = this.mergeAdditionalProperties(first.additionalProperties, second.additionalProperties)
+    const additionalProperties = this.mergeAdditionalProperties(first.additionalProperties as Tsoa.Type | false | undefined, second.additionalProperties as Tsoa.Type | false | undefined)
     const title = first.title ?? second.title
     const result: Tsoa.RefObjectType = {
       dataType: 'refObject',
       description,
       properties,
-      additionalProperties,
+      additionalProperties: additionalProperties as Tsoa.RefObjectType['additionalProperties'],
       refName: first.refName,
       deprecated,
       example,
@@ -101,12 +101,12 @@ export class ReferenceTransformer extends Transformer {
     return `${first}\n${second}`
   }
 
-  private static mergeAdditionalProperties(first?: Tsoa.Type, second?: Tsoa.Type) {
-    if (first === undefined) {
+  private static mergeAdditionalProperties(first?: Tsoa.Type | false, second?: Tsoa.Type | false) {
+    if (!first) {
       return second
     }
 
-    if (second === undefined) {
+    if (!second) {
       return first
     }
 
