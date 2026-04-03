@@ -56,7 +56,7 @@ export class MetadataGenerator {
 
   private extractNodeFromProgramSourceFiles() {
     this.program.getSourceFiles().forEach(sf => {
-      if (this.ignorePaths && this.ignorePaths.length) {
+      if (this.ignorePaths?.length) {
         for (const path of this.ignorePaths) {
           if (minimatch(sf.fileName, path)) {
             return
@@ -72,7 +72,7 @@ export class MetadataGenerator {
     })
   }
 
-  private checkForMethodSignatureDuplicates = (controllers: Tsoa.Controller[]) => {
+  private checkForMethodSignatureDuplicates(controllers: Tsoa.Controller[]) {
     const map: Tsoa.MethodsSignatureMap = {}
     controllers.forEach(controller => {
       controller.methods.forEach(method => {
@@ -100,8 +100,8 @@ export class MetadataGenerator {
     }
   }
 
-  private checkForPathParamSignatureDuplicates = (controllers: Tsoa.Controller[]) => {
-    const paramRegExp = new RegExp('{(\\w*)}|:(\\w+)', 'g')
+  private checkForPathParamSignatureDuplicates(controllers: Tsoa.Controller[]) {
+    const paramRegExp = /\{(\w*)}|:(\w+)/g
     type RouteCollision = {
       type: PathDuplicationType
       method: Tsoa.Method
@@ -140,13 +140,11 @@ export class MetadataGenerator {
       } = {}
       // Group all ts methods with HTTP method decorator into same object in same controller.
       controller.methods.forEach(method => {
-        if (methodRouteGroup[method.method] === undefined) {
-          methodRouteGroup[method.method] = []
-        }
+        const routesForMethod = (methodRouteGroup[method.method] ??= [])
 
         const params = method.path.match(paramRegExp)
 
-        methodRouteGroup[method.method].push({
+        routesForMethod.push({
           method, // method.name + ": " + method.path) as any,
           path:
             params?.reduce((s, a) => {
@@ -168,7 +166,7 @@ export class MetadataGenerator {
             } else if (
               methodRoutes[i].path.split('/').length === methodRoutes[j].path.split('/').length &&
               methodRoutes[j].path
-                .substr(methodRoutes[j].path.lastIndexOf('/')) // compare only the "last" part of the path
+                .substring(methodRoutes[j].path.lastIndexOf('/')) // compare only the "last" part of the path
                 .split('/')
                 .some(v => !!v) && // ensure the comparison path has a value
               methodRoutes[i].path.split('/').every((v, index) => {
@@ -226,23 +224,28 @@ export class MetadataGenerator {
   }
 
   public CheckModelUnicity(refName: string, positions: Array<{ fileName: string; pos: number }>) {
-    if (!this.modelDefinitionPosMap[refName]) {
+    const originalPositions = this.modelDefinitionPosMap[refName]
+    if (originalPositions === undefined) {
       this.modelDefinitionPosMap[refName] = positions
-    } else {
-      const origPositions = this.modelDefinitionPosMap[refName]
-      if (!(origPositions.length === positions.length && positions.every(pos => origPositions.find(origPos => pos.pos === origPos.pos && pos.fileName === origPos.fileName)))) {
-        throw new Error(`Found 2 different model definitions for model ${refName}: orig: ${JSON.stringify(origPositions)}, act: ${JSON.stringify(positions)}`)
-      }
+      return
+    }
+
+    const hasSamePositions = originalPositions.length === positions.length && positions.every(pos => originalPositions.find(origPos => pos.pos === origPos.pos && pos.fileName === origPos.fileName))
+
+    if (!hasSamePositions) {
+      throw new Error(`Found 2 different model definitions for model ${refName}: orig: ${JSON.stringify(originalPositions)}, act: ${JSON.stringify(positions)}`)
     }
   }
 
   public CheckExpressionUnicity(formattedRefName: string, refName: string) {
-    if (!this.expressionOrigNameMap[formattedRefName]) {
+    const originalRefName = this.expressionOrigNameMap[formattedRefName]
+    if (originalRefName === undefined) {
       this.expressionOrigNameMap[formattedRefName] = refName
-    } else {
-      if (this.expressionOrigNameMap[formattedRefName] !== refName) {
-        throw new Error(`Found 2 different type expressions for formatted name "${formattedRefName}": orig: "${this.expressionOrigNameMap[formattedRefName]}", act: "${refName}"`)
-      }
+      return
+    }
+
+    if (originalRefName !== refName) {
+      throw new Error(`Found 2 different type expressions for formatted name "${formattedRefName}": orig: "${originalRefName}", act: "${refName}"`)
     }
   }
 

@@ -1,5 +1,5 @@
 import * as ts from 'typescript'
-import * as path from 'path'
+import * as path from 'node:path'
 import { isVoidType } from '../utils/isVoidType'
 import { getCanonicalDecoratorName, getDecorators, getDecoratorValues, getPath, getProduces, getSecurites } from './../utils/decoratorUtils'
 import { getJSDocComment, getJSDocDescription, isExistJSDocTag } from './../utils/jsDocUtils'
@@ -14,6 +14,7 @@ import { getHeaderType } from '../utils/headerTypeHelpers'
 import type { InitializerValue } from './initializer-value'
 
 type HttpMethod = 'options' | 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head'
+const httpMethods: readonly string[] = ['options', 'get', 'post', 'put', 'patch', 'delete', 'head']
 const toExampleLabel = (value: InitializerValue | undefined): string | undefined => (typeof value === 'string' ? value : undefined)
 const isResponseName = (value: InitializerValue | undefined): value is Tsoa.Response['name'] => typeof value === 'string' || typeof value === 'number'
 const isExampleValue = (value: InitializerValue | undefined, allowUndefined = false): value is Tsoa.Example => {
@@ -117,7 +118,7 @@ export class MethodGenerator {
           throw new GenerateMetadataError(`${message} \n in '${controllerId.text}.${methodId.text}'`)
         }
       })
-      .reduce((flattened, params) => [...flattened, ...params], [])
+      .flat()
 
     this.validateBodyParameters(parameters)
     this.validateQueryParameters(parameters)
@@ -157,9 +158,10 @@ export class MethodGenerator {
 
   private getExtensions() {
     const extensionDecorators = this.getDecoratorsByIdentifier(this.node, 'Extension')
-    if (!extensionDecorators || !extensionDecorators.length) {
+    if (!extensionDecorators?.length) {
       return []
     }
+
     return getExtensions(extensionDecorators, this.current)
   }
 
@@ -172,7 +174,7 @@ export class MethodGenerator {
   private processMethodDecorators() {
     const pathDecorators = getDecorators(this.node, (_identifier, canonicalName) => this.supportsPathMethod(canonicalName), this.current.typeChecker)
 
-    if (!pathDecorators || !pathDecorators.length) {
+    if (!pathDecorators?.length) {
       return
     }
     if (pathDecorators.length > 1) {
@@ -186,9 +188,8 @@ export class MethodGenerator {
     }
 
     this.method = decoratorName.toLowerCase() as HttpMethod
-    // if you don't pass in a path to the method decorator, we'll just use the base route
-    // todo: what if someone has multiple no argument methods of the same type in a single controller?
-    // we need to throw an error there
+    // Methods without an explicit decorator path inherit the controller route.
+    // Duplicate signatures are rejected later during metadata validation.
     this.path = getPath(decorator, this.current.typeChecker)
     this.produces = this.getProduces()
     this.consumes = this.getConsumes()
@@ -202,8 +203,8 @@ export class MethodGenerator {
   private getConsumes(): string | undefined {
     const consumesDecorators = this.getDecoratorsByIdentifier(this.node, 'Consumes')
 
-    if (!consumesDecorators || !consumesDecorators.length) {
-      return
+    if (!consumesDecorators?.length) {
+      return undefined
     }
     if (consumesDecorators.length > 1) {
       throw new GenerateMetadataError(`Only one Consumes decorator in '${this.getCurrentLocation()}' method, Found: ${consumesDecorators.map(d => d.text).join(', ')}`)
@@ -217,7 +218,7 @@ export class MethodGenerator {
   private getMethodResponses(): Tsoa.Response[] {
     const responseExamplesByName: Record<string, Tsoa.Example[]> = {}
     const decorators = this.getDecoratorsByIdentifier(this.node, 'Response')
-    if (!decorators || !decorators.length) {
+    if (!decorators?.length) {
       return []
     }
 
@@ -247,7 +248,7 @@ export class MethodGenerator {
     const decorators = this.getDecoratorsByIdentifier(this.node, 'SuccessResponse')
     const examplesWithLabels = this.getMethodSuccessExamples()
 
-    if (!decorators || !decorators.length) {
+    if (!decorators?.length) {
       const returnsDescription = getJSDocComment(this.node, 'returns') || 'Ok'
       return {
         response: {
@@ -280,7 +281,7 @@ export class MethodGenerator {
         schema: type,
         headers,
       },
-      status: typeof name === 'number' ? name : typeof name === 'string' && /^\d+$/.test(name) ? parseInt(name, 10) : undefined,
+      status: this.parseResponseStatus(name),
     }
   }
 
@@ -300,20 +301,26 @@ export class MethodGenerator {
 
   private getMethodSuccessExamples() {
     const exampleDecorators = this.getDecoratorsByIdentifier(this.node, 'Example')
-    if (!exampleDecorators || !exampleDecorators.length) {
+    if (!exampleDecorators?.length) {
       return undefined
     }
 
-    const examples = exampleDecorators.map(exampleDecorator => {
-      const [example, label] = getDecoratorValues(exampleDecorator, this.current.typeChecker)
-      return { example, label: toExampleLabel(label) }
-    }).filter((entry): entry is { example: Tsoa.Example; label: string | undefined } => isExampleValue(entry.example))
+    const examples = exampleDecorators
+      .map(exampleDecorator => {
+        const [example, label] = getDecoratorValues(exampleDecorator, this.current.typeChecker)
+        return { example, label: toExampleLabel(label) }
+      })
+      .filter((entry): entry is { example: Tsoa.Example; label: string | undefined } => isExampleValue(entry.example))
 
-    return examples || undefined
+    return examples.length ? examples : undefined
   }
 
   private supportsPathMethod(method?: string) {
-    return !!method && ['options', 'get', 'post', 'put', 'patch', 'delete', 'head'].some(m => m === method.toLowerCase())
+    if (!method) {
+      return false
+    }
+
+    return httpMethods.includes(method.toLowerCase())
   }
 
   private getIsDeprecated() {
@@ -321,7 +328,7 @@ export class MethodGenerator {
       return true
     }
     const depDecorators = this.getDecoratorsByIdentifier(this.node, 'Deprecated')
-    if (!depDecorators || !depDecorators.length) {
+    if (!depDecorators?.length) {
       return false
     }
     if (depDecorators.length > 1) {
@@ -333,7 +340,7 @@ export class MethodGenerator {
 
   private getOperationId() {
     const opDecorators = this.getDecoratorsByIdentifier(this.node, 'OperationId')
-    if (!opDecorators || !opDecorators.length) {
+    if (!opDecorators?.length) {
       return undefined
     }
     if (opDecorators.length > 1) {
@@ -346,7 +353,7 @@ export class MethodGenerator {
 
   private getTags() {
     const tagsDecorators = this.getDecoratorsByIdentifier(this.node, 'Tags')
-    if (!tagsDecorators || !tagsDecorators.length) {
+    if (!tagsDecorators?.length) {
       return this.parentTags
     }
     if (tagsDecorators.length > 1) {
@@ -376,7 +383,7 @@ export class MethodGenerator {
       return []
     }
 
-    if (!securityDecorators || !securityDecorators.length) {
+    if (!securityDecorators?.length) {
       return this.parentSecurity || []
     }
 
@@ -385,7 +392,7 @@ export class MethodGenerator {
 
   private getIsHidden() {
     const hiddenDecorators = this.getDecoratorsByIdentifier(this.node, 'Hidden')
-    if (!hiddenDecorators || !hiddenDecorators.length) {
+    if (!hiddenDecorators?.length) {
       return !!this.isParentHidden
     }
 
@@ -411,10 +418,13 @@ export class MethodGenerator {
   private getProducesAdapter(produces?: string[] | string): string[] | undefined {
     if (Array.isArray(produces)) {
       return produces
-    } else if (typeof produces === 'string') {
+    }
+
+    if (typeof produces === 'string') {
       return [produces]
     }
-    return
+
+    return undefined
   }
 
   private getProducesValue(value: InitializerValue | undefined): string[] | string | undefined {
@@ -424,6 +434,18 @@ export class MethodGenerator {
 
     if (Array.isArray(value)) {
       return value.filter((entry): entry is string => typeof entry === 'string')
+    }
+
+    return undefined
+  }
+
+  private parseResponseStatus(name: InitializerValue | undefined): number | undefined {
+    if (typeof name === 'number') {
+      return name
+    }
+
+    if (typeof name === 'string' && /^\d+$/.test(name)) {
+      return Number.parseInt(name, 10)
     }
 
     return undefined

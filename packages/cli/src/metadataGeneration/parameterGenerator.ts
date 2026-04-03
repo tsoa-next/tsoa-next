@@ -11,7 +11,28 @@ import { getHeaderType } from '../utils/headerTypeHelpers'
 import { getParameterExternalValidator } from '../utils/validateDecoratorUtils'
 import type { InitializerValue } from './initializer-value'
 
+type QueriesType = Tsoa.RefObjectType | Tsoa.NestedObjectLiteralType
+
 const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
+const bodyMethods: readonly string[] = ['post', 'put', 'patch', 'delete']
+const supportedParameterDecorators: readonly string[] = [
+  'header',
+  'query',
+  'queries',
+  'path',
+  'body',
+  'bodyprop',
+  'request',
+  'requestprop',
+  'res',
+  'inject',
+  'uploadedfile',
+  'uploadedfiles',
+  'formfield',
+]
+const validateDecoratorLocations: readonly string[] = ['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield']
+const supportedPathDataTypes: readonly Tsoa.TypeStringLiteral[] = ['string', 'integer', 'long', 'float', 'double', 'date', 'datetime', 'buffer', 'boolean', 'enum', 'refEnum', 'file', 'any']
+
 const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
   if (value === null || value instanceof Date) {
     return true
@@ -36,6 +57,7 @@ const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.E
   return false
 }
 const toParameterExamples = (values: unknown[] | undefined): Tsoa.Example[] | undefined => values?.filter(value => isExampleValue(value))
+const isQueriesType = (type: Tsoa.Type): type is QueriesType => type.dataType === 'refObject' || type.dataType === 'nestedObjectLiteral'
 
 export class ParameterGenerator {
   constructor(
@@ -129,7 +151,7 @@ export class ParameterGenerator {
     }
 
     const symbol = this.current.typeChecker.getTypeAtLocation(typeNode).aliasSymbol
-    if (!symbol || !symbol.declarations) {
+    if (!symbol?.declarations) {
       return undefined
     }
     const declaration = symbol.declarations[0]
@@ -153,7 +175,7 @@ export class ParameterGenerator {
       throw new GenerateMetadataError('@Res() requires the type to be TsoaResponse<HTTPStatusCode, ResBody>', parameter)
     }
 
-    if (!typeNode.typeArguments || !typeNode.typeArguments[0]) {
+    if (!typeNode.typeArguments?.[0]) {
       throw new GenerateMetadataError('@Res() requires the type to be TsoaResponse<HTTPStatusCode, ResBody>', parameter)
     }
 
@@ -200,12 +222,13 @@ export class ParameterGenerator {
 
   private getProducesFromResHeaders(headers: Tsoa.HeaderType): string[] | undefined {
     const { properties } = headers
-    const [contentTypeProp] = (properties || []).filter(p => p.name.toLowerCase() === 'content-type' && p.type.dataType === 'enum')
+    const contentTypeProp = (properties || []).find(p => p.name.toLowerCase() === 'content-type' && p.type.dataType === 'enum')
     if (contentTypeProp) {
       const type = contentTypeProp.type as Tsoa.EnumType
       return type.enums as string[]
     }
-    return
+
+    return undefined
   }
 
   private getBodyPropParameter(parameter: ts.ParameterDeclaration): Tsoa.Parameter {
@@ -355,60 +378,7 @@ export class ParameterGenerator {
 
   private getQueriesParameters(parameter: ts.ParameterDeclaration): Tsoa.Parameter {
     const parameterName = (parameter.name as ts.Identifier).text
-    const type = this.getValidatedType(parameter)
-
-    // Handle cases where TypeResolver doesn't properly resolve complex types
-    // like Zod's z.infer types to refObject or nestedObjectLiteral
-    if (type.dataType !== 'refObject' && type.dataType !== 'nestedObjectLiteral') {
-      // Try to resolve the type more aggressively for complex types
-      let typeNode = parameter.type
-      if (!typeNode) {
-        const typeFromChecker = this.current.typeChecker.getTypeAtLocation(parameter)
-        typeNode = this.current.typeChecker.typeToTypeNode(typeFromChecker, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
-      }
-
-      // If it's a TypeReferenceNode (like z.infer), try to resolve it differently
-      if (ts.isTypeReferenceNode(typeNode)) {
-        try {
-          // Try to get the actual type from the type checker
-          const actualType = this.current.typeChecker.getTypeAtLocation(typeNode)
-          const typeNodeFromType = this.current.typeChecker.typeToTypeNode(actualType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
-          const resolvedType = new TypeResolver(typeNodeFromType, this.current, parameter).resolve()
-
-          // Check if the resolved type is now acceptable
-          if (resolvedType.dataType === 'refObject' || resolvedType.dataType === 'nestedObjectLiteral') {
-            // Use the resolved type instead
-            for (const property of resolvedType.properties) {
-              this.validateQueriesProperties(property, parameterName)
-            }
-
-            const { examples: example, exampleLabels } = this.getParameterExample(parameter, parameterName)
-
-            return {
-              description: this.getParameterDescription(parameter),
-              in: 'queries',
-              name: parameterName,
-              example: toParameterExamples(example),
-              exampleLabels,
-              parameterName,
-              required: !parameter.questionToken && !parameter.initializer,
-              type: resolvedType,
-              validators: getParameterValidators(this.parameter, parameterName),
-              parameterIndex: this.getParameterIndex(parameter),
-              ...this.getExternalValidationMetadata(parameter, 'queries'),
-              deprecated: this.getParameterDeprecation(parameter),
-            }
-          }
-        } catch (error) {
-          // If resolution fails, log the error for debugging but continue with the original error
-          // This helps developers understand why the type resolution failed
-          console.warn(`Failed to resolve complex type for @Queries('${parameterName}'):`, error)
-          // Continue with the original error below
-        }
-      }
-
-      throw new GenerateMetadataError(`@Queries('${parameterName}') only support 'refObject' or 'nestedObjectLiteral' types. If you want only one query parameter, please use the '@Query' decorator.`)
-    }
+    const type = this.getQueriesType(parameter, parameterName)
 
     for (const property of type.properties) {
       this.validateQueriesProperties(property, parameterName)
@@ -432,29 +402,49 @@ export class ParameterGenerator {
     }
   }
 
+  private getQueriesType(parameter: ts.ParameterDeclaration, parameterName: string): QueriesType {
+    const type = this.getValidatedType(parameter)
+    if (isQueriesType(type)) {
+      return type
+    }
+
+    const resolvedType = this.tryResolveQueriesType(parameter, parameterName)
+    if (resolvedType) {
+      return resolvedType
+    }
+
+    throw new GenerateMetadataError(`@Queries('${parameterName}') only support 'refObject' or 'nestedObjectLiteral' types. If you want only one query parameter, please use the '@Query' decorator.`)
+  }
+
+  private tryResolveQueriesType(parameter: ts.ParameterDeclaration, parameterName: string): QueriesType | undefined {
+    const typeNode = this.getParameterTypeNode(parameter)
+    if (!ts.isTypeReferenceNode(typeNode)) {
+      return undefined
+    }
+
+    try {
+      const actualType = this.current.typeChecker.getTypeAtLocation(typeNode)
+      const typeNodeFromType = this.current.typeChecker.typeToTypeNode(actualType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+      const resolvedType = new TypeResolver(typeNodeFromType, this.current, parameter).resolve()
+      return isQueriesType(resolvedType) ? resolvedType : undefined
+    } catch (error) {
+      console.warn(`Failed to resolve complex type for @Queries('${parameterName}'):`, error)
+      return undefined
+    }
+  }
+
   private validateQueriesProperties(property: Tsoa.Property, parentName: string) {
     if (property.type.dataType === 'array') {
-      const arrayType = property.type
-      if (arrayType.elementType.dataType === 'nestedObjectLiteral') {
-        // For arrays of nestedObjectLiteral, validate each property recursively
-        const nestedType = arrayType.elementType
-        if (nestedType.properties) {
-          for (const nestedProperty of nestedType.properties) {
-            this.validateQueriesProperties(nestedProperty, `${parentName}.${property.name}[]`)
-          }
-        }
-      } else if (!this.supportPathDataType(arrayType.elementType)) {
-        throw new GenerateMetadataError(`@Queries('${parentName}') property '${property.name}' can't support array '${arrayType.elementType.dataType}' type.`)
-      }
-    } else if (property.type.dataType === 'nestedObjectLiteral') {
-      // For nestedObjectLiteral, validate each property recursively
-      const nestedType = property.type
-      if (nestedType.properties) {
-        for (const nestedProperty of nestedType.properties) {
-          this.validateQueriesProperties(nestedProperty, `${parentName}.${property.name}`)
-        }
-      }
-    } else if (!this.supportPathDataType(property.type)) {
+      this.validateArrayQueriesProperty(property, parentName)
+      return
+    }
+
+    if (property.type.dataType === 'nestedObjectLiteral') {
+      this.validateNestedQueriesProperties(property.type.properties, `${parentName}.${property.name}`)
+      return
+    }
+
+    if (!this.supportPathDataType(property.type)) {
       throw new GenerateMetadataError(`@Queries('${parentName}') nested property '${property.name}' Can't support '${property.type.dataType}' type.`)
     }
   }
@@ -577,7 +567,10 @@ export class ParameterGenerator {
         exampleLabels.push(hasExampleLabel ? comment?.split(' ')[0].split('.').slice(1).join('.') : undefined)
       }
       return isExample ?? false
-    }).map(tag => (commentToString(tag.comment) || '').replace(`${commentToString(tag.comment)?.split(' ')[0] || ''}`, '').replace(/\r/g, ''))
+    }).map(tag => {
+      const comment = commentToString(tag.comment) || ''
+      return comment.replace(comment.split(' ')[0] || '', '').replaceAll('\r', '')
+    })
 
     if (examples.length === 0) {
       return {
@@ -599,7 +592,7 @@ export class ParameterGenerator {
   }
 
   private supportBodyMethod(method: string) {
-    return ['post', 'put', 'patch', 'delete'].some(m => m === method.toLowerCase())
+    return bodyMethods.includes(method.toLowerCase())
   }
 
   private assertValidateDecoratorCompatibility(decoratorName?: string) {
@@ -610,7 +603,7 @@ export class ParameterGenerator {
 
     const resolvedLocation = decoratorName ? decoratorName.toLowerCase() : 'path'
     const normalizedLocation = ['uploadedfile', 'uploadedfiles'].includes(resolvedLocation) ? 'formfield' : resolvedLocation
-    if (!['body', 'bodyprop', 'query', 'queries', 'path', 'header', 'formfield'].includes(normalizedLocation)) {
+    if (!validateDecoratorLocations.includes(normalizedLocation)) {
       throw new GenerateMetadataError(`@Validate is not supported on '${normalizedLocation}' parameters in this release.`, this.parameter)
     }
   }
@@ -630,17 +623,15 @@ export class ParameterGenerator {
   }
 
   private supportParameterDecorator(decoratorName?: string) {
-    return (
-      !!decoratorName &&
-      ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
-        d => d === decoratorName.toLocaleLowerCase(),
-      )
-    )
+    if (!decoratorName) {
+      return false
+    }
+
+    return supportedParameterDecorators.includes(decoratorName.toLowerCase())
   }
 
   private supportPathDataType(parameterType: Tsoa.Type): boolean {
-    const supportedPathDataTypes: Tsoa.TypeStringLiteral[] = ['string', 'integer', 'long', 'float', 'double', 'date', 'datetime', 'buffer', 'boolean', 'enum', 'refEnum', 'file', 'any']
-    if (supportedPathDataTypes.find(t => t === parameterType.dataType)) {
+    if (supportedPathDataTypes.includes(parameterType.dataType)) {
       return true
     }
 
@@ -650,24 +641,19 @@ export class ParameterGenerator {
 
     if (parameterType.dataType === 'union') {
       // skip undefined inside unions
-      return !parameterType.types.map(t => t.dataType === 'undefined' || this.supportPathDataType(t)).some(t => t === false)
+      return parameterType.types.every(type => type.dataType === 'undefined' || this.supportPathDataType(type))
     }
 
     return false
   }
 
   private getValidatedType(parameter: ts.ParameterDeclaration) {
-    let typeNode = parameter.type
-    if (!typeNode) {
-      const type = this.current.typeChecker.getTypeAtLocation(parameter)
-      typeNode = this.current.typeChecker.typeToTypeNode(type, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
-    }
-    return new TypeResolver(typeNode, this.current, parameter).resolve()
+    return new TypeResolver(this.getParameterTypeNode(parameter), this.current, parameter).resolve()
   }
 
   private getQueryParameterIsHidden(parameter: ts.ParameterDeclaration) {
     const hiddenDecorators = getDecorators(parameter, (_identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
-    if (!hiddenDecorators || !hiddenDecorators.length) {
+    if (!hiddenDecorators?.length) {
       return false
     }
 
@@ -677,5 +663,32 @@ export class ParameterGenerator {
     }
 
     return true
+  }
+
+  private validateArrayQueriesProperty(property: Tsoa.Property, parentName: string) {
+    const arrayType = property.type as Tsoa.ArrayType
+    if (arrayType.elementType.dataType === 'nestedObjectLiteral') {
+      this.validateNestedQueriesProperties(arrayType.elementType.properties, `${parentName}.${property.name}[]`)
+      return
+    }
+
+    if (!this.supportPathDataType(arrayType.elementType)) {
+      throw new GenerateMetadataError(`@Queries('${parentName}') property '${property.name}' can't support array '${arrayType.elementType.dataType}' type.`)
+    }
+  }
+
+  private validateNestedQueriesProperties(properties: Tsoa.Property[] | undefined, parentName: string) {
+    for (const property of properties ?? []) {
+      this.validateQueriesProperties(property, parentName)
+    }
+  }
+
+  private getParameterTypeNode(parameter: ts.ParameterDeclaration): ts.TypeNode {
+    if (parameter.type) {
+      return parameter.type
+    }
+
+    const type = this.current.typeChecker.getTypeAtLocation(parameter)
+    return this.current.typeChecker.typeToTypeNode(type, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
   }
 }
