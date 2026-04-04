@@ -42,7 +42,7 @@ describe('TypeResolver', () => {
   describe('direct helper coverage', () => {
     it('formats default strings with comments and escapes', () => {
       const trailingEscapedDefault = "'value\\"
-      const formattedTrailingDefault = '"value\\'
+      const formattedTrailingDefault = '"value' + '\\'
 
       expect((TypeResolver as any).formatDefaultString(String.raw`'value \"quoted\"' // comment`)).to.equal(`${String.raw`"value \"quoted\""`} `)
       expect((TypeResolver as any).formatDefaultString(trailingEscapedDefault)).to.equal(formattedTrailingDefault)

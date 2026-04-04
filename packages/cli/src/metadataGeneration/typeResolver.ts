@@ -624,10 +624,10 @@ export class TypeResolver {
   }
 
   private resolveNonLiteralKeyOfUnionType(type: ts.UnionType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    const typeFlags = type.types.map(member => member.flags)
-    const includesString = typeFlags.includes(ts.TypeFlags.String)
-    const includesNumber = typeFlags.includes(ts.TypeFlags.Number)
-    const includesSymbol = typeFlags.includes(ts.TypeFlags.ESSymbol)
+    const typeFlags = new Set(type.types.map(member => member.flags))
+    const includesString = typeFlags.has(ts.TypeFlags.String)
+    const includesNumber = typeFlags.has(ts.TypeFlags.Number)
+    const includesSymbol = typeFlags.has(ts.TypeFlags.ESSymbol)
 
     if (includesString && includesNumber && (type.types.length === 2 || (type.types.length === 3 && includesSymbol))) {
       return this.createStringAndNumberUnion()
@@ -1913,14 +1913,15 @@ export class TypeResolver {
   private static formatDefaultString(defaultStr: string): string {
     const initialState: DefaultFormattingState = { formatted: '' }
     let state = initialState
+    let index = 0
 
-    for (let index = 0; index < defaultStr.length; index += 1) {
+    while (index < defaultStr.length) {
       const formattedCharacter = this.formatDefaultCharacter(defaultStr, index, state)
       state = {
         formatted: formattedCharacter.formatted,
         textStartCharacter: formattedCharacter.textStartCharacter,
       }
-      index = formattedCharacter.index
+      index = formattedCharacter.index + 1
     }
 
     return state.formatted
