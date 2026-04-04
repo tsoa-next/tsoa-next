@@ -11,6 +11,21 @@ import { TypeResolver } from '../../../packages/cli/src/metadataGeneration/typeR
 describe('TypeResolver', () => {
   const resolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
   const getRefTypeName = (name: string): string => (resolver as any).getRefTypeName(name)
+  const getDefaultProperty = (jsDocTag: string) => {
+    const sourceFile = ts.createSourceFile('defaults.ts', `interface Defaults {\n  /** ${jsDocTag} */\n  value: string\n}`, ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+
+    const interfaceDeclaration = sourceFile.statements.find(ts.isInterfaceDeclaration)
+    if (!interfaceDeclaration) {
+      throw new Error('Missing interface declaration')
+    }
+
+    const property = interfaceDeclaration.members.find(ts.isPropertySignature)
+    if (!property) {
+      throw new Error('Missing property signature')
+    }
+
+    return property
+  }
 
   it('should normalize type literal property separators without regex backtracking', () => {
     expect(getRefTypeName('SuccessResponse_indexesCreated:number_')).to.equal('SuccessResponse_indexesCreated-number_')
@@ -22,6 +37,120 @@ describe('TypeResolver', () => {
 
   it('should normalize indexed access segments after parenthesized types', () => {
     expect(getRefTypeName('(A|B)[K]')).to.equal('_40_A-or-B_41_-at-K')
+  })
+
+  describe('direct helper coverage', () => {
+    it('formats default strings with comments and escapes', () => {
+      const trailingEscapedDefault = "'value\\"
+      const formattedTrailingDefault = '"value' + '\\'
+
+      expect((TypeResolver as any).formatDefaultString(String.raw`'value \"quoted\"' // comment`)).to.equal(`${String.raw`"value \"quoted\""`} `)
+      expect((TypeResolver as any).formatDefaultString(trailingEscapedDefault)).to.equal(formattedTrailingDefault)
+    })
+
+    it('parses and rejects default tags consistently', () => {
+      expect(TypeResolver.getDefault(getDefaultProperty('@default "value"'))).to.equal('value')
+      expect(TypeResolver.getDefault(getDefaultProperty('@default undefined'))).to.equal(undefined)
+      expect(() => TypeResolver.getDefault(getDefaultProperty('@default {"unterminated": }'))).to.throw(GenerateMetadataError, 'JSON could not parse default str')
+    })
+
+    it('resolves builtin type references without extra metadata state', () => {
+      const builtinResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), { defaultNumberType: 'double' } as any)
+
+      expect((builtinResolver as any).resolveBuiltinTypeReference('String', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.deep.equal({ dataType: 'string' })
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Buffer', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.deep.equal({ dataType: 'buffer' })
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Readable', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.deep.equal({ dataType: 'buffer' })
+      expect(
+        (builtinResolver as any).resolveBuiltinTypeReference('Array', [ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)], { defaultNumberType: 'double' }, {}, undefined),
+      ).to.deep.equal({ dataType: 'array', elementType: { dataType: 'string' } })
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Array', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.equal(undefined)
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Promise', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.equal(undefined)
+    })
+
+    it('resolves io-ts helper types from utility references and aliases', () => {
+      const current = {
+        defaultNumberType: 'double',
+        typeChecker: {
+          getAliasedSymbol: (symbol: ts.Symbol) => symbol,
+        },
+      }
+      const ioTsResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current as any)
+      const brandedType = ts.factory.createTypeReferenceNode('Branded', [ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)])
+      const brandType = ts.factory.createTypeReferenceNode('Brand', [])
+
+      ;(ioTsResolver as any).getIoTsUtilityType = (_typeName: ts.EntityName) => 'Branded'
+      expect((ioTsResolver as any).resolveIoTsUtilityTypeReference(brandedType, current, {}, undefined, [...(brandedType.typeArguments || [])])).to.deep.equal({ dataType: 'string' })
+      ;(ioTsResolver as any).getIoTsUtilityType = (_typeName: ts.EntityName) => 'Brand'
+      expect((ioTsResolver as any).resolveIoTsUtilityTypeReference(brandType, current, {}, undefined, [])).to.deep.equal({ dataType: 'any' })
+
+      const moduleDeclaration = { parent: undefined, getSourceFile: () => ({ fileName: '/tmp/node_modules/io-ts/index.d.ts' }) }
+      const resolvedSymbol = {
+        declarations: [moduleDeclaration],
+        flags: 0,
+        getName: () => 'TypeOf',
+      }
+      const aliasSymbol = {
+        declarations: [],
+        flags: ts.SymbolFlags.Alias,
+        getName: () => 'AliasTypeOf',
+      }
+
+      expect((ioTsResolver as any).getIoTsUtilityTypeFromSymbol(aliasSymbol, { getAliasedSymbol: () => resolvedSymbol })).to.equal('TypeOf')
+      expect((ioTsResolver as any).symbolComesFromModule(aliasSymbol, { getAliasedSymbol: () => resolvedSymbol }, 'io-ts')).to.equal(true)
+    })
+
+    it('handles io-ts decoded type fallbacks', () => {
+      const codecType = {} as ts.Type
+      const decodedType = {} as ts.Type
+      const decodedSymbol = {} as ts.Symbol
+      const current = {
+        defaultNumberType: 'double',
+        typeChecker: {
+          getPropertyOfType: (_type: ts.Type, key: string) => (key === '_A' ? decodedSymbol : undefined),
+          getTypeFromTypeNode: () => codecType,
+          getTypeOfSymbolAtLocation: () => decodedType,
+          typeToTypeNode: (type: ts.Type) => {
+            if (type === decodedType) {
+              return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+            }
+
+            if (type === codecType) {
+              return ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)
+            }
+
+            return ts.factory.createTypeReferenceNode('CodecReference', [])
+          },
+        },
+      }
+      const ioTsResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current as any)
+      const typeNode = ts.factory.createTypeReferenceNode('TypeOf', [ts.factory.createTypeReferenceNode('Codec', [])])
+
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.deep.equal({ dataType: 'string' })
+      ;(current.typeChecker.getPropertyOfType as any) = () => undefined
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.deep.equal({ dataType: 'double' })
+      ;(current.typeChecker.typeToTypeNode as any) = () => ts.factory.createTypeReferenceNode('CodecReference', [])
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.equal(undefined)
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [])).to.equal(undefined)
+    })
+
+    it('handles fallback keyof types and keyword defaults', () => {
+      const keyOfResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {
+        typeChecker: {
+          getTypeFromTypeNode: () => ({}) as ts.Type,
+          typeToString: () => 'Fallback',
+        },
+      } as any)
+      const keyOfNode = ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+
+      expect((keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.TemplateLiteral } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({
+        dataType: 'string',
+      })
+      expect((keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.Number } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({ dataType: 'double' })
+      expect(() => (keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.Never } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.throw(
+        GenerateMetadataError,
+        "TypeOperator 'keyof' on node produced a never type",
+      )
+    })
   })
 
   describe('reference fallback helpers', () => {

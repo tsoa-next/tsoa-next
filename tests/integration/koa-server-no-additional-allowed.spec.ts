@@ -496,7 +496,19 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
     })
   })
 
-  it('shutdown server', () => server.close())
+  it('shutdown server', () =>
+    new Promise<void>((resolve, reject) => {
+      expect(server.listening).to.equal(true)
+      server.close(error => {
+        if (error) {
+          reject(error)
+          return
+        }
+
+        expect(server.listening).to.equal(false)
+        resolve()
+      })
+    }))
 
   function getFakeModel(): TestModel {
     // Defining as Partial to help writing and allowing to leave out values that should be dropped or made optional in generation
