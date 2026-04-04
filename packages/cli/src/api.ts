@@ -265,7 +265,7 @@ const hasEntryPointConfiguration = (config: Pick<Config, 'entryFile' | 'controll
 
 const assertEntryPointConfiguration = (config: Pick<Config, 'entryFile' | 'controllerPathGlobs'>): void => {
   if (!hasEntryPointConfiguration(config)) {
-    throw new Error('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globals.')
+    throw new Error('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globs.')
   }
 }
 

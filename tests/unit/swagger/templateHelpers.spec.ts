@@ -1,9 +1,39 @@
 import { expect } from 'chai'
 import 'mocha'
-import { TsoaRoute, FieldErrors, ValidationService } from '@tsoa-next/runtime'
+import { TsoaRoute, FieldErrors, ValidateParam, ValidationService } from '@tsoa-next/runtime'
 import { TypeAliasDate, TypeAliasDateTime, TypeAliasModel1, TypeAliasModel2 } from 'fixtures/testModel'
 
 describe('ValidationService', () => {
+  describe('ValidateParam wrapper', () => {
+    const property: TsoaRoute.PropertySchema = { dataType: 'integer' }
+    const config = { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true } as const
+
+    it('keeps the deprecated positional wrapper working for custom templates', () => {
+      const fieldErrors: FieldErrors = {}
+
+      const result = ValidateParam(property, '42', {}, 'payload', fieldErrors, true, undefined, config)
+
+      expect(result).to.equal(42)
+      expect(fieldErrors).to.deep.equal({})
+    })
+
+    it('supports the object overload for custom templates', () => {
+      const fieldErrors: FieldErrors = {}
+
+      const result = ValidateParam({
+        property,
+        value: '42',
+        generatedModels: {},
+        fieldErrors,
+        isBodyParam: true,
+        config,
+      })
+
+      expect(result).to.equal(42)
+      expect(fieldErrors).to.deep.equal({})
+    })
+  })
+
   describe('Model validate', () => {
     it('should validate a model with declared properties', () => {
       const modelDefinition: TsoaRoute.ModelSchema = {

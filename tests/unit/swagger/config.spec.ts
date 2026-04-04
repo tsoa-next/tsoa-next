@@ -40,7 +40,7 @@ describe('Configuration', () => {
           throw new Error('Should not get here, expecting error regarding entryFile')
         },
         err => {
-          expect(err.message).to.equal('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globals.')
+          expect(err.message).to.equal('Missing entryFile and controllerPathGlobs: Configuration must contain an entry point file or controller path globs.')
           done()
         },
       )

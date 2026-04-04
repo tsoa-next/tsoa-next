@@ -62,29 +62,36 @@ type DateRangeValidators = {
 
 const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
 
-// for backwards compatibility with custom templates
-export function ValidateParam<TValue>( // NOSONAR: legacy public wrapper preserves the historical custom-template signature.
-  property: TsoaRoute.PropertySchema,
-  value: TValue,
-  generatedModels: TsoaRoute.Models,
-  name: string | undefined,
-  fieldErrors: FieldErrors,
-  isBodyParam: boolean,
-  parent: string | undefined,
-  config: AdditionalProps,
-  metadata?: ParameterValidationMetadata,
-): TValue
-export function ValidateParam( // NOSONAR: legacy public wrapper preserves the historical custom-template signature.
-  property: TsoaRoute.PropertySchema,
-  value: unknown,
-  generatedModels: TsoaRoute.Models,
-  name: string | undefined,
-  fieldErrors: FieldErrors,
-  isBodyParam: boolean,
-  parent: string | undefined,
-  config: AdditionalProps,
-  metadata?: ParameterValidationMetadata,
-): unknown {
+type ValidateParamOptions<TValue> = {
+  property: TsoaRoute.PropertySchema
+  value: TValue
+  generatedModels: TsoaRoute.Models
+  name?: string
+  fieldErrors: FieldErrors
+  isBodyParam: boolean
+  parent?: string
+  config: AdditionalProps
+  metadata?: ParameterValidationMetadata
+}
+
+type ValidateParamTupleArgs<TValue> = [TsoaRoute.PropertySchema, TValue, TsoaRoute.Models, string | undefined, FieldErrors, boolean, string | undefined, AdditionalProps, ParameterValidationMetadata?]
+
+const normalizeValidateParamArgs = <TValue>(args: [ValidateParamOptions<TValue>] | ValidateParamTupleArgs<TValue>): ValidateParamOptions<TValue> => {
+  if (args.length === 1) {
+    return args[0]
+  }
+
+  const [property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata] = args
+  return { property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata }
+}
+
+export function ValidateParam<TValue>(options: ValidateParamOptions<TValue>): TValue
+/**
+ * @deprecated Use the object overload instead.
+ */
+export function ValidateParam<TValue>(...args: ValidateParamTupleArgs<TValue>): TValue // NOSONAR: deprecated overload preserves the historical custom-template signature.
+export function ValidateParam<TValue>(...args: [ValidateParamOptions<TValue>] | ValidateParamTupleArgs<TValue>): TValue {
+  const { property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata } = normalizeValidateParamArgs(args)
   return new ValidationService(generatedModels, config).ValidateParam(property, value, name ?? '', fieldErrors, isBodyParam, parent ?? '', metadata)
 }
 
