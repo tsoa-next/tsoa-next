@@ -1,5 +1,8 @@
 # Instructions for Logging Issues
 
+Please review the [Code of Conduct](../CODE_OF_CONDUCT.md) before participating in
+the project.
+
 ## 1. Search for Duplicates
 
 [Search the existing issues](https://github.com/tsoa-next/tsoa-next/issues?q=is%3Aissue) before logging a new one.

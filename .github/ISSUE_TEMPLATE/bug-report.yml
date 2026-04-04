@@ -1,0 +1,79 @@
+name: Bug Report
+description: Report a reproducible defect in tsoa-next
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for runtime bugs, incorrect OpenAPI output, generator regressions, or behavior that differs from the documentation.
+
+        Before submitting, search existing issues to avoid duplicates:
+        https://github.com/tsoa-next/tsoa-next/issues?q=is%3Aissue
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: I read the contributing guide and will provide enough detail to reproduce the problem.
+          required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected tsoa-next to generate or how you expected it to behave.
+      placeholder: The generated OpenAPI schema should preserve the referenced union discriminator...
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Current behavior
+      description: Describe what happens instead, including validation errors, stack traces, or incorrect output.
+      placeholder: The discriminator is omitted and route generation fails with...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide an unambiguous sequence of steps, ideally with a minimal reproduction repository or code sample.
+      placeholder: |
+        1. Create a controller with ...
+        2. Run `npx tsoa spec`
+        3. Inspect the generated schema
+        4. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: package_version
+    attributes:
+      label: tsoa-next version
+      placeholder: 0.0.0
+    validations:
+      required: true
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js version
+      placeholder: 22.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: package_manager
+    attributes:
+      label: Package manager
+      options:
+        - npm
+        - pnpm
+        - yarn
+        - bun
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include relevant TypeScript snippets, OpenAPI output, environment details, screenshots, or links here.

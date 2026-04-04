@@ -1,0 +1,66 @@
+name: Feature Request
+description: Propose a new capability or enhancement for tsoa-next
+title: '[Feature]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for approved enhancements or proposals you want maintainers to evaluate.
+
+        Before submitting:
+        - Search existing issues: https://github.com/tsoa-next/tsoa-next/issues?q=is%3Aissue
+        - Review the project goals and philosophy in the README
+        - Note that maintainers approve feature work before implementation, typically through the `help wanted` label
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: I reviewed the project goals, philosophy, and contributing guide.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What limitation, workflow gap, or friction are you trying to solve?
+      placeholder: When modeling ..., there is currently no way to ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, API shape, or generated output you want to see.
+      placeholder: Add support for ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe any workarounds or alternative approaches you evaluated.
+      placeholder: I considered using ..., but it fails because ...
+  - type: textarea
+    id: impact
+    attributes:
+      label: Use cases and impact
+      description: Explain who benefits, what this unlocks, and whether this affects runtime behavior, generated specs, or route generation.
+    validations:
+      required: true
+  - type: dropdown
+    id: breaking_change
+    attributes:
+      label: Would this be a breaking change?
+      options:
+        - 'No'
+        - 'Unsure'
+        - 'Yes'
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Link related issues, specs, examples, or prior discussions here.

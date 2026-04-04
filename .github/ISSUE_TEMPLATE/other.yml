@@ -1,0 +1,45 @@
+name: Other
+description: Report documentation gaps, chores, questions, or anything that does not fit the bug or feature forms
+title: '[Other]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when your issue does not fit the bug report or feature request categories.
+
+        Search existing issues first:
+        https://github.com/tsoa-next/tsoa-next/issues?q=is%3Aissue
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What best describes this issue?
+      options:
+        - Documentation
+        - Maintenance or chore
+        - Question
+        - Ecosystem or tooling
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the request, concern, or gap as clearly as you can.
+      placeholder: The guide for ... is missing ...
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Include links, code samples, screenshots, prior discussion, or any context needed to understand the issue.
+    validations:
+      required: true
