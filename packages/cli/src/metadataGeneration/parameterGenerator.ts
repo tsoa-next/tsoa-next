@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 import { getDecorators, getNodeFirstDecoratorName, getNodeFirstDecoratorValue, isDecorator } from './../utils/decoratorUtils'
-import { commentToString, getJSDocTags, isExistJSDocTag } from './../utils/jsDocUtils'
+import { commentToString, getJSDocTags, isExistJSDocTag, symbolDisplayPartsToString } from './../utils/jsDocUtils'
 import { getParameterValidators } from './../utils/validatorUtils'
 import { GenerateMetadataError } from './exceptions'
 import { getInitializerValue } from './initializer-value'
@@ -531,7 +531,7 @@ export class ParameterGenerator {
 
     const comments = symbol.getDocumentationComment(this.current.typeChecker)
     if (comments.length) {
-      return ts.displayPartsToString(comments)
+      return symbolDisplayPartsToString(comments)
     }
 
     return undefined

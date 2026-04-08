@@ -777,7 +777,6 @@ export interface HeritageBaseModel {
   value: string
 }
 
- 
 export interface HeritageTestModel2 extends HeritageBaseModel {}
 
 export interface DefaultTestModel<T = Word, U = Omit<ErrorResponseModel, 'status'>> {
@@ -1322,7 +1321,7 @@ interface GenericContainer<T, TSameNameDifferentValue> {
 /**
  * This should only be used inside GenericContainer to check its
  * type argument T gets propagated while TSameNameDifferentValue does not
- * and instead, the interface {@link TSameNameDifferentValue} is used.
+ * and instead, the {@link TSameNameDifferentValue same-named interface} is used.
  */
 interface DanglingContext<T> {
   number: T

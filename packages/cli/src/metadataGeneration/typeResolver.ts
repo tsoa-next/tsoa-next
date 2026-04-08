@@ -2,7 +2,7 @@ import { assertNever, Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import { safeFromJson } from '../utils/jsonUtils'
 import { getDecorators, getNodeFirstDecoratorValue, isDecorator } from './../utils/decoratorUtils'
-import { getJSDocComment, getJSDocComments, getJSDocTagNames, isExistJSDocTag } from './../utils/jsDocUtils'
+import { getJSDocComment, getJSDocComments, getJSDocTagNames, isExistJSDocTag, symbolDisplayPartsToString } from './../utils/jsDocUtils'
 import { getPropertyValidators } from './../utils/validatorUtils'
 import { throwUnless } from '../utils/flowUtils'
 import { GenerateMetadataError, GenerateMetaDataWarning } from './exceptions'
@@ -462,7 +462,7 @@ export class TypeResolver {
       type: new TypeResolver(typeNode, this.current, parent, this.context, propertyType).resolve(),
       default: this.getMappedPropertyDefault(parent),
       validators: (parent ? getPropertyValidators(parent) : {}) || {},
-      description: comments.length ? ts.displayPartsToString(comments) : undefined,
+      description: symbolDisplayPartsToString(comments),
       format: parent ? this.getNodeFormat(parent) : undefined,
       example: parent ? this.getNodeExample(parent) : undefined,
       extensions: parent ? this.getNodeExtension(parent) : undefined,
@@ -1168,7 +1168,7 @@ export class TypeResolver {
 
     const symbol = this.getSymbolAtLocation(arg.name as ts.Node)
     const comments = symbol ? symbol.getDocumentationComment(this.current.typeChecker) : []
-    const description = comments.length ? ts.displayPartsToString(comments) : undefined
+    const description = symbolDisplayPartsToString(comments)
 
     const validators = getPropertyValidators(arg)
     const format = this.getNodeFormat(arg)
@@ -1846,7 +1846,7 @@ export class TypeResolver {
 
     const comments = symbol.getDocumentationComment(this.current.typeChecker)
     if (comments.length) {
-      return ts.displayPartsToString(comments)
+      return symbolDisplayPartsToString(comments)
     }
 
     return undefined

@@ -89,6 +89,16 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
     })
   })
 
+  describe('descriptions', () => {
+    allSpecs.forEach(currentSpec => {
+      it(`should preserve jsdoc link spacing in component schema descriptions for ${currentSpec.specName}`, () => {
+        const schema = getComponentSchema('DanglingContext_number_', currentSpec)
+        expect(schema.description).to.contain('{@link TSameNameDifferentValue same-named interface}')
+        expect(schema.description).to.not.contain('{@link TSameNameDifferentValuesame-named interface}')
+      })
+    })
+  })
+
   describe('servers', () => {
     it('should replace the parent schemes element', () => {
       expect(specDefault.spec).to.not.have.property('schemes')

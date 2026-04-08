@@ -2,9 +2,36 @@ import * as ts from 'typescript'
 import { GenerateMetadataError } from '../metadataGeneration/exceptions'
 
 type NodeWithJsDoc = ts.Node & { jsDoc?: ts.JSDoc[] }
+type JSDocLinkNode = ts.JSDocLink | ts.JSDocLinkCode | ts.JSDocLinkPlain
 
 function getJsDocs(node: ts.Node): ts.JSDoc[] {
   return (node as NodeWithJsDoc).jsDoc ?? []
+}
+
+function isJSDocLinkNode(node: ts.JSDocComment): node is JSDocLinkNode {
+  return ts.isJSDocLink(node) || ts.isJSDocLinkCode(node) || ts.isJSDocLinkPlain(node)
+}
+
+function getJSDocLinkTagName(node: JSDocLinkNode): 'link' | 'linkcode' | 'linkplain' {
+  switch (node.kind) {
+    case ts.SyntaxKind.JSDocLink:
+      return 'link'
+    case ts.SyntaxKind.JSDocLinkCode:
+      return 'linkcode'
+    case ts.SyntaxKind.JSDocLinkPlain:
+      return 'linkplain'
+    default:
+      return 'link'
+  }
+}
+
+function jsDocCommentNodeToString(node: ts.JSDocComment): string {
+  if (!isJSDocLinkNode(node)) {
+    return node.text
+  }
+
+  const content = [node.name?.getText(), node.text].filter(Boolean).join(' ')
+  return content ? `{@${getJSDocLinkTagName(node)} ${content}}` : `{@${getJSDocLinkTagName(node)}}`
 }
 
 export function getJSDocDescription(node: ts.Node) {
@@ -75,12 +102,32 @@ export function isExistJSDocTag(node: ts.Node, isMatching: (tag: ts.JSDocTag) =>
   return getJSDocTags(node, isMatching).length > 0
 }
 
-export function commentToString(comment?: string | ts.NodeArray<ts.JSDocText | ts.JSDocLink | ts.JSDocComment>): string | undefined {
+export function commentToString(comment?: string | ts.NodeArray<ts.JSDocComment>): string | undefined {
   if (typeof comment === 'string') {
     return comment
   } else if (comment) {
-    return comment.map(node => node.text).join(' ')
+    return comment.map(jsDocCommentNodeToString).join('')
   }
 
   return undefined
+}
+
+export function symbolDisplayPartsToString(parts: ts.SymbolDisplayPart[]): string | undefined {
+  if (parts.length === 0) {
+    return undefined
+  }
+
+  let formatted = ''
+  let previousKind: string | undefined
+
+  for (const part of parts) {
+    if (part.kind === 'linkText' && previousKind === 'linkName' && !formatted.endsWith(' ')) {
+      formatted += ' '
+    }
+
+    formatted += part.text
+    previousKind = part.kind
+  }
+
+  return formatted
 }
