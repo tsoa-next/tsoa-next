@@ -1,10 +1,10 @@
 import { expect } from 'chai'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import 'mocha'
 import { Tsoa } from '@tsoa-next/runtime'
-import { generateRoutes } from '@tsoa-next/cli/module/generate-routes'
+import { generateRoutes, getRouteGeneratorImportAttempts } from '@tsoa-next/cli/module/generate-routes'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 
 describe('RouteGenerator', () => {
@@ -263,6 +263,40 @@ describe('RouteGenerator', () => {
         expect(existsSync(join(routesDir, 'stack.ts'))).to.equal(true)
       } finally {
         rmSync(routesDir, { force: true, recursive: true })
+      }
+    })
+
+    it('keeps module resolution precedence for bare route generator specifiers', () => {
+      const packageScope = '@tsoa-test'
+      const packageLeaf = `scope-generator-${Date.now()}`
+      const packageName = `${packageScope}/${packageLeaf}`
+      const localGeneratorFile = join(process.cwd(), packageScope, `${packageLeaf}.ts`)
+
+      try {
+        mkdirSync(join(process.cwd(), packageScope), { recursive: true })
+        writeFileSync(localGeneratorFile, 'export default class LocalRouteGenerator {}', 'utf8')
+        const importAttempts = getRouteGeneratorImportAttempts(packageName)
+
+        expect(importAttempts[0]).to.equal(packageName)
+        expect(importAttempts[1]).not.to.equal(packageName)
+      } finally {
+        rmSync(join(process.cwd(), packageScope), { force: true, recursive: true })
+      }
+    })
+
+    it('prefers local resolution for explicit path-like route generator specifiers when the file exists', () => {
+      const packageLeaf = `local-generator-${Date.now()}`
+      const routeGenerator = `./${packageLeaf}`
+      const localGeneratorFile = join(process.cwd(), `${packageLeaf}.ts`)
+
+      try {
+        writeFileSync(localGeneratorFile, 'export default class LocalRouteGenerator {}', 'utf8')
+        const importAttempts = getRouteGeneratorImportAttempts(routeGenerator)
+
+        expect(importAttempts[0]).not.to.equal(routeGenerator)
+        expect(importAttempts[1]).to.equal(routeGenerator)
+      } finally {
+        rmSync(localGeneratorFile, { force: true, recursive: true })
       }
     })
   })

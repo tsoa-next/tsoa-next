@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import 'mocha'
 import { generateRoutes } from '@tsoa-next/cli/module/generate-routes'
+import { ControllerGenerator } from '@tsoa-next/cli/metadataGeneration/controllerGenerator'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { spy } from 'sinon'
 import * as ts from 'typescript'
@@ -320,6 +321,89 @@ describe('RouteGenerator inherited routes', () => {
 
       expect(generatedRoutes).to.contain("'/override/from-child'")
       expect(generatedRoutes).not.to.contain("'/override/from-base'")
+    })
+  })
+
+  it('resolves inherited method symbols for string-literal method names', async () => {
+    const source = `
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
+
+      type PublicConfig<T extends string> = {
+        value: T;
+      };
+
+      class BaseController<T extends string> extends Controller {
+        @Get('config')
+        public async 'getConfig'(): Promise<PublicConfig<T>> {
+          return { value: 'dice' as T };
+        }
+      }
+
+      @Route('literal')
+      export class ChildController extends BaseController<'dice'> {}
+    `
+
+    await withTempController(source, async paths => {
+      const metadataGenerator = new MetadataGenerator(paths.controllerFile, getTempCompilerOptions())
+      metadataGenerator.Generate()
+
+      const controllerNode = metadataGenerator.controllerNodes[0]
+      if (!controllerNode) {
+        throw new Error('Expected a controller node to be discovered.')
+      }
+
+      const controllerGenerator = new ControllerGenerator(controllerNode, metadataGenerator)
+      const methods = (
+        controllerGenerator as unknown as { getMethodsWithInheritedMethods: () => Array<{ method: ts.MethodDeclaration; resolvedMethodType?: ts.Type }> }
+      ).getMethodsWithInheritedMethods()
+
+      const inheritedMethod = methods.find(method => method.method.name.getText() === "'getConfig'")
+      if (!inheritedMethod) {
+        throw new Error("Expected inherited string-literal method 'getConfig' to be included.")
+      }
+
+      expect(inheritedMethod.resolvedMethodType).to.not.equal(undefined)
+    })
+  })
+
+  it('applies inherited generic context to TsoaResponse headers', async () => {
+    const source = `
+      import { Controller, Get, Res, Route, TsoaResponse } from '@tsoa-next/runtime';
+
+      interface ResponseHeaders<T extends string> {
+        'x-game-name': T;
+      }
+
+      class BaseController<T extends string> extends Controller {
+        @Get('response')
+        public async getResponse(
+          @Res() _res: TsoaResponse<200, string, ResponseHeaders<T>>,
+        ): Promise<string> {
+          return 'ok';
+        }
+      }
+
+      @Route('headers')
+      export class ChildController extends BaseController<'dice'> {}
+    `
+
+    await withTempController(source, async paths => {
+      const metadata = new MetadataGenerator(paths.controllerFile, getTempCompilerOptions()).Generate()
+      const method = metadata.controllers[0]?.methods.find(candidate => candidate.name === 'getResponse')
+      const responseParameter = method?.parameters.find(parameter => parameter.in === 'res')
+      if (!responseParameter || responseParameter.in !== 'res') {
+        throw new Error('Expected an inherited @Res parameter to be emitted.')
+      }
+
+      expect(responseParameter.headers).to.have.property('dataType', 'refObject')
+      expect(responseParameter.headers.properties?.[0]).to.deep.include({
+        name: 'x-game-name',
+        required: true,
+      })
+      expect(responseParameter.headers.properties?.[0].type).to.deep.equal({
+        dataType: 'enum',
+        enums: ['dice'],
+      })
     })
   })
 })

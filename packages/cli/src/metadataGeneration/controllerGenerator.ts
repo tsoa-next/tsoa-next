@@ -8,10 +8,13 @@ import { getHeaderType } from '../utils/headerTypeHelpers'
 import {
   SymbolFlags,
   SyntaxKind,
+  isComputedPropertyName,
   isImportSpecifier,
   isClassDeclaration,
   isIdentifier,
   isMethodDeclaration,
+  isNumericLiteral,
+  isPrefixUnaryExpression,
   isTypeReferenceNode,
   type ExpressionWithTypeArguments,
   type ClassDeclaration,
@@ -300,7 +303,23 @@ export class ControllerGenerator {
     if (!method.name) {
       return undefined
     }
-    return isIdentifier(method.name) ? method.name.text : method.name.getText()
+
+    if (isIdentifier(method.name) || isStringLiteralLike(method.name) || isNumericLiteral(method.name)) {
+      return method.name.text
+    }
+
+    if (isComputedPropertyName(method.name)) {
+      const expression = method.name.expression
+      if (isStringLiteralLike(expression) || isNumericLiteral(expression)) {
+        return expression.text
+      }
+
+      if (isPrefixUnaryExpression(expression) && expression.operator === SyntaxKind.MinusToken && isNumericLiteral(expression.operand)) {
+        return `-${expression.operand.text}`
+      }
+    }
+
+    return method.name.getText()
   }
 
   private getImportModuleSpecifier(declaration: import('typescript').ImportSpecifier) {

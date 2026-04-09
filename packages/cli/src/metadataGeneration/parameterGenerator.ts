@@ -178,7 +178,7 @@ export class ParameterGenerator {
       return (tsType.getFlags() & ts.TypeFlags.NumberLiteral) !== 0
     }
 
-    const headers = getHeaderType(typeNode.typeArguments, 2, this.current)
+    const headers = getHeaderType(typeNode.typeArguments, 2, this.current, this.context)
 
     return statusArgumentTypes.map(statusArgumentType => {
       if (!isNumberLiteralType(statusArgumentType)) {

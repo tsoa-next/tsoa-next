@@ -41,6 +41,10 @@ function normalizeRelativeImportPath(targetPath: string): string {
   return relativePath.startsWith('.') ? relativePath : `./${relativePath}`
 }
 
+function isExplicitPathLikeSpecifier(targetPath: string): boolean {
+  return targetPath.startsWith('.') || path.isAbsolute(targetPath) || /^[A-Za-z]:[\\/]/.test(targetPath)
+}
+
 function localImportCandidateExists(targetPath: string): boolean {
   const resolvedPath = path.resolve(targetPath)
 
@@ -57,14 +61,19 @@ function localImportCandidateExists(targetPath: string): boolean {
   return false
 }
 
+export function getRouteGeneratorImportAttempts(routeGenerator: string): string[] {
+  const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
+  const shouldPreferLocalImport = isExplicitPathLikeSpecifier(routeGenerator) && localImportCandidateExists(routeGenerator)
+  return shouldPreferLocalImport ? [relativeImportPath, routeGenerator] : [routeGenerator, relativeImportPath]
+}
+
 async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: Tsoa.Metadata, routesConfig: Config) {
   // default route generator for express/koa/hapi
   // custom route generator
   const routeGenerator = routesConfig.routeGenerator
   if (routeGenerator !== undefined) {
     if (typeof routeGenerator === 'string') {
-      const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
-      const importAttempts = localImportCandidateExists(routeGenerator) ? [relativeImportPath, routeGenerator] : [routeGenerator, relativeImportPath]
+      const importAttempts = getRouteGeneratorImportAttempts(routeGenerator)
       const importErrors: unknown[] = []
 
       for (const importTarget of importAttempts) {
