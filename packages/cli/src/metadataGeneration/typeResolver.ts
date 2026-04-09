@@ -1801,7 +1801,7 @@ export class TypeResolver {
   }
 
   private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.Node): Context {
-    let newContext: Context = { ...this.context }
+    let newContext: Context = {}
 
     // Inline object types don't contribute generic declarations, so they map to an empty context.
     if (!this.current.typeChecker) {
