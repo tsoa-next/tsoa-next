@@ -1,5 +1,13 @@
 # @tsoa-next/cli
 
+## 8.0.4
+
+### Patch Changes
+
+- 9fdb94a: Fixed inherited route detection for derived controllers whose base class imports `Controller` from `tsoa-next`.
+- 464a0c7: Fixed metadata generation for inherited generic controller routes and `io-ts` request aliases used in real-world controller setups. Also reduced repeated CLI generation work while resolving inherited methods and imported validator types.
+  - @tsoa-next/runtime@8.0.4
+
 ## 8.0.3
 
 ### Patch Changes
