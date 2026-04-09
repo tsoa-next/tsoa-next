@@ -92,6 +92,34 @@ describe('RouteGenerator inherited routes', () => {
     })
   })
 
+  it('emits inherited routes when the base controller imports Controller from tsoa-next', async () => {
+    const source = `
+      import { Controller, Get, Route } from 'tsoa-next';
+
+      class BaseController extends Controller {
+        @Get('from-base')
+        public async fromBase(): Promise<string> {
+          return 'base';
+        }
+      }
+
+      @Route('inherited')
+      export class ChildController extends BaseController {
+        @Get('from-child')
+        public async fromChild(): Promise<string> {
+          return 'child';
+        }
+      }
+    `
+
+    await withTempController(source, async paths => {
+      await generateRoutesForController(paths)
+      const generatedRoutes = await readGeneratedRoutesFile(paths.routesDir)
+      expect(generatedRoutes).to.contain("'/inherited/from-base'")
+      expect(generatedRoutes).to.contain("'/inherited/from-child'")
+    })
+  })
+
   it('imports generated route helpers from tsoa-next for backwards compatibility', async () => {
     const source = `
       import { Controller, Get, Route } from 'tsoa-next';

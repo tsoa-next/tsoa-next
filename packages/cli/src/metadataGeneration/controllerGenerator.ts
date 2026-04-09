@@ -156,23 +156,45 @@ export class ControllerGenerator {
       return false
     }
 
-    if (!(symbol.flags & SymbolFlags.Alias)) {
-      return false
+    const symbolsToSearch = new Set([symbol])
+    let currentSymbol = symbol
+
+    while (currentSymbol.flags & SymbolFlags.Alias) {
+      const aliasedSymbol = this.current.typeChecker.getAliasedSymbol(currentSymbol)
+      if (!aliasedSymbol || aliasedSymbol === currentSymbol) {
+        break
+      }
+
+      symbolsToSearch.add(aliasedSymbol)
+      currentSymbol = aliasedSymbol
     }
 
-    const aliasDeclarations = symbol.declarations || []
-    return aliasDeclarations.some(declaration => {
-      if (!isImportSpecifier(declaration)) {
-        return false
-      }
+    return [...symbolsToSearch].some(candidateSymbol => {
+      const declarations = candidateSymbol.declarations || (candidateSymbol.valueDeclaration ? [candidateSymbol.valueDeclaration] : [])
+      return declarations.some(declaration => {
+        const sourceFileName = declaration.getSourceFile().fileName.replaceAll('\\', '/').toLowerCase()
+        if (
+          sourceFileName.endsWith('/packages/runtime/src/interfaces/controller.ts') ||
+          sourceFileName.endsWith('/packages/runtime/dist/interfaces/controller.d.ts') ||
+          sourceFileName.endsWith('/packages/runtime/dist/interfaces/controller.js') ||
+          sourceFileName.endsWith('/node_modules/@tsoa-next/runtime/dist/interfaces/controller.d.ts') ||
+          sourceFileName.endsWith('/node_modules/@tsoa-next/runtime/dist/interfaces/controller.js')
+        ) {
+          return true
+        }
 
-      const importedName = declaration.propertyName?.text || declaration.name.text
-      if (importedName !== 'Controller') {
-        return false
-      }
+        if (!isImportSpecifier(declaration)) {
+          return false
+        }
 
-      const moduleSpecifier = this.getImportModuleSpecifier(declaration)
-      return moduleSpecifier === '@tsoa-next/runtime'
+        const importedName = declaration.propertyName?.text || declaration.name.text
+        if (importedName !== 'Controller') {
+          return false
+        }
+
+        const moduleSpecifier = this.getImportModuleSpecifier(declaration)
+        return moduleSpecifier === '@tsoa-next/runtime' || moduleSpecifier === 'tsoa-next'
+      })
     })
   }
 
