@@ -7,6 +7,19 @@ import { Tsoa } from '@tsoa-next/runtime'
 import { generateRoutes, getRouteGeneratorImportAttempts } from '@tsoa-next/cli/module/generate-routes'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 
+function withTempWorkingDirectory<T>(prefix: string, run: (tempDir: string) => T): T {
+  const originalCwd = process.cwd()
+  const tempDir = mkdtempSync(join(tmpdir(), prefix))
+
+  try {
+    process.chdir(tempDir)
+    return run(tempDir)
+  } finally {
+    process.chdir(originalCwd)
+    rmSync(tempDir, { force: true, recursive: true })
+  }
+}
+
 describe('RouteGenerator', () => {
   describe('.buildModels', () => {
     it('should produce models where additionalProperties are not allowed unless explicitly stated', () => {
@@ -267,37 +280,34 @@ describe('RouteGenerator', () => {
     })
 
     it('keeps module resolution precedence for bare route generator specifiers', () => {
-      const packageScope = '@tsoa-test'
-      const packageLeaf = `scope-generator-${Date.now()}`
-      const packageName = `${packageScope}/${packageLeaf}`
-      const localGeneratorFile = join(process.cwd(), packageScope, `${packageLeaf}.ts`)
+      withTempWorkingDirectory('tsoa-route-generator-module-precedence-', tempDir => {
+        const packageScope = '@tsoa-test'
+        const packageLeaf = 'scope-generator'
+        const packageName = `${packageScope}/${packageLeaf}`
+        const packageScopeDir = join(tempDir, packageScope)
+        const localGeneratorFile = join(packageScopeDir, `${packageLeaf}.ts`)
 
-      try {
-        mkdirSync(join(process.cwd(), packageScope), { recursive: true })
+        mkdirSync(packageScopeDir, { recursive: true })
         writeFileSync(localGeneratorFile, 'export default class LocalRouteGenerator {}', 'utf8')
         const importAttempts = getRouteGeneratorImportAttempts(packageName)
 
         expect(importAttempts[0]).to.equal(packageName)
         expect(importAttempts[1]).not.to.equal(packageName)
-      } finally {
-        rmSync(join(process.cwd(), packageScope), { force: true, recursive: true })
-      }
+      })
     })
 
     it('prefers local resolution for explicit path-like route generator specifiers when the file exists', () => {
-      const packageLeaf = `local-generator-${Date.now()}`
-      const routeGenerator = `./${packageLeaf}`
-      const localGeneratorFile = join(process.cwd(), `${packageLeaf}.ts`)
+      withTempWorkingDirectory('tsoa-route-generator-local-precedence-', tempDir => {
+        const packageLeaf = 'local-generator'
+        const routeGenerator = `./${packageLeaf}`
+        const localGeneratorFile = join(tempDir, `${packageLeaf}.ts`)
 
-      try {
         writeFileSync(localGeneratorFile, 'export default class LocalRouteGenerator {}', 'utf8')
         const importAttempts = getRouteGeneratorImportAttempts(routeGenerator)
 
         expect(importAttempts[0]).not.to.equal(routeGenerator)
         expect(importAttempts[1]).to.equal(routeGenerator)
-      } finally {
-        rmSync(localGeneratorFile, { force: true, recursive: true })
-      }
+      })
     })
   })
 })
