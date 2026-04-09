@@ -6,7 +6,7 @@ import { GenerateMetadataError } from './exceptions'
 import { getInitializerValue } from './initializer-value'
 import { MetadataGenerator } from './metadataGenerator'
 import { Tsoa } from '@tsoa-next/runtime'
-import { TypeResolver } from './typeResolver'
+import { Context, TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
 import { getParameterExternalValidator } from '../utils/validateDecoratorUtils'
 import type { InitializerValue } from './initializer-value'
@@ -51,6 +51,8 @@ export class ParameterGenerator {
     private readonly method: string,
     private readonly path: string,
     private readonly current: MetadataGenerator,
+    private readonly context: Context = {},
+    private readonly resolvedParameterType?: ts.Type,
   ) {}
 
   public Generate(): Tsoa.Parameter[] {
@@ -185,7 +187,7 @@ export class ParameterGenerator {
 
       const status = String(statusArgumentType.value)
 
-      const type = new TypeResolver(bodyArgument, this.current, typeNode).resolve()
+      const type = new TypeResolver(bodyArgument, this.current, typeNode, this.context).resolve()
       const { examples, exampleLabels } = this.getParameterExample(parameter, parameterName)
       return {
         description: this.getParameterDescription(parameter) || '',
@@ -411,7 +413,7 @@ export class ParameterGenerator {
     try {
       const actualType = this.current.typeChecker.getTypeAtLocation(typeNode)
       const typeNodeFromType = this.current.typeChecker.typeToTypeNode(actualType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
-      const resolvedType = new TypeResolver(typeNodeFromType, this.current, parameter).resolve()
+      const resolvedType = new TypeResolver(typeNodeFromType, this.current, parameter, this.context).resolve()
       return isQueriesType(resolvedType) ? resolvedType : undefined
     } catch (error) {
       console.warn(`Failed to resolve complex type for @Queries('${parameterName}'):`, error)
@@ -634,7 +636,7 @@ export class ParameterGenerator {
   }
 
   private getValidatedType(parameter: ts.ParameterDeclaration) {
-    return new TypeResolver(this.getParameterTypeNode(parameter), this.current, parameter).resolve()
+    return new TypeResolver(this.getParameterTypeNode(parameter), this.current, parameter, this.context, this.resolvedParameterType).resolve()
   }
 
   private getQueryParameterIsHidden(parameter: ts.ParameterDeclaration) {
@@ -670,6 +672,10 @@ export class ParameterGenerator {
   }
 
   private getParameterTypeNode(parameter: ts.ParameterDeclaration): ts.TypeNode {
+    if (this.resolvedParameterType) {
+      return this.current.typeChecker.typeToTypeNode(this.resolvedParameterType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+    }
+
     if (parameter.type) {
       return parameter.type
     }

@@ -154,6 +154,22 @@ function getSchema(spec: Swagger.Spec3, name: string) {
   return spec.components?.schemas?.[name]
 }
 
+function getPropertyNames(type: Tsoa.Type | undefined): string[] {
+  if (!type) {
+    return []
+  }
+
+  if (type.dataType === 'refAlias') {
+    return getPropertyNames(type.type)
+  }
+
+  if (type.dataType === 'refObject' || type.dataType === 'nestedObjectLiteral') {
+    return (type.properties ?? []).map(property => property.name)
+  }
+
+  return []
+}
+
 async function withBackendStyleFixture(
   run: (paths: {
     config: {
@@ -216,6 +232,57 @@ async function withBackendStyleFixture(
         .replaceAll('../packages/runtime/src/index.ts', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/runtime/src/index.ts`)
         .replaceAll('../packages/runtime/src/*', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/runtime/src/*`)
         .replaceAll('../packages/tsoa/src/index.ts', `${sourceRepoRoot.replaceAll('\\', '/')}/packages/tsoa/src/index.ts`),
+      'utf8',
+    )
+
+    await fs.mkdir(join(repoRoot, 'node_modules', 'io-ts'), { recursive: true })
+
+    await fs.writeFile(
+      join(repoRoot, 'node_modules', 'io-ts', 'index.d.ts'),
+      `
+        export type Validation<T> = { readonly right: T; readonly _tag: 'Right' }
+        export type OutputOf<T extends { readonly _O: unknown }> = T['_O']
+        export type TypeOf<T extends { readonly _A: unknown }> = T['_A']
+        export type Context = ReadonlyArray<unknown>
+
+        export class Type<A, O = A, I = unknown> {
+          public readonly _A!: A
+          public readonly _O!: O
+          public readonly _I!: I
+
+          constructor(
+            public readonly name: string,
+            public readonly is: (input: unknown) => input is A,
+            public readonly validate: (input: I, context: Context) => Validation<A>,
+            public readonly encode: (input: A) => O,
+          ) {}
+        }
+
+        export const number = new Type<number, number, unknown>(
+          'number',
+          (input: unknown): input is number => typeof input === 'number',
+          (input: unknown): Validation<number> => ({ _tag: 'Right', right: input as number }),
+          (input: number): number => input,
+        )
+
+        export const type = <P extends Record<string, Type<any, any, any>>>(
+          _props: P,
+        ): Type<
+          { [K in keyof P]: P[K]['_A'] },
+          { [K in keyof P]: P[K]['_O'] },
+          unknown
+        > =>
+          new Type(
+            'type',
+            (_input: unknown): _input is { [K in keyof P]: P[K]['_A'] } => true,
+            (input: unknown): Validation<{ [K in keyof P]: P[K]['_A'] }> => ({
+              _tag: 'Right',
+              right: input as { [K in keyof P]: P[K]['_A'] },
+            }),
+            (input: { [K in keyof P]: P[K]['_A'] }): { [K in keyof P]: P[K]['_O'] } =>
+              input as { [K in keyof P]: P[K]['_O'] },
+          )
+      `,
       'utf8',
     )
 
@@ -288,9 +355,52 @@ async function withBackendStyleFixture(
 
         export interface DiceGameConfig extends PrivateGameConfig {
           maxProfit: number
+          maxPayout: number
+          highrollerThreshold: number
         }
 
         export type DicePublicConfig = PublicGameConfig<DiceGameConfig>
+
+        export interface DiceGameboardResponse {
+          edge: number
+          minBet: number
+          maxBet: number
+          maxProfit: number
+          maxPayout: number
+          highrollerThreshold: number
+        }
+      `,
+      'utf8',
+    )
+
+    await fs.writeFile(
+      join(repoRoot, 'src', 'modules', 'dice', 'types', 'requests.ts'),
+      `
+        import * as t from 'io-ts'
+
+        export interface DiceRollRequestWithLegacyDto {
+          amount: number
+          targetNumber: number
+        }
+
+        const DiceRollRequestWithLegacyInputT = t.type({
+          amount: t.number,
+          targetNumber: t.number,
+        })
+
+        export const DiceRollRequestWithLegacyT = new t.Type<
+          DiceRollRequestWithLegacyDto,
+          t.OutputOf<typeof DiceRollRequestWithLegacyInputT>,
+          unknown
+        >(
+          'DiceRollRequestWithLegacyT',
+          DiceRollRequestWithLegacyInputT.is,
+          (input: unknown, context: t.Context): t.Validation<DiceRollRequestWithLegacyDto> =>
+            DiceRollRequestWithLegacyInputT.validate(input, context),
+          (input: DiceRollRequestWithLegacyDto): t.OutputOf<typeof DiceRollRequestWithLegacyInputT> => input,
+        )
+
+        export type DiceRollRequestWithLegacy = t.TypeOf<typeof DiceRollRequestWithLegacyT>
       `,
       'utf8',
     )
@@ -299,6 +409,7 @@ async function withBackendStyleFixture(
       join(repoRoot, 'src', 'modules', 'dice', 'types', 'index.ts'),
       `
         export * from './domain/game'
+        export * from './requests'
       `,
       'utf8',
     )
@@ -306,21 +417,42 @@ async function withBackendStyleFixture(
     await fs.writeFile(
       join(repoRoot, 'src', 'modules', 'dice', 'lib', 'controllers', 'diceController.ts'),
       `
-        import { Get, Response, Route } from 'tsoa-next'
+        import { Body, Get, Post, Route, Validate } from 'tsoa-next'
         import { GamesController } from 'src/modules/game/lib/controllers/gameController'
-        import { GameSystemError } from 'src/modules/game/types'
-        import { type DiceGameConfig, type DicePublicConfig } from 'src/modules/dice/types'
+        import {
+          type DiceGameConfig,
+          type DiceGameboardResponse,
+          type DiceRollRequestWithLegacy,
+          DiceRollRequestWithLegacyT,
+        } from 'src/modules/dice/types'
 
         @Route('dice')
         export class DiceController extends GamesController<DiceGameConfig> {
-          @Get('config')
-          @Response<GameSystemError>(GameSystemError.httpCode, GameSystemError.httpStatus)
-          public override async getConfig(): Promise<DicePublicConfig> {
+          @Get('gameboard')
+          public async getGameboard(): Promise<DiceGameboardResponse> {
             return {
               edge: 1,
               minBet: 1,
               maxBet: 10,
               maxProfit: 100,
+              maxPayout: 250,
+              highrollerThreshold: 500,
+            }
+          }
+
+          @Post('roll')
+          public async roll(
+            @Body()
+            @Validate('io-ts', DiceRollRequestWithLegacyT)
+            body: DiceRollRequestWithLegacy,
+          ): Promise<DiceGameboardResponse> {
+            return {
+              edge: body.targetNumber,
+              minBet: body.amount,
+              maxBet: 10,
+              maxProfit: 100,
+              maxPayout: 250,
+              highrollerThreshold: 500,
             }
           }
         }
@@ -577,10 +709,14 @@ describe('Backward compatibility regressions', () => {
         routesDir: config.routes.routesDir,
       })
       const models = routeGenerator.buildModels()
+      const diceController = metadata.controllers.find(controller => controller.name === 'DiceController')
 
       expect(compilerOptions.baseUrl?.replaceAll('\\', '/')).to.equal(resolve(configBaseDir, '../../..').replaceAll('\\', '/'))
 
-      expect(metadata.referenceTypeMap).to.have.property('DicePublicConfig')
+      expect(metadata.referenceTypeMap).to.have.property('PublicGameConfig_DiceGameConfig_')
+      expect(metadata.referenceTypeMap).to.have.property('DiceGameboardResponse')
+      expect(metadata.referenceTypeMap).to.have.property('DiceRollRequestWithLegacy')
+      expect(metadata.referenceTypeMap).to.have.property('DiceRollRequestWithLegacyDto')
       expect(metadata.referenceTypeMap).to.have.property('GameSystemError')
       expect(metadata.referenceTypeMap).to.have.property('BalanceTypesConfig')
       expect(metadata.referenceTypeMap).to.have.property('SlideConfig')
@@ -589,7 +725,6 @@ describe('Backward compatibility regressions', () => {
       expect(metadata.referenceTypeMap).to.have.property('PublicGameConfig_LimboGameConfig_')
       expect(metadata.referenceTypeMap).to.have.property('LimboPublicConfig')
 
-      expect((getSchema(spec, 'DicePublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_DiceGameConfig_')
       expect((getSchema(spec, 'BlackjackPublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_BlackjackConfig_')
       expect((getSchema(spec, 'LimboPublicConfig') as Swagger.Schema3).$ref).to.equal('#/components/schemas/PublicGameConfig_LimboGameConfig_')
 
@@ -599,9 +734,32 @@ describe('Backward compatibility regressions', () => {
       const gameSystemError = getSchema(spec, 'GameSystemError') as Swagger.Schema3
       expect(gameSystemError.type).to.equal('object')
 
-      expect(models).to.have.property('DicePublicConfig')
+      expect(diceController?.methods.map(method => method.name)).to.include('getConfig')
+      expect(spec.paths['/dice/config']).to.have.property('get')
+      expect(spec.paths['/dice/gameboard']).to.have.property('get')
+      expect(spec.paths['/dice/roll']).to.have.property('post')
+      expect((spec.paths['/dice/config'].get!.responses['200'] as Swagger.Response3).content?.['application/json'].schema).to.deep.equal({
+        $ref: '#/components/schemas/PublicGameConfig_DiceGameConfig_',
+      })
+      expect((spec.paths['/dice/gameboard'].get!.responses['200'] as Swagger.Response3).content?.['application/json'].schema).to.deep.equal({
+        $ref: '#/components/schemas/DiceGameboardResponse',
+      })
+      expect((spec.paths['/dice/roll'].post!.requestBody as Swagger.RequestBody3).content?.['application/json'].schema).to.deep.equal({
+        allOf: [{ $ref: '#/components/schemas/DiceRollRequestWithLegacy' }],
+        'x-schema-validator': 'io-ts',
+      })
+      expect((getSchema(spec, 'DiceRollRequestWithLegacy') as Swagger.Schema3).$ref).to.equal('#/components/schemas/DiceRollRequestWithLegacyDto')
+
+      expect(models).to.have.property('PublicGameConfig_DiceGameConfig_')
+      expect(models).to.have.property('DiceGameboardResponse')
+      expect(models).to.have.property('DiceRollRequestWithLegacy')
+      expect(models).to.have.property('DiceRollRequestWithLegacyDto')
       expect(models).to.have.property('GameSystemError')
       expect(models).to.have.property('SlideConfig')
+
+      const diceConfigProperties = getPropertyNames(metadata.referenceTypeMap.PublicGameConfig_DiceGameConfig_)
+      expect(diceConfigProperties).to.include.members(['edge', 'minBet', 'maxBet', 'maxProfit', 'maxPayout', 'highrollerThreshold'])
+      expect(diceConfigProperties).to.not.include('seed')
     })
   })
 

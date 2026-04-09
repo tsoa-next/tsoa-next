@@ -2,7 +2,7 @@ import { getDecorators, getDecoratorValues, getProduces, getSecurites } from './
 import { GenerateMetadataError } from './exceptions'
 import { MetadataGenerator } from './metadataGenerator'
 import { MethodGenerator } from './methodGenerator'
-import { TypeResolver } from './typeResolver'
+import { Context, TypeResolver } from './typeResolver'
 import { Tsoa } from '@tsoa-next/runtime'
 import { getHeaderType } from '../utils/headerTypeHelpers'
 import {
@@ -12,13 +12,27 @@ import {
   isClassDeclaration,
   isIdentifier,
   isMethodDeclaration,
+  isTypeReferenceNode,
   type ExpressionWithTypeArguments,
   type ClassDeclaration,
   type MethodDeclaration,
   type CallExpression,
   type StringLiteral,
+  type Type,
   isStringLiteralLike,
 } from 'typescript'
+
+type InheritedMethod = {
+  context: Context
+  method: MethodDeclaration
+  resolvedMethodType?: Type
+}
+
+type InheritedClass = {
+  classDeclaration: ClassDeclaration
+  context: Context
+  resolvedType?: Type
+}
 
 export class ControllerGenerator {
   private readonly path?: string
@@ -66,39 +80,51 @@ export class ControllerGenerator {
 
   private buildMethods() {
     return this.getMethodsWithInheritedMethods()
-      .map(m => new MethodGenerator(m, this.current, this.commonResponses, this.path, this.tags, this.security, this.isHidden))
+      .map(
+        ({ method, context, resolvedMethodType }) => new MethodGenerator(method, this.current, this.commonResponses, this.path, this.tags, this.security, this.isHidden, context, resolvedMethodType),
+      )
       .filter(generator => generator.IsValid())
       .map(generator => generator.Generate())
   }
 
-  private getMethodsWithInheritedMethods(): MethodDeclaration[] {
+  private getMethodsWithInheritedMethods(): InheritedMethod[] {
     const inheritanceChain = this.getInheritanceChainForRoutes()
     if (inheritanceChain.length === 1) {
-      return this.node.members.filter(isMethodDeclaration)
+      return this.node.members.filter(isMethodDeclaration).map(method => ({ context: {}, method }))
     }
 
     // Process from base to derived so derived classes can override inherited names.
-    const methodsByName = new Map<string, MethodDeclaration>()
-    ;[...inheritanceChain].reverse().forEach(classDeclaration => {
+    const methodsByName = new Map<string, InheritedMethod>()
+    ;[...inheritanceChain].reverse().forEach(({ classDeclaration, context, resolvedType }) => {
       classDeclaration.members.filter(isMethodDeclaration).forEach(method => {
         const key = this.getMethodKey(method)
         if (!key) {
           return
         }
-        methodsByName.set(key, method)
+        methodsByName.set(key, {
+          context,
+          method,
+          resolvedMethodType: classDeclaration === this.node ? undefined : this.getResolvedMethodType(resolvedType, method),
+        })
       })
     })
 
     return [...methodsByName.values()]
   }
 
-  private getInheritanceChainForRoutes(): ClassDeclaration[] {
-    const chain: ClassDeclaration[] = [this.node]
+  private getInheritanceChainForRoutes(): InheritedClass[] {
+    const chain: InheritedClass[] = [
+      {
+        classDeclaration: this.node,
+        context: {},
+        resolvedType: this.node.name ? this.current.typeChecker.getTypeAtLocation(this.node.name) : undefined,
+      },
+    ]
     let hasRuntimeControllerBase = false
-    let currentClass: ClassDeclaration | undefined = this.node
+    let currentClass: InheritedClass | undefined = chain[0]
 
     while (currentClass) {
-      const { baseClass, extendsRuntimeController } = this.getDirectBaseClassInfo(currentClass)
+      const { baseClass, baseContext, baseResolvedType, extendsRuntimeController } = this.getDirectBaseClassInfo(currentClass.classDeclaration, currentClass.context)
       if (extendsRuntimeController) {
         hasRuntimeControllerBase = true
         break
@@ -108,22 +134,29 @@ export class ControllerGenerator {
         break
       }
 
-      chain.push(baseClass)
-      currentClass = baseClass
+      currentClass = {
+        classDeclaration: baseClass,
+        context: baseContext,
+        resolvedType: baseResolvedType,
+      }
+      chain.push(currentClass)
     }
 
-    return hasRuntimeControllerBase ? chain : [this.node]
+    return hasRuntimeControllerBase ? chain : [chain[0]]
   }
 
-  private getDirectBaseClassInfo(classDeclaration: ClassDeclaration): { baseClass?: ClassDeclaration; extendsRuntimeController: boolean } {
+  private getDirectBaseClassInfo(
+    classDeclaration: ClassDeclaration,
+    context: Context,
+  ): { baseClass?: ClassDeclaration; baseContext: Context; baseResolvedType?: Type; extendsRuntimeController: boolean } {
     const extendsClause = classDeclaration.heritageClauses?.find(clause => clause.token === SyntaxKind.ExtendsKeyword)
     const extendsType = extendsClause?.types[0]
     if (!extendsType) {
-      return { extendsRuntimeController: false }
+      return { baseContext: context, extendsRuntimeController: false }
     }
 
     if (this.extendsRuntimeController(extendsType)) {
-      return { extendsRuntimeController: true }
+      return { baseContext: context, extendsRuntimeController: true }
     }
 
     const expression = extendsType.expression
@@ -142,11 +175,76 @@ export class ControllerGenerator {
       const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
       const classDeclarationNode = declarations.find(isClassDeclaration)
       if (classDeclarationNode) {
-        return { baseClass: classDeclarationNode, extendsRuntimeController: false }
+        return {
+          baseClass: classDeclarationNode,
+          baseContext: this.getInheritedClassContext(extendsType, classDeclarationNode, context),
+          baseResolvedType: this.current.typeChecker.getTypeAtLocation(extendsType),
+          extendsRuntimeController: false,
+        }
       }
     }
 
-    return { extendsRuntimeController: false }
+    return { baseContext: context, extendsRuntimeController: false }
+  }
+
+  private getInheritedClassContext(extendsType: ExpressionWithTypeArguments, baseClass: ClassDeclaration, context: Context): Context {
+    let nextContext: Context = { ...context }
+    const typeParameters = baseClass.typeParameters
+    if (!typeParameters?.length) {
+      return nextContext
+    }
+
+    for (let index = 0; index < typeParameters.length; index += 1) {
+      const typeParameter = typeParameters[index]
+      const typeArgument = extendsType.typeArguments?.[index]
+      let resolvedType: import('typescript').TypeNode
+      let name: string | undefined
+      let resolvedTsType: Type | undefined
+
+      if (typeArgument && isTypeReferenceNode(typeArgument) && isIdentifier(typeArgument.typeName) && context[typeArgument.typeName.text]) {
+        const contextualType = context[typeArgument.typeName.text]
+        resolvedType = contextualType.type
+        name = contextualType.name
+        resolvedTsType = contextualType.resolvedType
+      } else if (typeArgument) {
+        resolvedType = typeArgument
+        resolvedTsType = this.current.typeChecker.getTypeFromTypeNode(resolvedType)
+      } else if (typeParameter.default) {
+        resolvedType = typeParameter.default
+        resolvedTsType = this.current.typeChecker.getTypeFromTypeNode(resolvedType)
+      } else {
+        throw new GenerateMetadataError(`Could not find a value for type parameter ${typeParameter.name.text}`, extendsType)
+      }
+
+      nextContext = {
+        ...nextContext,
+        [typeParameter.name.text]: {
+          name: name || this.current.typeChecker.typeToString(this.current.typeChecker.getTypeFromTypeNode(resolvedType)),
+          resolvedType: resolvedTsType,
+          type: resolvedType,
+        },
+      }
+    }
+
+    return nextContext
+  }
+
+  private getResolvedMethodType(type: Type | undefined, method: MethodDeclaration): Type | undefined {
+    if (!type) {
+      return undefined
+    }
+
+    const key = this.getMethodKey(method)
+    if (!key) {
+      return undefined
+    }
+
+    const symbol = type.getProperty(key)
+    if (!symbol) {
+      return undefined
+    }
+
+    return this.current.typeChecker.getTypeOfSymbolAtLocation(symbol, method)
   }
 
   private extendsRuntimeController(extendsType: ExpressionWithTypeArguments): boolean {

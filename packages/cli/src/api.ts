@@ -506,8 +506,7 @@ export async function generateRoutesFromArgs(args: ConfigArgs) {
 export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.Metadata) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
-  const swaggerConfig = await validateSpecConfig(config)
-  const routesConfig = await validateRoutesConfig(config)
+  const [swaggerConfig, routesConfig] = await Promise.all([validateSpecConfig(config), validateRoutesConfig(config)])
   applySwaggerArgs(swaggerConfig, args)
   applyBasePathArg(routesConfig, args)
 

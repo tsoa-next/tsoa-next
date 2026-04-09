@@ -9,7 +9,7 @@ import { MetadataGenerator } from './metadataGenerator'
 import { ParameterGenerator } from './parameterGenerator'
 
 import { Tsoa } from '@tsoa-next/runtime'
-import { TypeResolver } from './typeResolver'
+import { Context, TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
 import type { InitializerValue } from './initializer-value'
 
@@ -42,6 +42,7 @@ export class MethodGenerator {
   protected path?: string
   private produces?: string[]
   private consumes?: string
+  private resolvedMethodSignature?: ts.Signature | null
 
   constructor(
     private readonly node: ts.MethodDeclaration,
@@ -51,6 +52,8 @@ export class MethodGenerator {
     private readonly parentTags?: string[],
     private readonly parentSecurity?: Tsoa.Security[],
     private readonly isParentHidden?: boolean,
+    private readonly context: Context = {},
+    private readonly resolvedMethodType?: ts.Type,
   ) {
     this.processMethodDecorators()
   }
@@ -65,13 +68,21 @@ export class MethodGenerator {
     }
 
     let nodeType = this.node.type
+    let resolvedReturnType: ts.Type | undefined
+    if (this.resolvedMethodType) {
+      const signature = this.getResolvedMethodSignature()
+      resolvedReturnType = signature?.getReturnType()
+      if (resolvedReturnType) {
+        nodeType = this.current.typeChecker.typeToTypeNode(resolvedReturnType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+      }
+    }
     if (!nodeType) {
       const typeChecker = this.current.typeChecker
       const signature = typeChecker.getSignatureFromDeclaration(this.node)
       const implicitType = typeChecker.getReturnTypeOfSignature(signature!)
       nodeType = typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
     }
-    const type = new TypeResolver(nodeType, this.current).resolve()
+    const type = new TypeResolver(nodeType, this.current, this.node, this.context, resolvedReturnType).resolve()
     const responses = this.commonResponses.concat(this.getMethodResponses())
     const { response: successResponse, status: successStatus } = this.getMethodSuccessResponse(type)
     responses.push(successResponse)
@@ -107,9 +118,10 @@ export class MethodGenerator {
 
     const fullPath = path.join(this.parentPath || '', this.path)
     const method = this.method
+    const resolvedParameterTypes = this.getResolvedParameterTypes()
     const parameters = this.node.parameters.flatMap(p => {
       try {
-        return new ParameterGenerator(p, method, fullPath, this.current).Generate()
+        return new ParameterGenerator(p, method, fullPath, this.current, this.context, resolvedParameterTypes.get(p)).Generate()
       } catch (e) {
         const methodId = this.node.name as ts.Identifier
         const controllerId = (this.node.parent as ts.ClassDeclaration).name as ts.Identifier
@@ -122,6 +134,39 @@ export class MethodGenerator {
     this.validateQueryParameters(parameters)
 
     return parameters
+  }
+
+  private getResolvedParameterTypes(): Map<ts.ParameterDeclaration, ts.Type> {
+    const resolvedParameterTypes = new Map<ts.ParameterDeclaration, ts.Type>()
+    if (!this.resolvedMethodType) {
+      return resolvedParameterTypes
+    }
+
+    const signature = this.getResolvedMethodSignature()
+    if (!signature) {
+      return resolvedParameterTypes
+    }
+
+    const parameters = signature.getParameters()
+    this.node.parameters.forEach((parameter, index) => {
+      const symbol = parameters[index]
+      if (!symbol) {
+        return
+      }
+
+      resolvedParameterTypes.set(parameter, this.current.typeChecker.getTypeOfSymbolAtLocation(symbol, parameter))
+    })
+
+    return resolvedParameterTypes
+  }
+
+  private getResolvedMethodSignature(): ts.Signature | undefined {
+    if (this.resolvedMethodSignature !== undefined) {
+      return this.resolvedMethodSignature ?? undefined
+    }
+
+    this.resolvedMethodSignature = this.resolvedMethodType ? (this.current.typeChecker.getSignaturesOfType(this.resolvedMethodType, ts.SignatureKind.Call)[0] ?? null) : null
+    return this.resolvedMethodSignature ?? undefined
   }
 
   private validateBodyParameters(parameters: Tsoa.Parameter[]) {
@@ -287,14 +332,14 @@ export class MethodGenerator {
     if (!ts.isCallExpression(expression)) {
       return undefined
     }
-    return getHeaderType(expression.typeArguments, headersIndex, this.current)
+    return getHeaderType(expression.typeArguments, headersIndex, this.current, this.context)
   }
 
   private getSchemaFromDecorator({ parent: expression }: ts.Identifier, schemaIndex: number): Tsoa.Type | undefined {
     if (!ts.isCallExpression(expression) || !expression.typeArguments?.length) {
       return undefined
     }
-    return new TypeResolver(expression.typeArguments[schemaIndex], this.current).resolve()
+    return new TypeResolver(expression.typeArguments[schemaIndex], this.current, expression, this.context).resolve()
   }
 
   private getMethodSuccessExamples() {
