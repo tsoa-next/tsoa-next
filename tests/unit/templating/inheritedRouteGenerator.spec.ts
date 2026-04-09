@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import 'mocha'
+import type { Tsoa } from '@tsoa-next/runtime'
 import { generateRoutes } from '@tsoa-next/cli/module/generate-routes'
 import { ControllerGenerator } from '@tsoa-next/cli/metadataGeneration/controllerGenerator'
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
@@ -390,17 +391,21 @@ describe('RouteGenerator inherited routes', () => {
     await withTempController(source, async paths => {
       const metadata = new MetadataGenerator(paths.controllerFile, getTempCompilerOptions()).Generate()
       const method = metadata.controllers[0]?.methods.find(candidate => candidate.name === 'getResponse')
-      const responseParameter = method?.parameters.find(parameter => parameter.in === 'res')
-      if (!responseParameter || responseParameter.in !== 'res') {
+      const responseParameter = method?.parameters.find(parameter => parameter.in === 'res') as Tsoa.ResParameter | undefined
+      if (!responseParameter) {
         throw new Error('Expected an inherited @Res parameter to be emitted.')
       }
+      const { headers } = responseParameter
+      if (!headers) {
+        throw new Error('Expected inherited @Res metadata to include headers.')
+      }
 
-      expect(responseParameter.headers).to.have.property('dataType', 'refObject')
-      expect(responseParameter.headers.properties?.[0]).to.deep.include({
+      expect(headers).to.have.property('dataType', 'refObject')
+      expect(headers.properties?.[0]).to.deep.include({
         name: 'x-game-name',
         required: true,
       })
-      expect(responseParameter.headers.properties?.[0].type).to.deep.equal({
+      expect(headers.properties?.[0].type).to.deep.equal({
         dataType: 'enum',
         enums: ['dice'],
       })
