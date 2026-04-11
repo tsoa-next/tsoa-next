@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative, sep } from 'node:path'
 import 'mocha'
@@ -110,6 +110,41 @@ describe('CLI discovery', () => {
     const discoveryResult = await discoverConfigs(rootDir)
 
     expect(discoveryResult.matches).to.have.length(1)
+  })
+
+  it('throws a clear error when a discover path is a broken symlink', async function () {
+    const rootDir = await mkdtemp(join(tmpdir(), 'tsoa-discovery-broken-symlink-'))
+    temporaryDirectories.add(rootDir)
+
+    const danglingTarget = join(rootDir, 'missing', 'tsoa.json')
+    const brokenLink = join(rootDir, 'broken-tsoa.json')
+
+    try {
+      await symlink(danglingTarget, brokenLink, 'file')
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && (error.code === 'EPERM' || error.code === 'EACCES')) {
+        this.skip()
+        return
+      }
+
+      throw error
+    }
+
+    let thrownError: Error | undefined
+
+    try {
+      await discoverConfigs(brokenLink)
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    } finally {
+      await unlink(brokenLink).catch(() => undefined)
+    }
+
+    expect(thrownError?.message).to.equal(`Discover path '${brokenLink}' does not exist.`)
   })
 
   it('throws a clear error when a discover glob matches no filesystem entries', async () => {

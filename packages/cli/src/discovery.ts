@@ -161,7 +161,16 @@ const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
   } else if (rootStats.isFile()) {
     await addDiscoveredConfig(resolvedPath, resolvedPath, seenFileRealPaths, results)
   } else if (rootStats.isSymbolicLink()) {
-    const symbolicTargetStats = await stat(resolvedPath)
+    let symbolicTargetStats: Stats
+    try {
+      symbolicTargetStats = await stat(resolvedPath)
+    } catch (error) {
+      if (isFileSystemMissingError(error)) {
+        throw new Error(`Discover path '${input}' does not exist.`)
+      }
+
+      throw error
+    }
     if (symbolicTargetStats.isDirectory()) {
       await scanDirectoryTree(resolvedPath, resolvedPath, seenDirectoryRealPaths, seenFileRealPaths, results)
     } else if (symbolicTargetStats.isFile()) {
