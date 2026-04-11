@@ -21,7 +21,6 @@ export interface DiscoveryResult {
 }
 
 type DirectoryLikeEntry = {
-  name: string
   path: string
 }
 
@@ -87,7 +86,6 @@ const enqueueDirectoryIfIncluded = (pendingDirectories: DirectoryLikeEntry[], pa
   }
 
   pendingDirectories.push({
-    name,
     path: join(parentPath, name),
   })
 }
@@ -163,7 +161,7 @@ const processRootPath = async (rootPath: string, rootStats: Stats, displayBasePa
 }
 
 const scanDirectoryTree = async (rootPath: string, displayBasePath: string, accumulator: DiscoveryAccumulator): Promise<void> => {
-  const pendingDirectories: DirectoryLikeEntry[] = [{ name: basename(rootPath), path: rootPath }]
+  const pendingDirectories: DirectoryLikeEntry[] = [{ path: rootPath }]
 
   while (pendingDirectories.length > 0) {
     const currentDirectory = pendingDirectories.pop()
@@ -195,7 +193,7 @@ const resolvePathInput = (input: string): string => {
 
 const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
   const resolvedPath = resolvePathInput(input)
-  let rootStats = undefined as Stats | undefined
+  let rootStats: Stats
   try {
     rootStats = await lstat(resolvedPath)
   } catch (error) {
@@ -207,10 +205,6 @@ const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
   }
 
   const accumulator = createDiscoveryAccumulator()
-
-  if (!rootStats) {
-    throw new Error(`Discover path '${input}' does not exist.`)
-  }
 
   if (rootStats.isSymbolicLink()) {
     const symbolicTargetStats = await getRequiredSymbolicTargetStats(input, resolvedPath)

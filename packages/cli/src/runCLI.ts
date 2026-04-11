@@ -186,12 +186,7 @@ const runTasksWithConcurrency = async <T>(limit: number, tasks: Array<() => Prom
       nextTaskIndex += 1
 
       try {
-        const currentTask = tasks[currentTaskIndex]
-        if (!currentTask) {
-          continue
-        }
-
-        const value = await currentTask()
+        const value = await tasks[currentTaskIndex]()
         results[currentTaskIndex] = {
           status: 'fulfilled',
           value,
