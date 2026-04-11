@@ -80,6 +80,7 @@ jobs:
         with:
           package: ${{ steps.github-package.outputs.dir }}
           registry: https://npm.pkg.github.com
+          tag: latest
           token: ${{ secrets.GITHUB_TOKEN }}
 
   publish-dev-build:

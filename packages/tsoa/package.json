@@ -9,7 +9,7 @@
     "tsoa-next-logo-590.png"
   ],
   "bin": {
-    "tsoa": "dist/cli.js"
+    "tsoa": "dist/cli-bin.js"
   },
   "scripts": {
     "build": "npm run tsc",

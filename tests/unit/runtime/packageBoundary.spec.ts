@@ -80,4 +80,14 @@ describe('Package boundary', () => {
       },
     )
   })
+
+  it('loads runCLI without touching heavy generation dependencies eagerly', () => {
+    withBlockedRequires(
+      id => id === './api' || id === 'typescript' || id === 'yaml' || id.endsWith('/api') || id.endsWith('/module/generate-routes') || id.endsWith('/module/generate-spec'),
+      () => {
+        clearModule('../../../packages/cli/src/runCLI')
+        require('../../../packages/cli/src/runCLI')
+      },
+    )
+  })
 })

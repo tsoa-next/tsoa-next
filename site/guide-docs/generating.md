@@ -10,6 +10,12 @@ tsoa spec
 
 # generate routes
 tsoa routes
+
+# discover config files beneath the current directory
+tsoa discover
+
+# discover config files beneath a path or glob
+tsoa discover "packages/*"
 ```
 
 ### Options
@@ -21,6 +27,7 @@ Usage: tsoa spec [options]
 
 Options:
    --configuration, -c  tsoa configuration file; default is tsoa.json in the working directory  [string]
+   --discover  discover tsoa config files using a path or glob before running the command       [string]
    --host  API host                                                                             [string]
    --basePath  Base API path                                                                    [string]
 ```
@@ -32,7 +39,30 @@ Usage: tsoa routes [options]
 
 Options:
   --configuration, -c  tsoa configuration file; default is tsoa.json in the working directory   [string]
+  --discover  discover tsoa config files using a path or glob before running the command        [string]
   --basePath  Base API path                                                                     [string]
+```
+
+#### Config discovery
+
+```
+Usage: tsoa discover [pathOrGlob]
+```
+
+- `discover` searches beneath the provided path, or beneath the current working directory when no argument is provided.
+- Glob inputs are supported, so commands like `tsoa discover "packages/*"` or `tsoa spec --discover "services/*"` will expand matching roots first.
+- Discovery recognizes these conventional config filenames:
+  - `tsoa.json`
+  - `tsoa.yaml`
+  - `tsoa.yml`
+  - `tsoa.config.js`
+  - `tsoa.config.cjs`
+- `spec`, `routes`, and `spec-and-routes` can fan out across all discovered configs:
+
+```bash
+tsoa spec --discover "packages/*"
+tsoa routes --discover "./services"
+tsoa spec-and-routes --discover .
 ```
 
 You can find the Reference for the tsoa configuration file [here](../reference/interfaces/tsoa-next.Config.html)
