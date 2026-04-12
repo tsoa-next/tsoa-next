@@ -39,6 +39,30 @@
     "@types/node": "24.12.0",
     "typescript": "^5.9.3"
   },
+  "peerDependencies": {
+    "hapi-swagger": "^17.3.2",
+    "rapidoc": "^9.3.8",
+    "redoc": "^2.5.2",
+    "swagger-ui-express": "^5.0.1",
+    "swagger-ui-koa": "^0.0.1"
+  },
+  "peerDependenciesMeta": {
+    "hapi-swagger": {
+      "optional": true
+    },
+    "rapidoc": {
+      "optional": true
+    },
+    "redoc": {
+      "optional": true
+    },
+    "swagger-ui-express": {
+      "optional": true
+    },
+    "swagger-ui-koa": {
+      "optional": true
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/tsoa-next/tsoa-next.git",

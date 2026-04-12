@@ -55,6 +55,8 @@ describe('Package boundary', () => {
 
         expect(runtime.Get).to.be.a('function')
         expect(runtime.Route).to.be.a('function')
+        expect(runtime.SpecPath).to.be.a('function')
+        expect(runtime.createOpenApiSpecGenerator).to.be.a('function')
         expect('generateRoutes' in runtime).to.equal(false)
         expect('generateSpec' in runtime).to.equal(false)
         expect('generateSpecAndRoutes' in runtime).to.equal(false)

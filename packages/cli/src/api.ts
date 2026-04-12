@@ -1,5 +1,5 @@
 import { parse as parseYAML } from 'yaml'
-import { Config, RoutesConfig, SpecConfig, Tsoa } from '@tsoa-next/runtime'
+import { Config, RoutesConfig, RuntimeSpecConfigSnapshot, SpecConfig, Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
 import { generateRoutes } from './module/generate-routes'
@@ -403,7 +403,7 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
     ...config.spec,
     noImplicitAdditionalProperties,
     entryFile: config.entryFile,
-    controllerPathGlobs: config.controllerPathGlobs,
+    controllerPathGlobs: config.controllerPathGlobs?.length ? config.controllerPathGlobs : undefined,
   }
 }
 
@@ -414,6 +414,7 @@ export interface ExtendedRoutesConfig extends RoutesConfig {
   controllerPathGlobs?: Config['controllerPathGlobs']
   multerOpts?: MulterOptions
   rootSecurity?: Config['spec']['rootSecurity']
+  runtimeSpecConfig?: RuntimeSpecConfigSnapshot
   routeGenerator?: string | (new (metadata: Tsoa.Metadata, options: ExtendedRoutesConfig) => AbstractRouteGenerator<ExtendedRoutesConfig>)
 }
 
@@ -438,6 +439,17 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   }
 
   const noImplicitAdditionalProperties = determineNoImplicitAdditionalSetting(config.noImplicitAdditionalProperties)
+  const runtimeSpecConfig =
+    config.spec && config.entryFile
+      ? {
+          compilerOptions: config.compilerOptions,
+          defaultNumberType: config.defaultNumberType,
+          ignore: config.ignore,
+          spec: {
+            ...(await validateSpecConfig(config)),
+          },
+        }
+      : undefined
 
   const bodyCoercion = routes.bodyCoercion ?? true
 
@@ -448,9 +460,10 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
     entryFile: config.entryFile,
     noImplicitAdditionalProperties,
     bodyCoercion,
-    controllerPathGlobs: config.controllerPathGlobs,
+    controllerPathGlobs: config.controllerPathGlobs?.length ? config.controllerPathGlobs : undefined,
     multerOpts: getLegacyMulterOptions(config),
     rootSecurity: config.spec?.rootSecurity,
+    runtimeSpecConfig,
   }
 }
 

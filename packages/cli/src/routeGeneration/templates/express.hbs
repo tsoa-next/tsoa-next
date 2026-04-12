@@ -2,7 +2,7 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
-import {  fetchMiddlewares, ExpressTemplateService } from 'tsoa-next';
+import { createOpenApiSpecGenerator, fetchMiddlewares, fetchSpecPaths, normalisePath, resolveSpecPathResponse, ExpressTemplateService } from 'tsoa-next';
 {{#each controllers}}
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
@@ -49,6 +49,11 @@ const models: TsoaRoute.Models = {
     },
     {{/each}}
 };
+{{#if runtimeSpecConfig}}
+const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
+{{else}}
+const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 
 {{#if useFileUploads}}
 export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
@@ -67,6 +72,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
       validation: opts?.validation,
     };
     const templateService = new ExpressTemplateService(models, additionalProps);
+    const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
     {{#each controllers}}
     {{#each actions}}
 
@@ -124,6 +130,43 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
             }
         });
     {{/each}}
+    {{/each}}
+    {{#each controllers}}
+    for (const specPath of fetchSpecPaths({{name}})) {
+        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
+        if (registeredGetPaths.has(specFullPath)) {
+            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
+        }
+        registeredGetPaths.add(specFullPath);
+
+        app.get(specFullPath, async function {{name}}_specPath(request: ExRequest, response: ExResponse, next: any) {
+            try {
+                const specResponse = await resolveSpecPathResponse({
+                    controllerClass: {{name}},
+                    fullPath: specFullPath,
+                    request,
+                    response,
+                    runtime: 'express',
+                    specGenerator,
+                    specPath,
+                });
+
+                if (specResponse.contentType) {
+                    response.type(specResponse.contentType);
+                }
+
+                response.status(200);
+                if (typeof specResponse.body === 'string') {
+                    response.send(specResponse.body);
+                    return;
+                }
+
+                specResponse.body.pipe(response);
+            } catch (err) {
+                return next(err);
+            }
+        });
+    }
     {{/each}}
     {{#if useSecurity}}
 

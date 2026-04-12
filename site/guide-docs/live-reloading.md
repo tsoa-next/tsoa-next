@@ -58,67 +58,66 @@ Let's automatically start this setup with `npm run dev`, and, while we're at it,
 }
 ```
 
-## Supercharging our developer experience with SwaggerUI :rocket:
+## Supercharging our developer experience with `@SpecPath`
 
-[SwaggerUI](https://swagger.io/tools/swagger-ui/) is a great tool to inspect our OAS and the requests our server can handle.
+`@SpecPath(...)` lets a controller expose a live spec or docs endpoint without reading `swagger.json` or `openapi.yaml` from disk at request time.
+That makes it a good fit for development workflows where you want the generated documentation to stay in sync with the same controller metadata your routes already use.
 
-While other great tools like [Redoc](https://github.com/Redocly/redoc) serve beautiful documentation, a major upside of using SwaggerUI during development is the instant feedback via the "Try it out" feature.
+### Installing a docs UI peer
 
-In order to make sure we always get the latest documentation during _development_, we will import the latest OAS file (_build/swagger.json_) every time someone hits that endpoint.
+Pick the docs UI target you want to use:
 
-::: danger
-For performance reasons, importing the contents of the OAS file only once after starting the application is recommended in _production_.
-:::
+- Express: `npm i swagger-ui-express`
+- Koa: `npm i swagger-ui-koa`
+- Hapi: `npm i hapi-swagger`
+- Redoc: `npm i redoc`
+- RapiDoc: `npm i rapidoc`
 
-### Installing Swagger UI Express
+### Exposing a controller-scoped docs endpoint
 
-This module allows you to serve auto-generated swagger-ui generated API docs from express, based on our OAS file. The result is living documentation for your API hosted from your API server via a route.
-
-```bash
-npm i swagger-ui-express
-npm i -D @types/swagger-ui-express
-```
-
-### Exposing a `/docs` endpoint
-
-Below the body-parser, let's add another handler **before the call to `RegisterRoutes(app)`**
+Attach one or more `@SpecPath(...)` decorators to an existing controller:
 
 ```ts
-// src/app.ts
+import { Controller, Get, Route, SpecPath } from 'tsoa-next'
 
-import express, { Response as ExResponse, Request as ExRequest } from 'express'
-import swaggerUi from 'swagger-ui-express'
-
-// ...
-
-app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
-  return res.send(swaggerUi.generateHTML(await import('../build/swagger.json')))
-})
-```
-
-::: tip
-In order to dynamically import json files, set
-
-```json
-{
-  "compilerOptions": {
-    "resolveJsonModule": true
+@Route('users')
+@SpecPath()
+@SpecPath('openapi.yaml', 'yaml')
+@SpecPath('docs', 'swagger')
+export class UsersController extends Controller {
+  @Get()
+  public list(): string[] {
+    return []
   }
 }
 ```
 
-in your `tsconfig.json` file.
-:::
+This gives you:
+
+- `GET /users/spec` for JSON
+- `GET /users/openapi.yaml` for YAML
+- `GET /users/docs` for Swagger UI
+
+Because the docs endpoint is generated from the same runtime metadata as your routes, it stays current as you edit controllers and re-run `tsoa spec-and-routes`.
 
 ### Inspecting the Documentation
 
-Now, when we navigate to <a href="http://localhost:3000/docs" target="_blank" rel="noreferrer">localhost:3000/docs</a>, we should see a current reflection of our API.
+Now, when we navigate to <a href="http://localhost:3000/users/docs" target="_blank" rel="noreferrer">localhost:3000/users/docs</a>, we should see a current reflection of our API.
 
 ![SwaggerUI](./assets/SwaggerUI.png)
 
-### Sending Request through SwaggerUI
+### Sending requests through Swagger UI
 
-We can select Endpoints, click the "Try it out" button and submit some data by filling out the form.
+We can select endpoints, click the "Try it out" button and submit some data by filling out the form.
 When we hit "Execute", that request will be sent to our server and the response will be displayed below the form.
 
 ![SwaggerUI Response](./assets/SwUi-Response.png)
+
+### Other built-in targets
+
+If you prefer a different UI, change the second decorator argument:
+
+- `@SpecPath('docs', 'redoc')`
+- `@SpecPath('docs', 'rapidoc')`
+
+If you need a fully custom response, pass a handler that returns a `string` or a `Readable` instead.
