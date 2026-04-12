@@ -254,40 +254,41 @@ describe('RouteGenerator', () => {
     })
 
     it('includes mixed-case GET methods in existingGetPaths for SpecPath collision detection', () => {
-      const generator = new DefaultRouteGenerator(
-        {
-          controllers: [
-            {
-              location: 'controller.ts',
-              methods: [
-                {
-                  extensions: [],
-                  isHidden: false,
-                  method: 'GET',
-                  name: 'existingGet',
-                  parameters: [],
-                  path: 'existing',
-                  responses: [],
-                  security: [],
-                  type: {
-                    dataType: 'void',
-                  },
+      const metadata = {
+        controllers: [
+          {
+            location: 'controller.ts',
+            methods: [
+              {
+                extensions: [],
+                isHidden: false,
+                method: 'get' as const,
+                name: 'existingGet',
+                parameters: [],
+                path: 'existing',
+                responses: [],
+                security: [],
+                type: {
+                  dataType: 'void' as const,
                 },
-              ],
-              name: 'ExampleController',
-              path: 'example',
-            },
-          ],
-          referenceTypeMap: {},
-        },
-        {
-          basePath: '/v1',
-          bodyCoercion: true,
-          entryFile: 'mockEntryFile',
-          routesDir: '.',
-          noImplicitAdditionalProperties: 'silently-remove-extras',
-        },
-      )
+              },
+            ],
+            name: 'ExampleController',
+            path: 'example',
+          },
+        ],
+        referenceTypeMap: {},
+      }
+
+      Object.assign(metadata.controllers[0]!.methods[0]!, { method: 'GET' })
+
+      const generator = new DefaultRouteGenerator(metadata, {
+        basePath: '/v1',
+        bodyCoercion: true,
+        entryFile: 'mockEntryFile',
+        routesDir: '.',
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+      })
 
       const existingGetPaths = generator.buildContent('{{{json existingGetPaths}}}')
 
