@@ -1,5 +1,13 @@
 # @tsoa-next/cli
 
+## 8.0.5
+
+### Patch Changes
+
+- 2c0aa7c: Add CLI config discovery with `tsoa discover` and `--discover` support, lazy-load generation code for faster CLI startup, and make GitHub package publishing explicitly tag `tsoa-next` as `latest`.
+- Updated dependencies [2c0aa7c]
+  - @tsoa-next/runtime@8.0.5
+
 ## 8.0.4
 
 ### Patch Changes
