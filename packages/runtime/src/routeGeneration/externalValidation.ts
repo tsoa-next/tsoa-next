@@ -1,5 +1,6 @@
 import type { Tsoa } from '../metadataGeneration/tsoa'
 
+/** Result returned by a runtime adapter for an external validation library. */
 export type RuntimeSchemaAdapterResult<T = unknown> =
   | {
       ok: true
@@ -10,6 +11,7 @@ export type RuntimeSchemaAdapterResult<T = unknown> =
       failure: Tsoa.ValidationFailure
     }
 
+/** Adapter contract used to execute validation with external schema libraries at runtime. */
 export interface RuntimeSchemaAdapter {
   kind: Tsoa.ExternalValidatorKind
   validate(value: unknown, schema: unknown, context: Tsoa.ValidationContext): RuntimeSchemaAdapterResult
@@ -285,6 +287,7 @@ const adapterRegistry: Record<Tsoa.ExternalValidatorKind, RuntimeSchemaAdapter> 
   zod: zodAdapter,
 }
 
+/** Validates a value with the runtime adapter for the selected external schema library. */
 export function validateExternalSchema(kind: Tsoa.ExternalValidatorKind, schema: unknown, value: unknown, context: Tsoa.ValidationContext = {}): RuntimeSchemaAdapterResult {
   return adapterRegistry[kind].validate(value, schema, context)
 }

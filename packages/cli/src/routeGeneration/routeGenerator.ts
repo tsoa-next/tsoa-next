@@ -5,6 +5,9 @@ import { isRefType } from '../utils/internalTypeGuards'
 import { convertBracesPathParams, normalisePath } from '../utils/pathUtils'
 import { fsExists, fsReadFile } from '../utils/fs'
 
+/**
+ * Base implementation for route generators that transform metadata into framework-specific route files.
+ */
 export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig> {
   constructor(
     protected readonly metadata: Tsoa.Metadata,
@@ -12,10 +15,11 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
   ) {}
 
   /**
-   * This is the entrypoint for a generator to create a custom set of routes
+   * Generates the configured route output for the active framework or custom template.
    */
   public abstract GenerateCustomRoutes(): Promise<void>
 
+  /** Builds the runtime model metadata consumed by generated route handlers. */
   public buildModels(): TsoaRoute.Models {
     const models = {} as TsoaRoute.Models
 
@@ -68,6 +72,7 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     return convertBracesPathParams(path)
   }
 
+  /** Builds the Handlebars template context used by the default route templates. */
   protected buildContext() {
     const authenticationModule = this.options.authenticationModule ? this.getRelativeImportPath(this.options.authenticationModule) : undefined
     const iocModule = this.options.iocModule ? this.getRelativeImportPath(this.options.iocModule) : undefined

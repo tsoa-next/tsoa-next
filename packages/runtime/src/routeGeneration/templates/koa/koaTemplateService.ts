@@ -35,6 +35,7 @@ type KoaReturnHandlerParameters = {
   data?: unknown
 }
 
+/** Koa-specific implementation of the generated route template service contract. */
 export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters, KoaValidationArgsParameters, KoaReturnHandlerParameters> {
   async apiHandler(params: KoaApiHandlerParameters) {
     const { methodName, controller, context, validatedArgs, successStatus } = params

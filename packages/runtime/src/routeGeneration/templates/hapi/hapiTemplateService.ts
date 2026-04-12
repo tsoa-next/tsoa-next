@@ -41,6 +41,7 @@ type HapiReturnHandlerParameters = {
   data?: unknown
 }
 
+/** Hapi-specific implementation of the generated route template service contract. */
 export class HapiTemplateService extends TemplateService<HapiApiHandlerParameters, HapiValidationArgsParameters, HapiReturnHandlerParameters> {
   constructor(
     protected readonly models: TsoaRoute.Models,

@@ -7,6 +7,7 @@ import { BuiltinSpecPathTarget, SpecCacheContext, SpecCacheHandler, SpecGenerato
 import { Config, SpecConfig } from '../config'
 import { Swagger } from '../swagger/swagger'
 
+/** Snapshot of spec-generation settings embedded into generated routes for {@link SpecPath}. */
 export interface RuntimeSpecConfigSnapshot {
   compilerOptions?: Record<string, unknown>
   defaultNumberType?: Config['defaultNumberType']
@@ -18,6 +19,7 @@ export interface RuntimeSpecConfigSnapshot {
   }
 }
 
+/** Fully resolved response body and content type returned by spec-path helpers. */
 export interface ResolvedSpecResponse {
   body: SpecResponseValue
   contentType?: string
@@ -458,6 +460,9 @@ async function resolveHandlerResponse(specPath: SpecPathDefinition, context: Spe
   return { body }
 }
 
+/**
+ * Resolves a declared {@link SpecPath} target into a concrete response body, applying built-in rendering and caching behavior.
+ */
 export async function resolveSpecPathResponse(args: SpecContextArgs): Promise<ResolvedSpecResponse> {
   const context = createSpecRequestContext(args)
   const cacheHandler = getCacheHandler(args)

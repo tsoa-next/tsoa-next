@@ -7,6 +7,9 @@ import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
 import { existsSync } from 'node:fs'
 
+/**
+ * Generates route files on disk and returns the metadata used to build them.
+ */
 export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   routesConfig: Config,
   compilerOptions?: ts.CompilerOptions,
@@ -61,6 +64,7 @@ function localImportCandidateExists(targetPath: string): boolean {
   return false
 }
 
+/** Returns import specifiers that should be attempted when loading a custom route generator module. */
 export function getRouteGeneratorImportAttempts(routeGenerator: string): string[] {
   const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
   const shouldPreferLocalImport = isExplicitPathLikeSpecifier(routeGenerator) && localImportCandidateExists(routeGenerator)

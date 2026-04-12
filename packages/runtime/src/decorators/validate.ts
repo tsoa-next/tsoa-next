@@ -133,6 +133,11 @@ export function getParameterExternalValidatorMetadata(target: object, propertyKe
   return undefined
 }
 
+/**
+ * Attaches external-schema validation metadata to a controller parameter.
+ *
+ * Supported forms are `@Validate(schema)`, `@Validate(kind, schema)`, and `@Validate({ kind, schema })`.
+ */
 export function Validate(...args: unknown[]): ParameterDecorator {
   const normalized = normalizeValidateDecoratorArgs(args)
 

@@ -1,3 +1,4 @@
+/** Public TypeScript model of the OpenAPI and Swagger documents emitted by tsoa. */
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Swagger {
   export type DataType = 'integer' | 'number' | 'boolean' | 'string' | 'array' | 'object' | 'file' | 'undefined'

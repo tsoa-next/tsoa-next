@@ -1,5 +1,6 @@
 import { IsValidHeader } from '../utils/isHeaderType'
 
+/** Enumerates the concrete HTTP status codes accepted by tsoa response helpers. */
 export type HttpStatusCodeLiteral =
   | 100
   | 101
@@ -62,10 +63,17 @@ export type HttpStatusCodeLiteral =
   | 510
   | 511
 
+/** String form of the supported concrete HTTP status codes. */
 export type HttpStatusCodeStringLiteral = `${HttpStatusCodeLiteral}`
 
+/** Additional OpenAPI response keys supported by {@link Response}. */
 export type OtherValidOpenApiHttpStatusCode = '1XX' | '2XX' | '3XX' | '4XX' | '5XX' | 'default'
 
+/**
+ * Responder function shape injected by {@link Res}.
+ *
+ * Call the function with a status code, payload, and optional headers to short-circuit the action and send a typed response.
+ */
 export type TsoaResponse<T extends HttpStatusCodeLiteral, BodyType, HeaderType extends IsValidHeader<HeaderType> = object, ReturnType = never> = (
   status: T,
   data: BodyType,

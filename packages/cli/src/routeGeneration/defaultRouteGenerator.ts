@@ -7,6 +7,7 @@ import { fsReadFile, fsWriteFile } from '../utils/fs'
 import { convertBracesPathParams } from '../utils/pathUtils'
 import { AbstractRouteGenerator } from './routeGenerator'
 
+/** Default route generator for the built-in Express, Koa, and Hapi templates. */
 export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutesConfig> {
   pathTransformerFn: (path: string) => string
   template: string
@@ -32,12 +33,14 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
     }
   }
 
+  /** Loads the selected template file and generates the route output. */
   public async GenerateCustomRoutes() {
     const data = await fsReadFile(path.join(this.template))
     const file = data.toString()
     return await this.GenerateRoutes(file)
   }
 
+  /** Writes the generated route file to disk. */
   public async GenerateRoutes(middlewareTemplate: string) {
     const allowedExtensions = this.options.esm ? ['.ts', '.mts', '.cts'] : ['.ts']
 
@@ -62,6 +65,7 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
     return this.pathTransformerFn(path)
   }
 
+  /** Renders the route template with the current metadata context. */
   public buildContent(middlewareTemplate: string) {
     handlebars.registerHelper('json', (context: unknown) => {
       return JSON.stringify(context)

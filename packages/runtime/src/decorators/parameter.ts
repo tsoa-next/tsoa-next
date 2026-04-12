@@ -1,111 +1,109 @@
 import { createNoopMethodDecorator, createNoopParameterDecorator } from './noop'
 
 /**
- * Inject http Body
- *  @param {string} [name] properties name in body object
+ * Binds the full HTTP request body to a controller parameter.
  */
 export function Body(): ParameterDecorator {
   return createNoopParameterDecorator('body')
 }
 
 /**
- * Inject value from body
+ * Binds a single property from the request body to a controller parameter.
  *
- * @param {string} [name] The name of the body parameter
+ * @param _name The property name to read from the request body. Defaults to the parameter name.
  */
 export function BodyProp(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('body-prop')
 }
 
 /**
- * Inject http request
+ * Injects the underlying runtime request object.
  */
 export function Request(): ParameterDecorator {
   return createNoopParameterDecorator('request')
 }
 
 /**
- * Inject value from request
+ * Binds a property from the underlying runtime request object.
  *
- * @param {name} [name] The name of the request parameter
+ * @param _name The request property name to read. Defaults to the parameter name.
  */
 export function RequestProp(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('request-prop')
 }
 
 /**
- * Inject value from Path
+ * Binds a path parameter from the request URL.
  *
- * @param {string} [name] The name of the path parameter
+ * @param _name The path parameter name. Defaults to the parameter name.
  */
 export function Path(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('path')
 }
 
 /**
- * Inject value from query string
+ * Binds a query-string value to a controller parameter.
  *
- * @param {string} [name] The name of the query parameter
+ * @param _name The query parameter name. Defaults to the parameter name.
  */
 export function Query(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('query')
 }
 
 /**
- * Inject all query values in a single object
+ * Binds the entire query object to a single controller parameter.
  */
 export function Queries(): ParameterDecorator {
   return createNoopParameterDecorator('queries')
 }
 
 /**
- * Inject value from Http header
+ * Binds an HTTP header value to a controller parameter.
  *
- * @param {string} [name] The name of the header parameter
+ * @param _name The header name. Defaults to the parameter name.
  */
 export function Header(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('header')
 }
 
 /**
- * Mark parameter as manually injected, which will not be generated
+ * Marks a parameter as injected by user code so tsoa skips route-generation metadata for it.
  */
 export function Inject(): ParameterDecorator {
   return createNoopParameterDecorator('inject')
 }
 
 /**
- * Inject uploaded file
+ * Binds a single uploaded file from a multipart/form-data request.
  *
- * @param {string} [name] The name of the uploaded file parameter
+ * @param _name The multipart field name. Defaults to the parameter name.
  */
 export function UploadedFile(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('uploaded-file')
 }
 
 /**
- * Inject uploaded files
+ * Binds multiple uploaded files from a multipart/form-data request.
  *
- * @param {string} [name] The name of the uploaded files parameter
+ * @param _name The multipart field name. Defaults to the parameter name.
  */
 export function UploadedFiles(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('uploaded-files')
 }
 
 /**
- * Inject uploaded files
+ * Binds a regular multipart form field from a multipart/form-data request.
  *
- * @param {string} [name] The name of the uploaded files parameter
+ * @param _name The multipart field name. Defaults to the parameter name.
  */
 export function FormField(_name?: string): ParameterDecorator {
   return createNoopParameterDecorator('form-field')
 }
 
 /**
- * Overrides the default media type of request body.
- * Can be used on specific method.
- * Can't be used on controller level.
+ * Overrides the media type used to document a request body for a single action.
  *
+ * @param _value The request body media type, for example `application/json`.
  * @link https://swagger.io/docs/specification/describing-request-body/
  */
 export function Consumes(_value: string): MethodDecorator {

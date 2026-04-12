@@ -2,6 +2,7 @@ import { ExtensionType } from '../decorators/extension'
 import type { Swagger } from '../swagger/swagger'
 import { Validator } from '..'
 
+/** Public metadata model produced by tsoa during controller and schema analysis. */
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Tsoa {
   export type ExternalValidatorKind = 'zod' | 'joi' | 'yup' | 'superstruct' | 'io-ts'

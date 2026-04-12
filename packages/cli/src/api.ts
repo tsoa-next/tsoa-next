@@ -363,6 +363,9 @@ const getLegacyMulterOptions = (config: Config): MulterOptions | undefined => {
 
 export function validateCompilerOptions(config: Config, configBaseDir?: string): CompilerOptions
 export function validateCompilerOptions(compilerOptions?: Record<string, unknown>, configBaseDir?: string): CompilerOptions
+/**
+ * Resolves compiler options for tsoa generation from either a full config object or a raw `compilerOptions` map.
+ */
 export function validateCompilerOptions(configOrCompilerOptions?: Config | Record<string, unknown>, configBaseDir = workingDir): CompilerOptions {
   if (!isConfig(configOrCompilerOptions)) {
     return configOrCompilerOptions ? parseCompilerOptionsObject(configOrCompilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config', false) : {}
@@ -380,12 +383,14 @@ export function validateCompilerOptions(configOrCompilerOptions?: Config | Recor
   }
 }
 
+/** Normalized spec-generation config returned by {@link validateSpecConfig}. */
 export interface ExtendedSpecConfig extends SpecConfig {
   entryFile: Config['entryFile']
   noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
   controllerPathGlobs?: Config['controllerPathGlobs']
 }
 
+/** Validates and enriches the `spec` section of a tsoa config object. */
 export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecConfig> => {
   if (!config.spec) {
     throw new Error('Missing spec: configuration must contain spec. Spec used to be called swagger in previous versions of tsoa.')
@@ -407,6 +412,7 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   }
 }
 
+/** Normalized route-generation config returned by {@link validateRoutesConfig}. */
 export interface ExtendedRoutesConfig extends RoutesConfig {
   entryFile: Config['entryFile']
   noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
@@ -418,6 +424,7 @@ export interface ExtendedRoutesConfig extends RoutesConfig {
   routeGenerator?: string | (new (metadata: Tsoa.Metadata, options: ExtendedRoutesConfig) => AbstractRouteGenerator<ExtendedRoutesConfig>)
 }
 
+/** Validates and enriches the `routes` section of a tsoa config object. */
 export const validateRoutesConfig = async (config: Config): Promise<ExtendedRoutesConfig> => {
   assertEntryPointConfiguration(config)
   await assertExistingEntryFile(config.entryFile, `EntryFile not found: ${config.entryFile} - Please check your tsoa config.`)
@@ -467,11 +474,13 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   }
 }
 
+/** Shared CLI arguments accepted by the programmatic route and spec generators. */
 export interface ConfigArgs {
   basePath?: string
   configuration?: string | Config
 }
 
+/** CLI arguments specific to OpenAPI spec generation. */
 export interface SwaggerArgs extends ConfigArgs {
   host?: string
   json?: boolean
@@ -498,6 +507,7 @@ const applySwaggerArgs = (config: ExtendedSpecConfig, args: SwaggerArgs) => {
   }
 }
 
+/** Loads config and generates only the OpenAPI spec output. */
 export async function generateSpecFromArgs(args: SwaggerArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
@@ -507,6 +517,7 @@ export async function generateSpecFromArgs(args: SwaggerArgs) {
   await generateSpec(swaggerConfig, compilerOptions, config.ignore)
 }
 
+/** Loads config and generates only the route output. */
 export async function generateRoutesFromArgs(args: ConfigArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
@@ -516,6 +527,7 @@ export async function generateRoutesFromArgs(args: ConfigArgs) {
   await generateRoutes(routesConfig, compilerOptions, config.ignore)
 }
 
+/** Loads config and generates both routes and the OpenAPI spec from a shared metadata snapshot. */
 export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.Metadata) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
@@ -529,6 +541,7 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
   return metadata
 }
 
+/** Module shape expected when loading a custom route generator with `routes.routeGenerator`. */
 export type RouteGeneratorModule<Config extends ExtendedRoutesConfig> = {
   default: new (
     metadata: Tsoa.Metadata,

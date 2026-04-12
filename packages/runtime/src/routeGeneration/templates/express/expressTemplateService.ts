@@ -33,6 +33,7 @@ type ExpressReturnHandlerParameters = {
   data?: unknown
 }
 
+/** Express-specific implementation of the generated route template service contract. */
 export class ExpressTemplateService extends TemplateService<ExpressApiHandlerParameters, ExpressValidationArgsParameters, ExpressReturnHandlerParameters> {
   async apiHandler(params: ExpressApiHandlerParameters) {
     const { methodName, controller, response, validatedArgs, successStatus, next } = params

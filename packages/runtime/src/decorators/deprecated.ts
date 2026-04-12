@@ -1,5 +1,5 @@
 /**
- * used to show a method as deprecated on swagger documentation
+ * Marks a reflected API element as deprecated in generated documentation.
  */
 export function Deprecated(): PropertyDecorator & ClassDecorator & ParameterDecorator {
   return () => {

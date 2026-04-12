@@ -8,6 +8,7 @@ import { SpecGenerator3 } from '../swagger/specGenerator3'
 import { SpecGenerator31 } from '../swagger/specGenerator31'
 import { fsMkDir, fsWriteFile } from '../utils/fs'
 
+/** Returns the final output path for the generated OpenAPI document. */
 export const getSwaggerOutputPath = (swaggerConfig: ExtendedSpecConfig) => {
   const ext = swaggerConfig.yaml ? 'yaml' : 'json'
   const specFileBaseName = swaggerConfig.specFileBaseName || 'swagger'
@@ -15,6 +16,9 @@ export const getSwaggerOutputPath = (swaggerConfig: ExtendedSpecConfig) => {
   return `${swaggerConfig.outputDirectory}/${specFileBaseName}.${ext}`
 }
 
+/**
+ * Generates an OpenAPI document on disk and returns the metadata used to build it.
+ */
 export const generateSpec = async (
   swaggerConfig: ExtendedSpecConfig,
   compilerOptions?: ts.CompilerOptions,
@@ -37,6 +41,9 @@ export const generateSpec = async (
   return metadata
 }
 
+/**
+ * Builds an OpenAPI document in memory without writing it to disk.
+ */
 export const buildSpec = (
   swaggerConfig: ExtendedSpecConfig,
   compilerOptions?: ts.CompilerOptions,
@@ -59,6 +66,7 @@ export const buildSpec = (
   }
 }
 
+/** Serializes an OpenAPI document to JSON or YAML text. */
 export const serializeSpec = (spec: Swagger.Spec, yaml = false) => {
   const data = JSON.stringify(spec, null, '\t')
   if (!yaml) {

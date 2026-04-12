@@ -37,6 +37,9 @@ function collapsePathDelimiters(path: string) {
   return normalizedChars.join('')
 }
 
+/**
+ * Normalizes slash usage in a route path and optionally applies a prefix and suffix.
+ */
 export function normalisePath(path: string, withPrefix?: string, withSuffix?: string, skipPrefixAndSuffixIfEmpty = true) {
   if ((!path || path === '/') && skipPrefixAndSuffixIfEmpty) {
     return ''

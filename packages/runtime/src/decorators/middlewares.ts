@@ -34,9 +34,9 @@ function decorator(fn: (value: MiddlewareTarget) => void) {
 }
 
 /**
- * Install middlewares to the Controller or a specific method.
- * @param middlewares
- * @returns
+ * Attaches one or more runtime middleware handlers to a controller or action.
+ *
+ * @param mws The middleware functions or middleware objects to install.
  */
 export function Middlewares<T extends CallableFunction | object>(...mws: Array<Middleware<T>>): ClassDecorator & MethodDecorator {
   return decorator(target => {
@@ -48,10 +48,9 @@ export function Middlewares<T extends CallableFunction | object>(...mws: Array<M
 }
 
 /**
- * Internal function used to retrieve installed middlewares
- * in controller and methods (used during routes generation)
- * @param target
- * @returns list of middlewares
+ * Returns middleware metadata previously attached with {@link Middlewares}.
+ *
+ * @param target The controller class or method function to inspect.
  */
 export function fetchMiddlewares<T extends CallableFunction | object>(target: MiddlewareTarget): Array<Middleware<T>> {
   return (Reflect.getMetadata(TSOA_MIDDLEWARES, target) as Array<Middleware<T>> | undefined) ?? []

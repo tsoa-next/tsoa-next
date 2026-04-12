@@ -3,6 +3,9 @@ import { TsoaRoute } from '../tsoa-route'
 import { ValidationService } from '../templateHelpers'
 import { AdditionalProps } from '../additionalProps'
 
+/**
+ * Shared base class for runtime-specific template services used by generated routes.
+ */
 export abstract class TemplateService<ApiHandlerParameters, ValidationArgsParameters, ReturnHandlerParameters> {
   protected validationService: ValidationService
 
@@ -13,10 +16,13 @@ export abstract class TemplateService<ApiHandlerParameters, ValidationArgsParame
     this.validationService = new ValidationService(models, config)
   }
 
+  /** Invokes the controller action for the active runtime. */
   abstract apiHandler(params: ApiHandlerParameters): Promise<unknown>
 
+  /** Validates and normalizes the route arguments extracted from the request. */
   abstract getValidatedArgs(params: ValidationArgsParameters): unknown[]
 
+  /** Writes the controller result back to the active runtime. */
   protected abstract returnHandler(params: ReturnHandlerParameters): unknown
 
   protected isController(object: Controller | object): object is Controller {

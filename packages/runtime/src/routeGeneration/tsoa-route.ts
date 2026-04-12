@@ -1,18 +1,21 @@
 import { Tsoa } from './../metadataGeneration/tsoa'
 
 /**
- * For Swagger, additionalProperties is implicitly allowed. So use this function to clarify that undefined should be associated with allowing additional properties
- * @param test if this is undefined then you should interpret it as a "yes"
+ * Returns `true` when a model schema is relying on OpenAPI's default `additionalProperties` behavior.
  */
 export function isDefaultForAdditionalPropertiesAllowed(test: TsoaRoute.RefObjectModelSchema['additionalProperties']): test is undefined {
   return test === undefined
 }
 
+/** Runtime schema shapes consumed by generated route handlers. */
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace TsoaRoute {
+  /** Validation strategy used by generated route metadata. */
   export type ValidationStrategy = Tsoa.ValidationStrategy
+  /** External validator descriptor resolved during metadata generation. */
   export type ExternalValidatorDescriptor = Tsoa.ExternalValidatorDescriptor
 
+  /** Reference model lookup table keyed by model name. */
   export interface Models {
     [name: string]: ModelSchema
   }
@@ -29,21 +32,26 @@ export namespace TsoaRoute {
     enums: Array<string | number>
   }
 
+  /** Runtime schema for object models referenced by generated routes. */
   export interface RefObjectModelSchema {
     dataType: 'refObject'
     properties: { [name: string]: PropertySchema }
     additionalProperties?: boolean | PropertySchema
   }
 
+  /** Runtime schema for named type aliases. */
   export interface RefTypeAliasModelSchema {
     dataType: 'refAlias'
     type: PropertySchema
   }
 
+  /** Runtime schema union for named models. */
   export type ModelSchema = RefEnumModelSchema | RefObjectModelSchema | RefTypeAliasModelSchema
 
+  /** Validator metadata copied from generated type metadata. */
   export type ValidatorSchema = Tsoa.Validators
 
+  /** Schema fragment used to validate a single property or nested value at runtime. */
   export interface PropertySchema {
     dataType?: Tsoa.TypeStringLiteral
     ref?: string
@@ -60,12 +68,14 @@ export namespace TsoaRoute {
     nestedProperties?: { [name: string]: PropertySchema }
   }
 
+  /** Runtime schema for a route parameter. */
   export interface ParameterSchema extends PropertySchema {
     parameterIndex?: number
     name: string
     in: string
   }
 
+  /** Security requirement map emitted into generated route metadata. */
   export interface Security {
     [key: string]: string[]
   }

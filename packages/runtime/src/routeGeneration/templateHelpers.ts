@@ -7,6 +7,7 @@ import { validateExternalSchema } from './externalValidation'
 import { TsoaRoute, isDefaultForAdditionalPropertiesAllowed } from './tsoa-route'
 import ValidatorKey = Tsoa.ValidatorKey
 
+/** Metadata about the parameter currently being validated. */
 export interface ParameterValidationMetadata {
   controllerClass?: object
   methodName?: string
@@ -85,6 +86,7 @@ const normalizeValidateParamArgs = <TValue>(args: [ValidateParamOptions<TValue>]
   return { property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata }
 }
 
+/** Validates a runtime value against the generated tsoa route schema metadata. */
 export function ValidateParam<TValue>(options: ValidateParamOptions<TValue>): TValue
 /**
  * @deprecated Use the object overload instead.
@@ -95,6 +97,7 @@ export function ValidateParam<TValue>(...args: [ValidateParamOptions<TValue>] | 
   return new ValidationService(generatedModels, config).ValidateParam(property, value, name ?? '', fieldErrors, isBodyParam, parent ?? '', metadata)
 }
 
+/** Validation engine used by generated route handlers. */
 export class ValidationService {
   private readonly validationStack: Set<string> = new Set()
 
@@ -1294,6 +1297,7 @@ export class ValidationService {
   }
 }
 
+/** Integer validation rules supported by runtime route metadata. */
 export interface IntegerValidator {
   isInt?: { errorMsg?: string }
   isLong?: { errorMsg?: string }
@@ -1303,6 +1307,7 @@ export interface IntegerValidator {
   exclusiveMaximum?: { value: number; errorMsg?: string }
 }
 
+/** Floating-point validation rules supported by runtime route metadata. */
 export interface FloatValidator {
   isFloat?: { errorMsg?: string }
   isDouble?: { errorMsg?: string }
@@ -1312,18 +1317,21 @@ export interface FloatValidator {
   exclusiveMaximum?: { value: number; errorMsg?: string }
 }
 
+/** Date-only validation rules supported by runtime route metadata. */
 export interface DateValidator {
   isDate?: { errorMsg?: string }
   minDate?: { value: string; errorMsg?: string }
   maxDate?: { value: string; errorMsg?: string }
 }
 
+/** Date-time validation rules supported by runtime route metadata. */
 export interface DateTimeValidator {
   isDateTime?: { errorMsg?: string }
   minDate?: { value: string; errorMsg?: string }
   maxDate?: { value: string; errorMsg?: string }
 }
 
+/** String validation rules supported by runtime route metadata. */
 export interface StringValidator {
   isString?: { errorMsg?: string }
   minLength?: { value: number; errorMsg?: string }
@@ -1332,10 +1340,12 @@ export interface StringValidator {
   title?: { value: string; errorMsg?: string }
 }
 
+/** Boolean validation rules supported by runtime route metadata. */
 export interface BooleanValidator {
   isBoolean?: { errorMsg?: string }
 }
 
+/** Array validation rules supported by runtime route metadata. */
 export interface ArrayValidator {
   isArray?: { errorMsg?: string }
   minItems?: { value: number; errorMsg?: string }
@@ -1343,16 +1353,20 @@ export interface ArrayValidator {
   uniqueItems?: { errorMsg?: string }
 }
 
+/** Union of validation rule groups used by generated route metadata. */
 export type Validator = IntegerValidator | FloatValidator | DateValidator | DateTimeValidator | StringValidator | BooleanValidator | ArrayValidator
 
+/** Collected field-level validation errors keyed by field path. */
 export interface FieldErrors {
   [name: string]: { message: string; value?: unknown }
 }
 
+/** Error shape exposed by runtime validation failures. */
 export interface Exception extends Error {
   status: number
 }
 
+/** Error thrown when request validation fails in generated routes. */
 export class ValidateError extends Error implements Exception {
   public status = 400
   public name = 'ValidateError'

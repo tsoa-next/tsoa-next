@@ -1,14 +1,15 @@
 import { Options as MulterOpts } from 'multer'
 import { Swagger } from './swagger/swagger'
 
+/** Root tsoa-next configuration consumed by the CLI and programmatic generators. */
 export interface Config {
   /**
-   * Swagger generation configuration object
+   * OpenAPI generation configuration.
    */
   spec: SpecConfig
 
   /**
-   * Route generation configuration object
+   * Route generation configuration.
    */
   routes: RoutesConfig
 
@@ -49,47 +50,50 @@ export interface Config {
   compilerOptions?: Record<string, unknown>
 
   /**
-   * Multer's options to generate multer's middleware.
-   * It doesn't support storage option
+   * Legacy multer options forwarded into generated middleware.
+   * The `storage` option is not supported.
    *
    * @example {
    *   "dest": "/tmp"
-   * } Allow multer to write to file instead of using Memory's buffer
+   * } Allows multer to write files to disk instead of keeping them in memory.
    * @deprecated
-   *  since v6.4.0 instroduces RegisterRoutes can pass multerOptions,
-   *  we will quickly remove this options soon at future version.
+   *  Since v6.4.0, `RegisterRoutes` can receive `multerOptions` directly.
+   *  This config-level option will be removed in a future release.
    *  (https://github.com/tsoa-next/tsoa-next/issues/1587#issuecomment-2391291433)
    *  (https://github.com/tsoa-next/tsoa-next/pull/1638)
    */
   multerOpts?: MulterOpts
 
-  /*
-   * OpenAPI number type to be used for TypeScript's 'number', when there isn't a type annotation
+  /**
+   * OpenAPI number type to use for TypeScript `number` when no narrower annotation is present.
    * @default double
    */
   defaultNumberType?: 'double' | 'float' | 'integer' | 'long'
 }
 
 /**
- * these options will be removed in a future version since we would prefer consumers to explicitly state their preference that the tsoa validation throws or removes additional properties
+ * Legacy boolean form of `noImplicitAdditionalProperties`.
+ *
+ * @deprecated Use the explicit string options instead.
  */
 export type DeprecatedOptionForAdditionalPropertiesHandling = true | false
 
+/** OpenAPI generation settings. */
 export interface SpecConfig {
   /**
-   * Generated SwaggerConfig.json will output here
+   * Directory where the generated spec file should be written.
    */
   outputDirectory: string
 
   /**
-   * API host, expressTemplate.g. localhost:3000 or myapi.com
+   * API host name for Swagger 2 output, for example `localhost:3000`.
    */
   host?: string
 
   /**
-   * API servers, expressTemplate.g. [production.api.com, staging.api.com]
+   * Server URLs for OpenAPI 3 output.
    *
-   * Only available with the specVersion 3
+   * Only available with spec version 3 or 3.1.
    */
   servers?: string[]
 
@@ -100,10 +104,7 @@ export interface SpecConfig {
    */
   specFileBaseName?: string
 
-  /**
-
-   * API version number; defaults to npm package version
-   */
+  /** API version number; defaults to the package version. */
   version?: string
 
   /**
@@ -132,7 +133,7 @@ export interface SpecConfig {
   termsOfService?: string
 
   /**
-   * Contact Information
+   * Contact information for the published API.
    */
   contact?: {
     /**
@@ -148,8 +149,7 @@ export interface SpecConfig {
     email?: string
 
     /**
-     * API Info url
-     * The URL pointing to the contact information.
+     * URL pointing to the contact information.
      * @default npm package author url
      */
     url?: string
@@ -166,27 +166,24 @@ export interface SpecConfig {
   basePath?: string
 
   /**
-   * Base API prefix slash toggle
-   * e.g. the 'v1' with toggle true will be https://myapi.comv1
-   * Otherwise, http://myapi.com/v1
+   * Controls whether `basePath` is prefixed with `/` when composing OpenAPI 3 server URLs.
    *
-   * Only available with the specVersion 3
+   * Only available with spec version 3 or 3.1.
    */
   disableBasePathPrefixSlash?: boolean
 
   /**
-   * Extend generated swagger spec with this object
-   * Note that generated properties will always take precedence over what get specified here
+   * Object merged into the generated spec.
+   * Generated properties always take precedence over values provided here.
    */
   spec?: unknown
 
   /**
-   * Alter how the spec is merged to generated swagger spec.
+   * Controls how `spec` is merged into the generated document.
    * Possible values:
-   *  - 'immediate' is overriding top level elements only thus you can not append a new path or alter an existing value without erasing same level elements.
-   *  - 'recursive' proceed to a deep merge and will concat every branches or override or create new values if needed. @see https://www.npmjs.com/package/merge
-   *  - 'deepmerge' uses `ts-deepmerge` to merge, which will concat object branches and concat arrays as well @see https://www.npmjs.com/package/deepmerge @see https://github.com/voodoocreation/ts-deepmerge
-   * The default is set to immediate so it is not breaking previous versions.
+   *  - 'immediate' overrides only top-level elements.
+   *  - 'recursive' performs a deep merge using `merge`.
+   *  - 'deepmerge' performs a deep merge using `ts-deepmerge`, including arrays.
    * @default 'immediate'
    */
   specMerging?: 'immediate' | 'recursive' | 'deepmerge'
@@ -203,22 +200,21 @@ export interface SpecConfig {
   operationIdTemplate?: string
 
   /**
-   * Security Definitions Object
-   * A declaration of the security schemes available to be used in the
-   * specification. This does not enforce the security schemes on the operations
-   * and only serves to provide the relevant details for each scheme.
+   * Security schemes declared for the specification.
    */
   securityDefinitions?: {
     [name: string]: Swagger.SecuritySchemes
   }
 
   /**
-   * Swagger Tags Information for your API
+   * Top-level tag metadata for the generated specification.
    */
   tags?: Swagger.Tag[]
 
+  /** Writes the generated spec as YAML instead of JSON. */
   yaml?: boolean
 
+  /** Supported protocols for Swagger 2 output. */
   schemes?: Swagger.Protocol[]
 
   /**
@@ -228,8 +224,7 @@ export interface SpecConfig {
   xEnumVarnames?: boolean
 
   /**
-   * Sets a title for inline objects for responses and requestBodies
-   * This helps to generate more consistent clients
+   * Adds titles to inline response and request-body object schemas to improve client generation.
    */
   useTitleTagsForInlineObjects?: boolean
 
@@ -242,17 +237,17 @@ export interface SpecConfig {
 
 export interface RoutesConfig {
   /**
-   * Routes directory; generated routes.ts (which contains the generated code wiring up routes using middleware of choice) will be dropped here
+   * Directory where generated route files are written.
    */
   routesDir: string
 
   /**
-   * Routes filename; the filename of the generated route file ('routes.ts' by default)
+   * Filename for the generated route module.
    */
   routesFileName?: string
 
   /**
-   * Avoid writing the generated route file if the existing file is identical (useful to optimize watch processes); false by default
+   * Skips writing the route file when the generated content matches the existing file.
    */
   noWriteIfUnchanged?: boolean
 
@@ -267,28 +262,28 @@ export interface RoutesConfig {
   middleware?: 'express' | 'hapi' | 'koa'
 
   /**
-   * Override the Middleware template
+   * Custom Handlebars template path used instead of the built-in middleware template.
    */
   middlewareTemplate?: string
 
   /**
-   * IOC module; e.g. './inversify/ioc' where IOC container named `iocContainer` is defined (https://github.com/inversify/InversifyJS)
+   * IoC module path, for example `./inversify/ioc`.
    */
   iocModule?: string
 
   /**
-   * Authentication Module for express, hapi and koa
+   * Authentication module path used by generated routes.
    */
   authenticationModule?: string
 
   /**
-   * When enabled, the imports in the routes files will have a `.js` extention to support esm.
+   * When enabled, generated route imports use `.js` extensions for ESM output.
    *
    * @default false
    */
   esm?: boolean
 
-  /*
+  /**
    * Whether to implicitly coerce body parameters into an accepted type.
    *
    * @default true
@@ -296,7 +291,8 @@ export interface RoutesConfig {
   bodyCoercion?: boolean
 
   /**
-   * When enabled, the imports in the routes files will keep having a `.ts` extention to support the TypeScript 5.7 feature rewriteRelativeImportExtensions.
+   * When enabled, generated route imports keep `.ts` extensions to support TypeScript 5.7 `rewriteRelativeImportExtensions`.
+   *
    * @default false
    */
   rewriteRelativeImportExtensions?: boolean

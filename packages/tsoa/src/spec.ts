@@ -8,6 +8,9 @@ function assertSpecConfig(config?: RuntimeSpecConfigSnapshot): RuntimeSpecConfig
   return config
 }
 
+/**
+ * Creates a runtime spec generator that rebuilds the OpenAPI document on demand using `@tsoa-next/cli`.
+ */
 export function createOpenApiSpecGenerator(config?: RuntimeSpecConfigSnapshot): SpecGenerator {
   let specPromise: Promise<import('@tsoa-next/runtime').Swagger.Spec> | undefined
   const stringCache = new Map<'json' | 'yaml', Promise<string>>()
