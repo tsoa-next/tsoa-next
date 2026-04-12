@@ -1,8 +1,8 @@
- 
 import { dim, green } from 'chalk'
 import { generateSpecAndRoutes, generateRoutes } from '@tsoa-next/cli'
 import { Timer } from './utils/timer'
 import { tmpdir } from 'node:os'
+import { getDefaultExtendedOptions } from './fixtures/defaultOptions'
 
 const spec = async () => {
   const result = await generateSpecAndRoutes({
@@ -20,6 +20,14 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
 
   return result
 }
+
+const createRuntimeSpecConfig = (entryFile: string) => ({
+  spec: {
+    ...getDefaultExtendedOptions('./dist', entryFile),
+    controllerPathGlobs: undefined,
+    specVersion: 3.1 as const,
+  },
+})
 
 ;(async () => {
   const metadata = await log('Swagger Spec Generation', spec)
@@ -127,6 +135,17 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
         routesDir: './fixtures/express-external-validation',
       }),
     ),
+    log('Express Route Generation, SpecPath', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/express-specpath/server.ts',
+        middleware: 'express',
+        routesDir: './fixtures/express-specpath',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/express-specpath/server.ts'),
+      }),
+    ),
     log('Koa Route Generation', () =>
       generateRoutes({
         noImplicitAdditionalProperties: 'silently-remove-extras',
@@ -136,6 +155,17 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
         entryFile: './fixtures/koa/server.ts',
         middleware: 'koa',
         routesDir: './fixtures/koa',
+      }),
+    ),
+    log('Koa Route Generation, SpecPath', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/koa-specpath/server.ts',
+        middleware: 'koa',
+        routesDir: './fixtures/koa-specpath',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/koa-specpath/server.ts'),
       }),
     ),
 
@@ -172,6 +202,17 @@ const log = async <T>(label: string, fn: () => Promise<T>) => {
         entryFile: './fixtures/hapi/server.ts',
         middleware: 'hapi',
         routesDir: './fixtures/hapi',
+      }),
+    ),
+    log('Hapi Route Generation, SpecPath', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/hapi-specpath/server.ts',
+        middleware: 'hapi',
+        routesDir: './fixtures/hapi-specpath',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/hapi-specpath/server.ts'),
       }),
     ),
     log('Custom Route Generation', () =>

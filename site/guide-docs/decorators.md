@@ -190,6 +190,78 @@ export class UsersController extends Controller {
 
 For complete setup notes and examples for every supported validator library, see [External Validators](./external-validators).
 
+## SpecPath
+
+Use `@SpecPath(...)` on a controller when you want that controller to expose a spec or documentation endpoint at runtime without reading a generated spec file from local disk.
+
+- `@SpecPath()` defaults to a JSON endpoint at `/<controller-path>/spec`
+- Built-in targets: `json`, `yaml`, `swagger`, `redoc`, `rapidoc`
+- Built-in targets require route generation to have access to the spec config, such as the standard `tsoa spec-and-routes` workflow or a routes config that embeds `runtimeSpecConfig`
+- A controller can declare multiple `@SpecPath(...)` decorators as long as the resolved paths do not collide
+- Built-in documentation targets lazy-load optional peer dependencies:
+  - `swagger-ui-express` for Express
+  - `swagger-ui-koa` for Koa
+  - `hapi-swagger` for Hapi
+  - `redoc` for Redoc
+  - `rapidoc` for RapiDoc
+- Custom handlers can return either a `string` or a `Readable`
+- Cache can be disabled with `'none'`, kept in-process with `'memory'`, or delegated to a custom cache handler
+- `@SpecPath(...)` routes are auxiliary and are not added to the generated OpenAPI document
+
+```ts
+import { Controller, Get, Route, SpecPath } from 'tsoa-next'
+
+@Route('users')
+@SpecPath()
+@SpecPath('openapi.yaml', 'yaml')
+@SpecPath('docs', 'swagger')
+export class UsersController extends Controller {
+  @Get()
+  public list(): string[] {
+    return []
+  }
+}
+```
+
+In that example:
+
+- `GET /users/spec` serves the OpenAPI document as JSON
+- `GET /users/openapi.yaml` serves the same document as YAML
+- `GET /users/docs` serves Swagger UI if the runtime-specific peer dependency is installed
+
+You can also provide a custom handler and external cache implementation:
+
+```ts
+import { Readable } from 'node:stream'
+import { Controller, Get, Route, SpecCacheHandler, SpecPath, SpecRequestContext } from 'tsoa-next'
+
+const cacheStore = new Map<string, string>()
+
+const cache: SpecCacheHandler = {
+  async get(context) {
+    return cacheStore.get(context.cacheKey)
+  },
+  async set(context, value) {
+    cacheStore.set(context.cacheKey, value)
+  },
+}
+
+async function customDocs(context: SpecRequestContext) {
+  return Readable.from([await context.getSpecString('json')])
+}
+
+@Route('internal')
+@SpecPath('spec.json', customDocs, cache)
+export class InternalController extends Controller {
+  @Get('status')
+  public status() {
+    return { ok: true }
+  }
+}
+```
+
+When caching is enabled and a custom handler returns a stream, `tsoa-next` buffers the stream to a string before storing it through the cache handler.
+
 
 ## Hidden
 

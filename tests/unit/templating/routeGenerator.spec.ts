@@ -252,6 +252,48 @@ describe('RouteGenerator', () => {
 
       expect(models).to.equal('./controller.mts')
     })
+
+    it('includes mixed-case GET methods in existingGetPaths for SpecPath collision detection', () => {
+      const metadata = {
+        controllers: [
+          {
+            location: 'controller.ts',
+            methods: [
+              {
+                extensions: [],
+                isHidden: false,
+                method: 'get' as const,
+                name: 'existingGet',
+                parameters: [],
+                path: 'existing',
+                responses: [],
+                security: [],
+                type: {
+                  dataType: 'void' as const,
+                },
+              },
+            ],
+            name: 'ExampleController',
+            path: 'example',
+          },
+        ],
+        referenceTypeMap: {},
+      }
+
+      Object.assign(metadata.controllers[0]!.methods[0]!, { method: 'GET' })
+
+      const generator = new DefaultRouteGenerator(metadata, {
+        basePath: '/v1',
+        bodyCoercion: true,
+        entryFile: 'mockEntryFile',
+        routesDir: '.',
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+      })
+
+      const existingGetPaths = generator.buildContent('{{{json existingGetPaths}}}')
+
+      expect(existingGetPaths).to.equal('["/v1/example/existing"]')
+    })
   })
 
   describe('.generateRoutes', () => {

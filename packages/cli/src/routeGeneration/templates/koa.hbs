@@ -2,7 +2,7 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
-import { fetchMiddlewares, KoaTemplateService } from 'tsoa-next';
+import { createOpenApiSpecGenerator, fetchMiddlewares, fetchSpecPaths, normalisePath, resolveSpecPathResponse, KoaTemplateService } from 'tsoa-next';
 {{#each controllers}}
 
 import { {{name}} } from '{{modulePath}}';
@@ -51,6 +51,11 @@ const models: TsoaRoute.Models = {
     },
     {{/each}}
 };
+{{#if runtimeSpecConfig}}
+const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
+{{else}}
+const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 
 {{#if useFileUploads}}
 export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeof multer>; validation?: Tsoa.ValidationContext}) {
@@ -69,6 +74,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
       validation: opts?.validation,
     };
     const templateService = new KoaTemplateService(models, additionalProps);
+    const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
 
     {{#each controllers}}
     {{#each actions}}
@@ -128,6 +134,42 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
             });
         });
     {{/each}}
+    {{/each}}
+    {{#each controllers}}
+    for (const specPath of fetchSpecPaths({{name}})) {
+        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
+        if (registeredGetPaths.has(specFullPath)) {
+            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
+        }
+        registeredGetPaths.add(specFullPath);
+
+        router.get(specFullPath,
+            async function {{name}}_specPath(context: Context, next: Next) {
+                try {
+                    const specResponse = await resolveSpecPathResponse({
+                        controllerClass: {{name}},
+                        fullPath: specFullPath,
+                        request: context.request,
+                        response: context.response,
+                        runtime: 'koa',
+                        specGenerator,
+                        specPath,
+                    });
+
+                    if (specResponse.contentType) {
+                        context.type = specResponse.contentType;
+                    }
+
+                    context.status = 200;
+                    context.body = specResponse.body;
+                    return;
+                } catch (err) {
+                    const error = err as any;
+                    context.status = error.status || 500;
+                    context.throw(context.status, error.message, error);
+                }
+            });
+    }
     {{/each}}
     {{#if useSecurity}}
 

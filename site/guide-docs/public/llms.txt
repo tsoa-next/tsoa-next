@@ -87,6 +87,33 @@ Validation and error handling
 - Document known error responses with `@Response<...>(422, 'Validation Failed')` or similar.
 - `@Res()` can inject typed alternate responders for non-success responses.
 
+Spec serving and docs UIs
+- `@SpecPath(...)` is a repeatable controller decorator for exposing controller-local spec or docs routes at runtime.
+- `@SpecPath()` defaults to a JSON endpoint at `/<controller-path>/spec`.
+- Built-in targets:
+  - `json`
+  - `yaml`
+  - `swagger`
+  - `redoc`
+  - `rapidoc`
+- Built-in targets need routes to be generated with spec settings available, such as the usual config that contains both `routes` and `spec`.
+- A controller can declare multiple `@SpecPath(...)` decorators as long as the resolved paths are unique.
+- Custom handlers can return either a `string` or a `Readable`.
+- Cache options:
+  - `'none'`
+  - `'memory'`
+  - custom cache handler with `get(...)` and `set(...)`
+- Built-in docs UI peers are optional and loaded lazily:
+  - `swagger-ui-express` for Express
+  - `swagger-ui-koa` for Koa
+  - `hapi-swagger` for Hapi
+  - `redoc`
+  - `rapidoc`
+- `@SpecPath(...)` routes are auxiliary and are not included in the generated OpenAPI document.
+- Main guides:
+  - https://tsoa-next.dev/decorators
+  - https://tsoa-next.dev/live-reloading
+
 External validators
 - The external schema decorator is named `@Validate(...)`.
 - If someone asks for `@Validator`, they usually mean `@Validate`.
@@ -167,6 +194,7 @@ Decorators commonly referenced in the docs
 - `@Deprecated`
 - `@Hidden`
 - `@Request`
+- `@SpecPath`
 - `@Validate`
 - Decorator guide:
   - https://tsoa-next.dev/decorators
@@ -201,6 +229,7 @@ Guide map
 - Introduction: https://tsoa-next.dev/introduction
 - Getting started: https://tsoa-next.dev/getting-started
 - Generating routes and OAS: https://tsoa-next.dev/generating
+- Live reloading: https://tsoa-next.dev/live-reloading
 - Error handling: https://tsoa-next.dev/error-handling
 - Descriptions: https://tsoa-next.dev/descriptions
 - Examples: https://tsoa-next.dev/examples

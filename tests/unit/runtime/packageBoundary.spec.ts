@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
 import Module = require('node:module')
+import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
 const withBlockedRequires = (blocked: (id: string) => boolean, run: () => void) => {
   const requireDescriptor = Object.getOwnPropertyDescriptor(Module.prototype, 'require')
@@ -55,6 +56,8 @@ describe('Package boundary', () => {
 
         expect(runtime.Get).to.be.a('function')
         expect(runtime.Route).to.be.a('function')
+        expect(runtime.SpecPath).to.be.a('function')
+        expect(runtime.createOpenApiSpecGenerator).to.be.a('function')
         expect('generateRoutes' in runtime).to.equal(false)
         expect('generateSpec' in runtime).to.equal(false)
         expect('generateSpecAndRoutes' in runtime).to.equal(false)
@@ -91,5 +94,20 @@ describe('Package boundary', () => {
         expect(cliModule.runCLI).to.be.a('function')
       },
     )
+  })
+
+  it('keeps getSpecString callable after destructuring the spec generator methods', async () => {
+    const runtime = reload('tsoa-next')
+    const specConfig = getDefaultExtendedOptions('.', './fixtures/controllers/getController.ts')
+    // Intentionally detach the method to verify it does not rely on `this`.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const { getSpecString } = runtime.createOpenApiSpecGenerator({
+      spec: specConfig,
+    })
+
+    const specString = await getSpecString('json')
+
+    expect(specString).to.contain('"swagger": "2.0"')
+    expect(specString).to.contain('"/GetTest"')
   })
 })

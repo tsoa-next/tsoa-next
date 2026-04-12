@@ -119,9 +119,15 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
         }
       }),
       environment: process.env,
+      existingGetPaths: this.metadata.controllers.flatMap(controller =>
+        controller.methods
+          .filter(method => method.method.toLowerCase() === 'get')
+          .map(method => normalisePath(`${normalisedBasePath}${this.pathTransformer(normalisePath(controller.path, '/'))}${this.pathTransformer(normalisePath(method.path, '/'))}`, '/', '', false)),
+      ),
       iocModule,
       minimalSwaggerConfig: { noImplicitAdditionalProperties: this.options.noImplicitAdditionalProperties, bodyCoercion: this.options.bodyCoercion },
       models: this.buildModels(),
+      runtimeSpecConfig: this.options.runtimeSpecConfig,
       useFileUploads: this.metadata.controllers.some(controller => controller.methods.some(method => method.parameters.some(parameter => this.isFileUploadParameter(parameter)))),
       multerOpts: {
         limits: {

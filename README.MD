@@ -47,65 +47,22 @@ Where historical release notes or migration references still point upstream, the
 - Runtime validation of tsoa-next should behave as closely as possible to the specifications that the generated OpenAPI 2/3 schema describes. Any differences in validation logic are clarified by logging warnings during the generation of the OpenAPI Specification (OAS) and/or the routes.
   - Please note that by enabling OpenAPI 3 you minimize the chances of divergent validation logic since OpenAPI 3 has a more expressive schema syntax.
 
-## External Validators
+## Feature List
 
-`@Validate(...)` adds opt-in runtime authority for external schemas on supported controller method parameters.
-
-- Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
-- Supported libraries: `zod`, `joi`, `yup`, `superstruct`, `io-ts`
-- `io-ts` installs: add `fp-ts`, and add `io-ts-types` as well if you rely on helpers like `withMessage`
-- Supported parameter decorators: `@Body`, `@BodyProp`, `@Query`, `@Queries`, `@Path`, `@Header`, and `@FormField` / uploaded file params
-- Behavior: TypeScript metadata still drives OpenAPI generation, while the external schema replaces built-in runtime validation for the decorated parameter subtree
-- Compatibility: routes without `@Validate(...)` keep their current behavior
-
-Generated `RegisterRoutes(...)` functions also accept an optional validation context so applications can provide translation or failure-formatting hooks:
-
-```ts
-RegisterRoutes(app, {
-  validation: {
-    translate: (key, params) => translateMessage(key, params),
-    errorFormatter: failure => failure,
-  },
-})
-```
-
-```ts
-import * as t from 'io-ts'
-import { withMessage } from 'io-ts-types'
-import { Body, Controller, Post, Route, Validate } from 'tsoa-next'
-
-interface PositiveFloatBrand {
-  readonly PositiveFloat: unique symbol
-}
-
-const PositiveFloat = withMessage(
-  t.brand(t.number, (n): n is t.Branded<number, PositiveFloatBrand> => Number.isFinite(n) && n > 0, 'PositiveFloat'),
-  () => 'validation.wager.amount.mustBePositiveFloat',
-)
-
-const WagerCodec = t.type({
-  amount: PositiveFloat,
-  outcome: t.Int,
-})
-
-type Wager = t.TypeOf<typeof WagerCodec>
-
-@Route('wagers')
-export class WagersController extends Controller {
-  @Post()
-  public createWager(
-    @Body()
-    @Validate('io-ts', WagerCodec)
-    wager: Wager,
-  ): Wager {
-    return wager
-  }
-}
-```
-
-## Migration Note
-
-This feature is fully opt-in. If you do not use `@Validate(...)`, existing interface/class models, generated routes, validation behavior, and error responses are unchanged.
+- Generate OpenAPI 2.0, 3.0, or 3.1 documents directly from your TypeScript controllers, models, and JSDoc comments.
+- Treat TypeScript controllers and models as the source of truth for paths, parameters, schemas, examples, tags, and security metadata.
+- Generate framework-specific route handlers for Express, Koa, and Hapi, or supply your own Handlebars templates for custom runtimes.
+- Validate request input at runtime with configurable coercion and additional-property handling that stays aligned with the generated schema.
+- Expose controller-local spec endpoints with `@SpecPath(...)` without reading a generated spec file from local disk at request time.
+- Serve built-in `json`, `yaml`, `swagger`, `redoc`, and `rapidoc` spec targets, with docs UI packages loaded lazily as optional peers when available.
+- Attach multiple `@SpecPath(...)` decorators to the same controller as long as their resolved paths are unique.
+- Cache built-in or custom spec responses with `'none'`, in-process `'memory'`, or a custom cache handler that can read from strings or streams.
+- Return either `string` or `Readable` responses from custom `@SpecPath(...)` handlers for bespoke documentation or downstream integrations.
+- Use `@Validate(...)` to delegate runtime validation to supported external schema libraries such as `zod`, `joi`, `yup`, `superstruct`, or `io-ts`.
+- Customize validation translation and failure formatting through the optional validation context accepted by generated `RegisterRoutes(...)` functions.
+- Support authentication hooks, dependency injection, typed alternate responders, file uploads, custom middleware, and custom validation workflows.
+- Use the `tsoa` CLI for spec and route generation, or call the programmatic APIs from `tsoa-next/cli`.
+- Target modern Node.js releases with the support policy verified in CI across the previous LTS, current LTS, and Node vNext.
 
 ## Getting Started
 

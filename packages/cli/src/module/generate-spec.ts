@@ -25,31 +25,45 @@ export const generateSpec = async (
   metadata?: Tsoa.Metadata,
   defaultNumberType?: Config['defaultNumberType'],
 ) => {
-  metadata ??= new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, swaggerConfig.controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
-
-  let spec: Swagger.Spec
-
-  switch (swaggerConfig.specVersion) {
-    case 2:
-      spec = new SpecGenerator2(metadata, swaggerConfig).GetSpec()
-      break
-    case 3:
-      spec = new SpecGenerator3(metadata, swaggerConfig).GetSpec()
-      break
-    case 3.1:
-    default:
-      spec = new SpecGenerator31(metadata, swaggerConfig).GetSpec()
-  }
+  const controllerPathGlobs = swaggerConfig.controllerPathGlobs?.length ? swaggerConfig.controllerPathGlobs : undefined
+  metadata ??= new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  const spec = buildSpec(swaggerConfig, compilerOptions, ignorePaths, metadata, defaultNumberType)
 
   await fsMkDir(swaggerConfig.outputDirectory, { recursive: true })
 
-  let data = JSON.stringify(spec, null, '\t')
-  if (swaggerConfig.yaml) {
-    data = YAML.stringify(JSON.parse(data))
-  }
-
   const outputPath = getSwaggerOutputPath(swaggerConfig)
-  await fsWriteFile(outputPath, data, { encoding: 'utf8' })
+  await fsWriteFile(outputPath, serializeSpec(spec, swaggerConfig.yaml), { encoding: 'utf8' })
 
   return metadata
+}
+
+export const buildSpec = (
+  swaggerConfig: ExtendedSpecConfig,
+  compilerOptions?: ts.CompilerOptions,
+  ignorePaths?: string[],
+  metadata?: Tsoa.Metadata,
+  defaultNumberType?: Config['defaultNumberType'],
+): Swagger.Spec => {
+  const controllerPathGlobs = swaggerConfig.controllerPathGlobs?.length ? swaggerConfig.controllerPathGlobs : undefined
+  metadata ??= new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  const specVersion = swaggerConfig.specVersion ?? 2
+
+  switch (specVersion) {
+    case 2:
+      return new SpecGenerator2(metadata, swaggerConfig).GetSpec()
+    case 3:
+      return new SpecGenerator3(metadata, swaggerConfig).GetSpec()
+    case 3.1:
+    default:
+      return new SpecGenerator31(metadata, swaggerConfig).GetSpec()
+  }
+}
+
+export const serializeSpec = (spec: Swagger.Spec, yaml = false) => {
+  const data = JSON.stringify(spec, null, '\t')
+  if (!yaml) {
+    return data
+  }
+
+  return YAML.stringify(JSON.parse(data))
 }
