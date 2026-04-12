@@ -28,7 +28,7 @@
   "author": "Vanna DiCatania <vanna@dicatania.me> (https://www.dicatania.me)",
   "license": "MIT",
   "devDependencies": {
-    "@hapi/hapi": "^21.4.7",
+    "@hapi/hapi": "^21.4.8",
     "@koa/multer": "^3.0.2",
     "@koa/router": "^13.1.0",
     "@types/body-parser": "^1.19.6",
@@ -44,7 +44,7 @@
     "@types/promise.any": "^2.0.3",
     "@types/sinon": "^17.0.3",
     "@types/supertest": "^6.0.2",
-    "aws-cdk-lib": "^2.172.0",
+    "aws-cdk-lib": "^2.248.0",
     "body-parser": "^1.20.3",
     "chai": "^4.3.10",
     "chalk": "^4.1.2",

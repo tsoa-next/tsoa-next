@@ -1,9 +1,15 @@
 import { expect } from 'chai'
 import 'mocha'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { fetchSpecPaths, SpecCacheHandler, SpecPath } from '../../../packages/runtime/src/decorators/specPath'
 import { resolveSpecPathResponse } from '../../../packages/runtime/src/routeGeneration/specPathSupport'
 import { Swagger } from '../../../packages/runtime/src/swagger/swagger'
+
+const repoRoot = resolve(__dirname, '..', '..', '..')
+const nodeModulesRoot = join(repoRoot, 'packages', 'runtime', 'node_modules')
+const createdPackageRoots: string[] = []
 
 const readStream = async (stream: Readable) => {
   const chunks: Buffer[] = []
@@ -22,7 +28,51 @@ const spec: Swagger.Spec2 = {
   paths: {},
 }
 
+function ensurePackageFile(packageName: string, relativePath: string, contents: string) {
+  const packageRoot = join(nodeModulesRoot, packageName)
+  if (!existsSync(packageRoot)) {
+    createdPackageRoots.push(packageRoot)
+  }
+
+  mkdirSync(join(packageRoot, relativePath === 'package.json' ? '' : relativePath.substring(0, relativePath.lastIndexOf('/'))), { recursive: true })
+  writeFileSync(join(packageRoot, relativePath), contents, 'utf8')
+}
+
+function createMockUiPeers() {
+  if (!existsSync(nodeModulesRoot)) {
+    mkdirSync(nodeModulesRoot, { recursive: true })
+  }
+
+  if (!existsSync(join(nodeModulesRoot, 'swagger-ui-express'))) {
+    ensurePackageFile('swagger-ui-express', 'package.json', JSON.stringify({ name: 'swagger-ui-express', version: '0.0.0' }))
+    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/package.json', JSON.stringify({ name: 'swagger-ui-dist', version: '0.0.0' }))
+    ensurePackageFile(
+      'swagger-ui-express',
+      'node_modules/swagger-ui-dist/swagger-ui-bundle.js',
+      'window.SwaggerUIBundle = window.SwaggerUIBundle || function () {}; window.SwaggerUIBundle.presets = { apis: {} };',
+    )
+    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js', 'window.SwaggerUIStandalonePreset = {};')
+    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/swagger-ui.css', 'body { background: #fff; }')
+  }
+
+  if (!existsSync(join(nodeModulesRoot, 'redoc'))) {
+    ensurePackageFile('redoc', 'package.json', JSON.stringify({ name: 'redoc', version: '0.0.0' }))
+    ensurePackageFile('redoc', 'bundles/redoc.standalone.js', 'window.Redoc = { init: function () {} };')
+  }
+
+  if (!existsSync(join(nodeModulesRoot, 'rapidoc'))) {
+    ensurePackageFile('rapidoc', 'package.json', JSON.stringify({ name: 'rapidoc', version: '0.0.0' }))
+    ensurePackageFile('rapidoc', 'dist/rapidoc-min.js', 'window.customElements = window.customElements || { define: function () {} };')
+  }
+}
+
 describe('SpecPath', () => {
+  after(() => {
+    createdPackageRoots.forEach(packageRoot => {
+      rmSync(packageRoot, { force: true, recursive: true })
+    })
+  })
+
   it('stores default decorator values', () => {
     @SpecPath()
     class DefaultSpecPathController {}
@@ -200,6 +250,52 @@ describe('SpecPath', () => {
     expect(handlerCalls).to.equal(1)
     expect(cacheReads).to.equal(2)
     expect(cacheWrites).to.equal(1)
+  })
+
+  it('escapes spec titles before embedding UI HTML', async () => {
+    createMockUiPeers()
+
+    const htmlInjectionSpec: Swagger.Spec2 = {
+      ...spec,
+      info: {
+        title: '</title><script>window.specPathInjected = true</script>',
+      },
+    }
+
+    const specGenerator = {
+      async getSpecObject() {
+        return htmlInjectionSpec
+      },
+      async getSpecString() {
+        return JSON.stringify(htmlInjectionSpec)
+      },
+    }
+
+    for (const target of ['swagger', 'redoc', 'rapidoc'] as const) {
+      @SpecPath(`escaped-${target}`, target, 'none')
+      class EscapedTitleController {}
+
+      const [specPath] = fetchSpecPaths(EscapedTitleController)
+      if (!specPath) {
+        throw new Error(`Expected @SpecPath metadata for ${target}.`)
+      }
+
+      const response = await resolveSpecPathResponse({
+        controllerClass: EscapedTitleController,
+        fullPath: `/v1/spec/${target}`,
+        runtime: 'express',
+        specGenerator,
+        specPath,
+      })
+
+      expect(response.body).to.be.a('string')
+      if (typeof response.body !== 'string') {
+        throw new Error(`Expected HTML response for ${target}.`)
+      }
+
+      expect(response.body).to.contain('&lt;/title&gt;&lt;script&gt;window.specPathInjected = true&lt;/script&gt;')
+      expect(response.body).not.to.contain('</title><script>window.specPathInjected = true</script>')
+    }
   })
 })
 

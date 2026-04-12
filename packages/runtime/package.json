@@ -29,7 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@hapi/hapi": "^21.4.7",
+    "@hapi/hapi": "^21.4.8",
     "@types/koa": "^2.15.0",
     "@types/multer": "^2.1.0",
     "reflect-metadata": "^0.2.2",

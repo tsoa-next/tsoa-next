@@ -10,7 +10,7 @@ type HapiSpecPathFixture = typeof import('../fixtures/hapi-specpath/server')
 type ControllerFixture = typeof import('../fixtures/controllers/specPathController')
 
 const repoRoot = resolve(__dirname, '..', '..')
-const nodeModulesRoot = join(repoRoot, 'node_modules')
+const nodeModulesRoot = join(repoRoot, 'packages', 'runtime', 'node_modules')
 const createdPackageRoots: string[] = []
 
 let expressFixture: ExpressSpecPathFixture

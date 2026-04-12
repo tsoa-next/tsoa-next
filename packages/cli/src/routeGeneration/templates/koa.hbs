@@ -162,7 +162,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
 
                     context.status = 200;
                     context.body = specResponse.body;
-                    return next();
+                    return;
                 } catch (err) {
                     const error = err as any;
                     context.status = error.status || 500;

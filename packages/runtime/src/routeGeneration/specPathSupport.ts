@@ -147,6 +147,10 @@ function serializeSpecForHtml(spec: Swagger.Spec) {
   return JSON.stringify(spec).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
 }
 
+function escapeHtmlText(value: string) {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
 async function readPeerFile(packageName: string, candidates: string[]): Promise<string> {
   const cacheKey = `${packageName}:${candidates.join('|')}`
   const cached = assetCache.get(cacheKey)
@@ -234,7 +238,7 @@ async function loadRapiDocAssets(): Promise<UiAssetBundle> {
 
 async function renderSwaggerHtml(spec: Swagger.Spec, runtime: SpecRuntime): Promise<string> {
   const assets = await loadSwaggerAssets(runtime)
-  const title = spec.info.title || 'API documentation'
+  const title = escapeHtmlText(spec.info.title || 'API documentation')
   const serializedSpec = serializeSpecForHtml(spec)
 
   return `<!DOCTYPE html>
@@ -269,7 +273,7 @@ async function renderSwaggerHtml(spec: Swagger.Spec, runtime: SpecRuntime): Prom
 
 async function renderRedocHtml(spec: Swagger.Spec): Promise<string> {
   const assets = await loadRedocAssets()
-  const title = spec.info.title || 'API documentation'
+  const title = escapeHtmlText(spec.info.title || 'API documentation')
   const serializedSpec = serializeSpecForHtml(spec)
 
   return `<!DOCTYPE html>
@@ -294,7 +298,7 @@ async function renderRedocHtml(spec: Swagger.Spec): Promise<string> {
 
 async function renderRapiDocHtml(spec: Swagger.Spec): Promise<string> {
   const assets = await loadRapiDocAssets()
-  const title = spec.info.title || 'API documentation'
+  const title = escapeHtmlText(spec.info.title || 'API documentation')
   const serializedSpec = serializeSpecForHtml(spec)
 
   return `<!DOCTYPE html>
