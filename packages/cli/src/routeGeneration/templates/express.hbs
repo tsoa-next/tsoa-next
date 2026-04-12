@@ -15,6 +15,7 @@ import { iocContainer } from '{{iocModule}}';
 import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
+import { pipeline } from 'node:stream';
 {{#if useFileUploads}}
 {{#if esm}}
 import multer from 'multer';
@@ -161,7 +162,12 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                     return;
                 }
 
-                specResponse.body.pipe(response);
+                pipeline(specResponse.body, response, error => {
+                    if (error) {
+                        next(error);
+                    }
+                });
+                return;
             } catch (err) {
                 return next(err);
             }

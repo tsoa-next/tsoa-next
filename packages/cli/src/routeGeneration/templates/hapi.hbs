@@ -158,22 +158,33 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
             path: specFullPath,
             options: {
                 handler: async function {{name}}_specPath(request: Request, h: ResponseToolkit) {
-                    const specResponse = await resolveSpecPathResponse({
-                        controllerClass: {{name}},
-                        fullPath: specFullPath,
-                        request,
-                        response: h,
-                        runtime: 'hapi',
-                        specGenerator,
-                        specPath,
-                    });
+                    try {
+                        const specResponse = await resolveSpecPathResponse({
+                            controllerClass: {{name}},
+                            fullPath: specFullPath,
+                            request,
+                            response: h,
+                            runtime: 'hapi',
+                            specGenerator,
+                            specPath,
+                        });
 
-                    const response = h.response(specResponse.body).code(200);
-                    if (specResponse.contentType) {
-                        response.type(specResponse.contentType);
+                        const response = h.response(specResponse.body).code(200);
+                        if (specResponse.contentType) {
+                            response.type(specResponse.contentType);
+                        }
+
+                        return response;
+                    } catch (error: any) {
+                        if (isBoom(error)) {
+                            throw error;
+                        }
+
+                        const errorMessage = error instanceof Error ? error.message : error?.message;
+                        const boomErr = boomify(error instanceof Error ? error : new Error(errorMessage), { statusCode: error?.status || 500 });
+                        boomErr.output.payload = { ...boomErr.output.payload, message: errorMessage };
+                        throw boomErr;
                     }
-
-                    return response;
                 }
             }
         });
