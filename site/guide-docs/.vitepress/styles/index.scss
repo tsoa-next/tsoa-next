@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Proza+Libre:ital,wght@0,400;0,500;1,400;1,500&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Proza+Libre:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 
 :root {
   --vp-nav-logo-height: 1em;
@@ -11,7 +11,7 @@
 
 .theme-container.home-class header.hero h1 {
   font-weight: 400;
-  font-family: "Proza Libre", sans-serif;
+  font-family: 'Proza Libre', sans-serif;
   font-size: 8rem;
 }
 
@@ -39,4 +39,19 @@
   height: 1em;
   width: auto;
   flex: 0 0 auto;
+}
+
+.vp-doc .home-search-section {
+  margin: 1rem auto;
+  padding: 1.5rem;
+  border-radius: 20px;
+}
+
+.vp-doc .home-search-section h2 {
+  margin-top: 0;
+}
+
+.vp-doc .home-search-section p:last-child,
+.vp-doc .home-search-section ul:last-child {
+  margin-bottom: 0;
 }

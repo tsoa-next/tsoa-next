@@ -22,3 +22,24 @@ features:
     details: tsoa-next continues the original tsoa project by Luke Autry and contributors, carrying forward the stable TypeScript-first and OpenAPI-first workflow they established.
   - title: Flexible
     details: Doesn't matter if you use express, koa, hapi or your own framework. We can support it out of the box or with a custom template.
+---
+
+<section class="home-search-section" aria-labelledby="search-summary-title">
+  <h2 id="search-summary-title">Generate OpenAPI from TypeScript without drift</h2>
+  <p>
+    <code>tsoa-next</code> keeps your controllers, runtime validation, generated routes, and OpenAPI output aligned so API docs stay accurate as your code evolves.
+  </p>
+  <p>
+    The docs here cover setup, generation, decorators, validation, file uploads, authentication, dependency injection, and template customization for Express, Koa, Hapi, and related server stacks.
+  </p>
+</section>
+
+<section class="home-search-section" aria-labelledby="search-use-cases-title">
+  <h2 id="search-use-cases-title">What teams use tsoa-next for</h2>
+  <ul>
+    <li>Generate OpenAPI 2 and OpenAPI 3 specs directly from TypeScript controllers and models</li>
+    <li>Produce framework-aware route handlers for Express, Koa, Hapi, and custom templates</li>
+    <li>Enforce runtime request validation that matches the generated schema contract</li>
+    <li>Document authentication, examples, descriptions, and annotations in one maintainable workflow</li>
+  </ul>
+</section>
