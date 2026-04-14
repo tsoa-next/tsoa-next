@@ -71,6 +71,7 @@ export interface SpecPathDefinition {
 }
 
 const SPEC_PATHS_SYMBOL = Symbol.for('@tsoa-next/spec-paths')
+const hasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
 
 function isBuiltinSpecTarget(target: SpecPathTarget): target is BuiltinSpecPathTarget {
   return typeof target === 'string'
@@ -89,7 +90,7 @@ function isSpecPathOptions(value: SpecPathTarget | SpecPathOptions | undefined):
     return false
   }
 
-  return Object.prototype.hasOwnProperty.call(value, 'cache') || Object.prototype.hasOwnProperty.call(value, 'gate') || Object.prototype.hasOwnProperty.call(value, 'target')
+  return hasOwn(value, 'cache') || hasOwn(value, 'gate') || hasOwn(value, 'target')
 }
 
 function getExistingSpecPaths(target: object): SpecPathDefinition[] {
