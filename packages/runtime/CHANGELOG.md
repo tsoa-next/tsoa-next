@@ -1,5 +1,13 @@
 # @tsoa-next/runtime
 
+## 8.2.0
+
+### Minor Changes
+
+- 8a8ff5b: Improve `@SpecPath(...)` support by adding the `@SpecPath(path, options?)` signature with `target`, `cache`, and request-aware `gate` controls.
+
+  Generated Express, Koa, and Hapi routes now omit `SpecPath` support when no controller uses the decorator, and statically gated spec routes are skipped during registration.
+
 ## 8.1.0
 
 ### Minor Changes
