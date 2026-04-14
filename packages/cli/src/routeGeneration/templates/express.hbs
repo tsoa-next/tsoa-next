@@ -2,7 +2,11 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
-import { createOpenApiSpecGenerator, fetchMiddlewares, fetchSpecPaths, normalisePath, resolveSpecPathResponse, ExpressTemplateService } from 'tsoa-next';
+import { fetchMiddlewares, ExpressTemplateService } from 'tsoa-next';
+{{#if useSpecPaths}}
+import { createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+import { pipeline } from 'node:stream';
+{{/if}}
 {{#each controllers}}
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
@@ -15,7 +19,6 @@ import { iocContainer } from '{{iocModule}}';
 import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
-import { pipeline } from 'node:stream';
 {{#if useFileUploads}}
 {{#if esm}}
 import multer from 'multer';
@@ -50,10 +53,12 @@ const models: TsoaRoute.Models = {
     },
     {{/each}}
 };
+{{#if useSpecPaths}}
 {{#if runtimeSpecConfig}}
 const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
 {{else}}
 const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 {{/if}}
 
 {{#if useFileUploads}}
@@ -73,7 +78,9 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
       validation: opts?.validation,
     };
     const templateService = new ExpressTemplateService(models, additionalProps);
+    {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
+    {{/if}}
     {{#each controllers}}
     {{#each actions}}
 
@@ -132,8 +139,13 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
         });
     {{/each}}
     {{/each}}
+    {{#if useSpecPaths}}
     {{#each controllers}}
     for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
+
         const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
         if (registeredGetPaths.has(specFullPath)) {
             throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
@@ -174,6 +186,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
         });
     }
     {{/each}}
+    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

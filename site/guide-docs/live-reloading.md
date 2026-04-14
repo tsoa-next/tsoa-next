@@ -82,8 +82,8 @@ import { Controller, Get, Route, SpecPath } from 'tsoa-next'
 
 @Route('users')
 @SpecPath()
-@SpecPath('openapi.yaml', 'yaml')
-@SpecPath('docs', 'swagger')
+@SpecPath('openapi.yaml', { target: 'yaml' })
+@SpecPath('docs', { target: 'swagger' })
 export class UsersController extends Controller {
   @Get()
   public list(): string[] {
@@ -115,9 +115,9 @@ When we hit "Execute", that request will be sent to our server and the response 
 
 ### Other built-in targets
 
-If you prefer a different UI, change the second decorator argument:
+If you prefer a different UI, change the `target` option:
 
-- `@SpecPath('docs', 'redoc')`
-- `@SpecPath('docs', 'rapidoc')`
+- `@SpecPath('docs', { target: 'redoc' })`
+- `@SpecPath('docs', { target: 'rapidoc' })`
 
-If you need a fully custom response, pass a handler that returns a `string` or a `Readable` instead.
+If you need a fully custom response, pass a handler in `target` instead. You can also add `cache` and `gate` in the same options object.

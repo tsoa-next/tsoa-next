@@ -5,7 +5,6 @@
 *.swp
 **/.turbo
 **/custom-route-generator/routes/*
-cache
 codealike.json
 coverage/
 customRoutes.ts
@@ -13,6 +12,7 @@ dist
 distForNoAdditional
 node_modules
 routes.ts
+site/guide-docs/.vitepress/cache
 site/guide-docs/.vitepress/.temp
 site/guide-docs/.vitepress/dist
 tsconfig.tsbuildinfo

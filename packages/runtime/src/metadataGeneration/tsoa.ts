@@ -43,6 +43,7 @@ export namespace Tsoa {
   }
 
   export interface Controller {
+    hasSpecPaths?: boolean
     location: string
     methods: Method[]
     name: string

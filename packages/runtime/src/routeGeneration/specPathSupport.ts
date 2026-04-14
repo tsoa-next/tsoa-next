@@ -189,6 +189,24 @@ function createSpecRequestContext(args: SpecContextArgs): SpecRequestContext {
   }
 }
 
+function createSpecPathNotFoundError() {
+  const error = new Error('Not Found') as Error & { status: number }
+  error.status = 404
+  return error
+}
+
+async function isSpecPathAllowed(specPath: SpecPathDefinition, context: SpecRequestContext) {
+  if (specPath.gate === undefined || specPath.gate === true) {
+    return true
+  }
+
+  if (specPath.gate === false) {
+    return false
+  }
+
+  return specPath.gate(context)
+}
+
 async function readResponseValue(value: SpecResponseValue): Promise<string> {
   if (!isReadableStream(value)) {
     return value
@@ -465,6 +483,10 @@ async function resolveHandlerResponse(specPath: SpecPathDefinition, context: Spe
  */
 export async function resolveSpecPathResponse(args: SpecContextArgs): Promise<ResolvedSpecResponse> {
   const context = createSpecRequestContext(args)
+  if (!(await isSpecPathAllowed(args.specPath, context))) {
+    throw createSpecPathNotFoundError()
+  }
+
   const cacheHandler = getCacheHandler(args)
   if (cacheHandler) {
     const cached = await cacheHandler.get(context)

@@ -29,6 +29,11 @@ async function customStreamHandler() {
   return Readable.from(['streamed custom spec'])
 }
 
+function allowSpecPathWhenHeaderPresent(context: SpecRequestContext) {
+  const headers = (context.request as { headers?: Record<string, string | string[] | undefined> } | undefined)?.headers
+  return headers?.['x-allow-spec'] === 'true'
+}
+
 const streamCacheHandler: SpecCacheHandler = {
   get(context) {
     specPathState.customCacheGets += 1
@@ -43,13 +48,15 @@ const streamCacheHandler: SpecCacheHandler = {
 
 @Route('SpecPath')
 @SpecPath()
-@SpecPath('yaml', 'yaml')
-@SpecPath('custom-string', customStringHandler, 'memory')
-@SpecPath('custom-stream', customStreamHandler, 'none')
-@SpecPath('custom-cached-stream', customStreamHandler, streamCacheHandler)
-@SpecPath('swagger-ui', 'swagger')
-@SpecPath('redoc-ui', 'redoc')
-@SpecPath('rapidoc-ui', 'rapidoc')
+@SpecPath('yaml', { target: 'yaml' })
+@SpecPath('custom-string', { target: customStringHandler, cache: 'memory' })
+@SpecPath('custom-stream', { target: customStreamHandler, cache: 'none' })
+@SpecPath('custom-cached-stream', { target: customStreamHandler, cache: streamCacheHandler })
+@SpecPath('swagger-ui', { target: 'swagger' })
+@SpecPath('redoc-ui', { target: 'redoc' })
+@SpecPath('rapidoc-ui', { target: 'rapidoc' })
+@SpecPath('gated', { gate: allowSpecPathWhenHeaderPresent })
+@SpecPath('disabled', { gate: false })
 export class SpecPathController extends Controller {
   @Get()
   public async getControllerStatus() {

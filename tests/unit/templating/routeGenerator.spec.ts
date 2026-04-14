@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import 'mocha'
@@ -293,6 +293,69 @@ describe('RouteGenerator', () => {
       const existingGetPaths = generator.buildContent('{{{json existingGetPaths}}}')
 
       expect(existingGetPaths).to.equal('["/v1/example/existing"]')
+    })
+
+    it('omits spec path support from generated routes when no controller uses @SpecPath', () => {
+      const generator = new DefaultRouteGenerator(
+        {
+          controllers: [
+            {
+              location: 'controller.ts',
+              methods: [],
+              name: 'ExampleController',
+              path: 'example',
+            },
+          ],
+          referenceTypeMap: {},
+        },
+        {
+          bodyCoercion: true,
+          entryFile: 'mockEntryFile',
+          middleware: 'express',
+          noImplicitAdditionalProperties: 'silently-remove-extras',
+          routesDir: '.',
+        },
+      )
+
+      const template = readFileSync(generator.template, 'utf8')
+      const routes = generator.buildContent(template)
+
+      expect(routes).not.to.contain('createOpenApiSpecGenerator')
+      expect(routes).not.to.contain('fetchSpecPaths')
+      expect(routes).not.to.contain('resolveSpecPathResponse')
+      expect(routes).not.to.contain("import { pipeline } from 'node:stream';")
+    })
+
+    it('includes spec path support in generated routes when a controller uses @SpecPath', () => {
+      const generator = new DefaultRouteGenerator(
+        {
+          controllers: [
+            {
+              hasSpecPaths: true,
+              location: 'controller.ts',
+              methods: [],
+              name: 'ExampleController',
+              path: 'example',
+            },
+          ],
+          referenceTypeMap: {},
+        },
+        {
+          bodyCoercion: true,
+          entryFile: 'mockEntryFile',
+          middleware: 'express',
+          noImplicitAdditionalProperties: 'silently-remove-extras',
+          routesDir: '.',
+        },
+      )
+
+      const template = readFileSync(generator.template, 'utf8')
+      const routes = generator.buildContent(template)
+
+      expect(routes).to.contain('createOpenApiSpecGenerator')
+      expect(routes).to.contain('fetchSpecPaths')
+      expect(routes).to.contain('resolveSpecPathResponse')
+      expect(routes).to.contain("import { pipeline } from 'node:stream';")
     })
   })
 

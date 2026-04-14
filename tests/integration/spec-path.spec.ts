@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
-import { verifyGetRequest } from './utils'
+import { verifyGetRequest, verifyRequest } from './utils'
 import { cleanupMockUiPeers, installMockUiPeers } from '../utils/mockUiPeers'
 
 type ExpressSpecPathFixture = typeof import('../fixtures/express-specpath/server')
@@ -123,5 +123,75 @@ describe('SpecPath integration', () => {
     await verifyGetRequest(hapiFixture.server.listener, '/v1/SpecPath/swagger-ui', (_err, res) => {
       expect(res.text).to.contain('SwaggerUIBundle')
     })
+  })
+
+  it('gates spec responses per request and skips statically disabled spec routes', async () => {
+    await verifyRequest(
+      expressFixture.app,
+      (_err, res) => {
+        expect(res.body).to.have.property('openapi', '3.1.0')
+      },
+      request => request.get('/v1/SpecPath/gated').set('x-allow-spec', 'true'),
+    )
+
+    await verifyGetRequest(
+      expressFixture.app,
+      '/v1/SpecPath/gated',
+      (_err, res) => {
+        expect(res.body).to.deep.include({
+          message: 'Not Found',
+          status: 404,
+        })
+      },
+      404,
+    )
+
+    await verifyGetRequest(
+      expressFixture.app,
+      '/v1/SpecPath/disabled',
+      (_err, res) => {
+        expect(res.type).to.equal('text/html')
+        expect(res.text).to.contain('Cannot GET /v1/SpecPath/disabled')
+      },
+      404,
+    )
+
+    await verifyGetRequest(
+      koaFixture.server,
+      '/v1/SpecPath/gated',
+      (_err, res) => {
+        expect(res.text).to.equal('Not Found')
+      },
+      404,
+    )
+
+    await verifyRequest(
+      koaFixture.server,
+      (_err, res) => {
+        expect(res.body).to.have.property('openapi', '3.1.0')
+      },
+      request => request.get('/v1/SpecPath/gated').set('x-allow-spec', 'true'),
+    )
+
+    await verifyGetRequest(
+      hapiFixture.server.listener,
+      '/v1/SpecPath/gated',
+      (_err, res) => {
+        expect(res.body).to.deep.include({
+          error: 'Not Found',
+          message: 'Not Found',
+          statusCode: 404,
+        })
+      },
+      404,
+    )
+
+    await verifyRequest(
+      hapiFixture.server.listener,
+      (_err, res) => {
+        expect(res.body).to.have.property('openapi', '3.1.0')
+      },
+      request => request.get('/v1/SpecPath/gated').set('x-allow-spec', 'true'),
+    )
   })
 })

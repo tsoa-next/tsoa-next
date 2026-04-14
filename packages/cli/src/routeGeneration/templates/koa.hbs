@@ -2,7 +2,10 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
-import { createOpenApiSpecGenerator, fetchMiddlewares, fetchSpecPaths, normalisePath, resolveSpecPathResponse, KoaTemplateService } from 'tsoa-next';
+import { fetchMiddlewares, KoaTemplateService } from 'tsoa-next';
+{{#if useSpecPaths}}
+import { createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+{{/if}}
 {{#each controllers}}
 
 import { {{name}} } from '{{modulePath}}';
@@ -51,10 +54,12 @@ const models: TsoaRoute.Models = {
     },
     {{/each}}
 };
+{{#if useSpecPaths}}
 {{#if runtimeSpecConfig}}
 const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
 {{else}}
 const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 {{/if}}
 
 {{#if useFileUploads}}
@@ -74,7 +79,9 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
       validation: opts?.validation,
     };
     const templateService = new KoaTemplateService(models, additionalProps);
+    {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
+    {{/if}}
 
     {{#each controllers}}
     {{#each actions}}
@@ -135,8 +142,13 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
         });
     {{/each}}
     {{/each}}
+    {{#if useSpecPaths}}
     {{#each controllers}}
     for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
+
         const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
         if (registeredGetPaths.has(specFullPath)) {
             throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
@@ -171,6 +183,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
             });
     }
     {{/each}}
+    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

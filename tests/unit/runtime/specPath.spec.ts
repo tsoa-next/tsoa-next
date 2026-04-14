@@ -47,6 +47,64 @@ describe('SpecPath', () => {
     ])
   })
 
+  it('supports the options-object signature', () => {
+    const gate = async () => true
+
+    @SpecPath('docs', { target: 'yaml', cache: 'none', gate })
+    class OptionsSpecPathController {}
+
+    expect(fetchSpecPaths(OptionsSpecPathController)).to.deep.equal([
+      {
+        cache: 'none',
+        gate,
+        normalizedPath: '/docs',
+        path: 'docs',
+        target: 'yaml',
+      },
+    ])
+  })
+
+  it('treats an empty options object as default spec-path options', () => {
+    @SpecPath('docs', {})
+    class EmptyOptionsSpecPathController {}
+
+    expect(fetchSpecPaths(EmptyOptionsSpecPathController)).to.deep.equal([
+      {
+        cache: 'memory',
+        normalizedPath: '/docs',
+        path: 'docs',
+        target: 'json',
+      },
+    ])
+  })
+
+  it('rejects unsupported object shapes for the options-object signature', () => {
+    expect(() => {
+      @SpecPath('docs', { get: () => undefined } as unknown as never)
+      class InvalidOptionsSpecPathController {}
+
+      return InvalidOptionsSpecPathController
+    }).to.throw("supported keys are 'target', 'cache', and 'gate'")
+  })
+
+  it('rejects mixing the options-object signature with the legacy cache argument', () => {
+    expect(() => {
+      @SpecPath('docs', { target: 'yaml' }, 'none')
+      class MixedSpecPathController {}
+
+      return MixedSpecPathController
+    }).to.throw('do not combine the options-object signature with the legacy third cache argument')
+  })
+
+  it('rejects mixing the options-object signature with an explicit default cache argument', () => {
+    expect(() => {
+      @SpecPath('docs', { target: 'yaml' }, 'memory')
+      class MixedDefaultCacheSpecPathController {}
+
+      return MixedDefaultCacheSpecPathController
+    }).to.throw('do not combine the options-object signature with the legacy third cache argument')
+  })
+
   it('accumulates multiple decorators on the same controller', () => {
     @SpecPath()
     @SpecPath('yaml', 'yaml', 'none')
@@ -144,6 +202,66 @@ describe('SpecPath', () => {
     expect(first.body).to.equal(JSON.stringify(spec))
     expect(second.body).to.equal(JSON.stringify(spec))
     expect(jsonReads).to.equal(1)
+  })
+
+  it('rejects gated spec requests before consulting caches or handlers', async () => {
+    let cacheReads = 0
+    let gateReads = 0
+    let handlerCalls = 0
+
+    const cache: SpecCacheHandler = {
+      get: () => {
+        cacheReads += 1
+        return 'cached secret'
+      },
+      set: () => undefined,
+    }
+
+    const handler = async () => {
+      handlerCalls += 1
+      return 'secret spec'
+    }
+
+    @SpecPath('gated', {
+      cache,
+      gate: async () => {
+        gateReads += 1
+        return false
+      },
+      target: handler,
+    })
+    class GatedSpecPathController {}
+
+    const [specPath] = fetchSpecPaths(GatedSpecPathController)
+    if (!specPath) {
+      throw new Error('Expected @SpecPath metadata to be defined.')
+    }
+
+    const specGenerator = {
+      async getSpecObject() {
+        return spec
+      },
+      async getSpecString() {
+        return JSON.stringify(spec)
+      },
+    }
+
+    try {
+      await resolveSpecPathResponse({
+        controllerClass: GatedSpecPathController,
+        fullPath: '/v1/spec/gated',
+        runtime: 'express',
+        specGenerator,
+        specPath,
+      })
+      throw new Error('Expected resolveSpecPathResponse to reject gated requests.')
+    } catch (error) {
+      expect((error as { status?: number }).status).to.equal(404)
+    }
+
+    expect(gateReads).to.equal(1)
+    expect(cacheReads).to.equal(0)
+    expect(handlerCalls).to.equal(0)
   })
 
   it('buffers streamed custom responses before caching and can read streams back from custom cache handlers', async () => {

@@ -205,6 +205,8 @@ Use `@SpecPath(...)` on a controller when you want that controller to expose a s
   - `redoc` for Redoc
   - `rapidoc` for RapiDoc
 - Custom handlers can return either a `string` or a `Readable`
+- Use `@SpecPath(path, options?)` to configure `target`, `cache`, and an optional `gate`
+- `gate` can be a boolean or a function that receives the `SpecRequestContext` and returns whether the spec should be served for that request
 - Cache can be disabled with `'none'`, kept in-process with `'memory'`, or delegated to a custom cache handler
 - `@SpecPath(...)` routes are auxiliary and are not added to the generated OpenAPI document
 
@@ -213,8 +215,8 @@ import { Controller, Get, Route, SpecPath } from 'tsoa-next'
 
 @Route('users')
 @SpecPath()
-@SpecPath('openapi.yaml', 'yaml')
-@SpecPath('docs', 'swagger')
+@SpecPath('openapi.yaml', { target: 'yaml' })
+@SpecPath('docs', { target: 'swagger' })
 export class UsersController extends Controller {
   @Get()
   public list(): string[] {
@@ -251,13 +253,25 @@ async function customDocs(context: SpecRequestContext) {
 }
 
 @Route('internal')
-@SpecPath('spec.json', customDocs, cache)
+@SpecPath('spec.json', { target: customDocs, cache })
 export class InternalController extends Controller {
   @Get('status')
   public status() {
     return { ok: true }
   }
 }
+```
+
+You can also gate a spec route:
+
+```ts
+@SpecPath('docs', {
+  gate: context => {
+    const headers = (context.request as { headers?: Record<string, string | string[] | undefined> } | undefined)?.headers
+    return headers?.['x-allow-spec'] === 'true'
+  },
+  target: 'swagger',
+})
 ```
 
 When caching is enabled and a custom handler returns a stream, `tsoa-next` buffers the stream to a string before storing it through the cache handler.

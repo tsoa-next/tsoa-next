@@ -2,7 +2,10 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
-import { createOpenApiSpecGenerator, fetchMiddlewares, fetchSpecPaths, normalisePath, resolveSpecPathResponse, HapiTemplateService } from 'tsoa-next';
+import { fetchMiddlewares, HapiTemplateService } from 'tsoa-next';
+{{#if useSpecPaths}}
+import { createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+{{/if}}
 {{#each controllers}}
 
 import { {{name}} } from '{{modulePath}}';
@@ -41,10 +44,12 @@ const models: TsoaRoute.Models = {
     },
     {{/each}}
 };
+{{#if useSpecPaths}}
 {{#if runtimeSpecConfig}}
 const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
 {{else}}
 const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 {{/if}}
 
 export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.ValidationContext }) {
@@ -61,7 +66,9 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
       additionalProps,
       { boomify, isBoom },
     );
+    {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
+    {{/if}}
     {{#each controllers}}
     {{#each actions}}
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
@@ -145,8 +152,13 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
         });
     {{/each}}
     {{/each}}
+    {{#if useSpecPaths}}
     {{#each controllers}}
     for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
+
         const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
         if (registeredGetPaths.has(specFullPath)) {
             throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
@@ -190,6 +202,7 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
         });
     }
     {{/each}}
+    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

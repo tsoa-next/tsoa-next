@@ -34,6 +34,7 @@ const TSOA_DECORATOR_NAMES = new Set([
   'Response',
   'Route',
   'Security',
+  'SpecPath',
   'SuccessResponse',
   'Tags',
   'UploadedFile',
