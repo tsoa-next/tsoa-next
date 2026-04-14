@@ -421,6 +421,16 @@ export class ControllerGenerator {
   }
 
   private hasSpecPaths(): boolean {
-    return getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'SpecPath', this.current.typeChecker).length > 0
+    let currentClass: ClassDeclaration | undefined = this.node
+
+    while (currentClass) {
+      if (getDecorators(currentClass, (_identifier, canonicalName) => canonicalName === 'SpecPath', this.current.typeChecker).length > 0) {
+        return true
+      }
+
+      currentClass = this.getDirectBaseClassInfo(currentClass, {}).baseClass
+    }
+
+    return false
   }
 }

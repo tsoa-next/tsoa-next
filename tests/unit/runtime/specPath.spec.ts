@@ -64,12 +64,44 @@ describe('SpecPath', () => {
     ])
   })
 
+  it('treats an empty options object as default spec-path options', () => {
+    @SpecPath('docs', {})
+    class EmptyOptionsSpecPathController {}
+
+    expect(fetchSpecPaths(EmptyOptionsSpecPathController)).to.deep.equal([
+      {
+        cache: 'memory',
+        normalizedPath: '/docs',
+        path: 'docs',
+        target: 'json',
+      },
+    ])
+  })
+
+  it('rejects unsupported object shapes for the options-object signature', () => {
+    expect(() => {
+      @SpecPath('docs', { get: () => undefined } as unknown as never)
+      class InvalidOptionsSpecPathController {}
+
+      return InvalidOptionsSpecPathController
+    }).to.throw("supported keys are 'target', 'cache', and 'gate'")
+  })
+
   it('rejects mixing the options-object signature with the legacy cache argument', () => {
     expect(() => {
       @SpecPath('docs', { target: 'yaml' }, 'none')
       class MixedSpecPathController {}
 
       return MixedSpecPathController
+    }).to.throw('do not combine the options-object signature with the legacy third cache argument')
+  })
+
+  it('rejects mixing the options-object signature with an explicit default cache argument', () => {
+    expect(() => {
+      @SpecPath('docs', { target: 'yaml' }, 'memory')
+      class MixedDefaultCacheSpecPathController {}
+
+      return MixedDefaultCacheSpecPathController
     }).to.throw('do not combine the options-object signature with the legacy third cache argument')
   })
 

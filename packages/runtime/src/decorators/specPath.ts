@@ -71,7 +71,7 @@ export interface SpecPathDefinition {
 }
 
 const SPEC_PATHS_SYMBOL = Symbol.for('@tsoa-next/spec-paths')
-const hasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
+const specPathOptionKeys = new Set(['cache', 'gate', 'target'])
 
 function isBuiltinSpecTarget(target: SpecPathTarget): target is BuiltinSpecPathTarget {
   return typeof target === 'string'
@@ -85,12 +85,39 @@ function getCacheDescription(cache: SpecPathCache) {
   return typeof cache === 'string' ? cache : 'custom cache'
 }
 
-function isSpecPathOptions(value: SpecPathTarget | SpecPathOptions | undefined): value is SpecPathOptions {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false
+function isSpecPathOptionsObject(value: SpecPathTarget | SpecPathOptions | undefined): value is SpecPathOptions {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasSupportedSpecPathOptionKeys(value: SpecPathOptions) {
+  return Object.keys(value).every(key => specPathOptionKeys.has(key))
+}
+
+function resolveSpecPathOptions(
+  targetOrOptions: SpecPathTarget | SpecPathOptions | undefined,
+  cache: SpecPathCache,
+  hasLegacyCacheArgument: boolean,
+): Pick<SpecPathDefinition, 'cache' | 'gate' | 'target'> {
+  if (isSpecPathOptionsObject(targetOrOptions)) {
+    if (!hasSupportedSpecPathOptionKeys(targetOrOptions)) {
+      throw new Error("Invalid @SpecPath options object: supported keys are 'target', 'cache', and 'gate'.")
+    }
+
+    if (hasLegacyCacheArgument) {
+      throw new Error('Invalid @SpecPath usage: do not combine the options-object signature with the legacy third cache argument.')
+    }
+
+    return {
+      cache: targetOrOptions.cache ?? 'memory',
+      gate: targetOrOptions.gate,
+      target: targetOrOptions.target ?? 'json',
+    }
   }
 
-  return hasOwn(value, 'cache') || hasOwn(value, 'gate') || hasOwn(value, 'target')
+  return {
+    cache,
+    target: targetOrOptions ?? 'json',
+  }
 }
 
 function getExistingSpecPaths(target: object): SpecPathDefinition[] {
@@ -111,25 +138,6 @@ function normalizeSpecPath(path: string | undefined) {
   return normalisePath(path ?? 'spec', '/')
 }
 
-function resolveSpecPathOptions(targetOrOptions: SpecPathTarget | SpecPathOptions | undefined, cache: SpecPathCache): Pick<SpecPathDefinition, 'cache' | 'gate' | 'target'> {
-  if (isSpecPathOptions(targetOrOptions)) {
-    if (cache !== 'memory') {
-      throw new Error('Invalid @SpecPath usage: do not combine the options-object signature with the legacy third cache argument.')
-    }
-
-    return {
-      cache: targetOrOptions.cache ?? 'memory',
-      gate: targetOrOptions.gate,
-      target: targetOrOptions.target ?? 'json',
-    }
-  }
-
-  return {
-    cache,
-    target: targetOrOptions ?? 'json',
-  }
-}
-
 /**
  * Registers a controller-local route that serves the generated OpenAPI document or a custom derived response.
  *
@@ -138,8 +146,10 @@ function resolveSpecPathOptions(targetOrOptions: SpecPathTarget | SpecPathOption
  * @param cache Legacy cache strategy argument. Defaults to in-memory caching.
  */
 export function SpecPath(path = 'spec', optionsOrTarget: SpecPathTarget | SpecPathOptions = 'json', cache: SpecPathCache = 'memory'): ClassDecorator {
+  const hasLegacyCacheArgument = arguments.length >= 3
+
   return classTarget => {
-    const resolvedOptions = resolveSpecPathOptions(optionsOrTarget, cache)
+    const resolvedOptions = resolveSpecPathOptions(optionsOrTarget, cache, hasLegacyCacheArgument)
     const normalizedPath = normalizeSpecPath(path)
     const existing = getExistingSpecPaths(classTarget)
 

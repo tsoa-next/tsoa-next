@@ -122,6 +122,39 @@ describe('RouteGenerator inherited routes', () => {
     })
   })
 
+  it('includes spec-path support when a base class contributes inherited @SpecPath metadata', async () => {
+    const source = `
+      import { Controller, Get, Route, SpecPath } from '@tsoa-next/runtime';
+
+      class BaseController extends Controller {
+        @Get('from-base')
+        public async fromBase(): Promise<string> {
+          return 'base';
+        }
+      }
+
+      @SpecPath('openapi')
+      class BaseSpecController extends BaseController {}
+
+      @Route('inherited')
+      export class ChildController extends BaseSpecController {
+        @Get('from-child')
+        public async fromChild(): Promise<string> {
+          return 'child';
+        }
+      }
+    `
+
+    await withTempController(source, async paths => {
+      await generateRoutesForController(paths)
+      const generatedRoutes = await readGeneratedRoutesFile(paths.routesDir)
+
+      expect(generatedRoutes).to.contain('createOpenApiSpecGenerator')
+      expect(generatedRoutes).to.contain('fetchSpecPaths(ChildController)')
+      expect(generatedRoutes).to.contain("import { pipeline } from 'node:stream';")
+    })
+  })
+
   it('imports generated route helpers from tsoa-next for backwards compatibility', async () => {
     const source = `
       import { Controller, Get, Route } from 'tsoa-next';
