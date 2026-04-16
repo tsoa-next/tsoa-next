@@ -160,7 +160,13 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     }
 
     const { buildSpec, serializeSpec } = require('../module/generate-spec') as typeof import('../module/generate-spec')
-    const spec = buildSpec(this.options.runtimeSpecConfig.spec, undefined, undefined, this.metadata, this.options.runtimeSpecConfig.defaultNumberType)
+    const spec = buildSpec(
+      this.options.runtimeSpecConfig.spec,
+      this.options.runtimeSpecConfig.compilerOptions as import('typescript').CompilerOptions | undefined,
+      this.options.runtimeSpecConfig.ignore,
+      this.metadata,
+      this.options.runtimeSpecConfig.defaultNumberType,
+    )
     return {
       spec,
       yaml: serializeSpec(spec, true),

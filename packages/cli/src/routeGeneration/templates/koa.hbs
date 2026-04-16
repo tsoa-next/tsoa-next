@@ -4,7 +4,7 @@
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
 import { fetchMiddlewares, KoaTemplateService } from 'tsoa-next';
 {{#if useSpecPaths}}
-import { {{#if embeddedSpecGeneratorArtifacts}}createEmbeddedSpecGenerator, {{/if}}createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+import { {{#if embeddedSpecGeneratorArtifacts}}createEmbeddedSpecGenerator{{else}}createOpenApiSpecGenerator{{/if}}, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
 {{/if}}
 {{#each controllers}}
 
