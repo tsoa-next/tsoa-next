@@ -353,9 +353,111 @@ describe('RouteGenerator', () => {
       const routes = generator.buildContent(template)
 
       expect(routes).to.contain('createOpenApiSpecGenerator')
+      expect(routes).not.to.contain('createEmbeddedSpecGenerator')
       expect(routes).to.contain('fetchSpecPaths')
       expect(routes).to.contain('resolveSpecPathResponse')
       expect(routes).to.contain("import { pipeline } from 'node:stream';")
+    })
+
+    it('embeds a prebuilt spec artifact into generated routes when spec config is available', () => {
+      const metadata: Tsoa.Metadata = {
+        controllers: [
+          {
+            hasSpecPaths: true,
+            location: 'controller.ts',
+            methods: [
+              {
+                extensions: [],
+                isHidden: false,
+                method: 'get',
+                name: 'list',
+                parameters: [],
+                path: '',
+                responses: [],
+                security: [],
+                type: {
+                  dataType: 'void',
+                },
+              },
+            ],
+            name: 'ExampleController',
+            path: 'example',
+          },
+        ],
+        referenceTypeMap: {},
+      }
+
+      const generator = new DefaultRouteGenerator(metadata, {
+        basePath: '/v1',
+        bodyCoercion: true,
+        entryFile: 'mockEntryFile',
+        middleware: 'express',
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        routesDir: '.',
+        runtimeSpecConfig: {
+          spec: {
+            basePath: '/v1',
+            entryFile: 'mockEntryFile',
+            name: 'Embedded Test API',
+            noImplicitAdditionalProperties: 'silently-remove-extras',
+            outputDirectory: '.',
+            specVersion: 3.1,
+            version: '1.0.0',
+          },
+        },
+      })
+
+      const template = readFileSync(generator.template, 'utf8')
+      const routes = generator.buildContent(template)
+      const embeddedSpecGeneratorArtifacts = JSON.parse(generator.buildContent('{{{json embeddedSpecGeneratorArtifacts}}}')) as {
+        spec?: { info?: { title?: string }; openapi?: string; paths?: Record<string, unknown> }
+        yaml?: string
+      }
+
+      expect(routes).to.contain('createEmbeddedSpecGenerator')
+      expect(routes).not.to.contain('const specGenerator = createOpenApiSpecGenerator({')
+      expect(embeddedSpecGeneratorArtifacts.spec?.openapi).to.equal('3.1.0')
+      expect(embeddedSpecGeneratorArtifacts.spec?.info?.title).to.equal('Embedded Test API')
+      expect(embeddedSpecGeneratorArtifacts.spec?.paths).to.have.property('/example')
+      expect(embeddedSpecGeneratorArtifacts).not.to.have.property('json')
+      expect(embeddedSpecGeneratorArtifacts.yaml).to.contain('openapi: 3.1.0')
+    })
+
+    it('embeds metadata into runtimeSpecConfig for SpecPath routes', () => {
+      const metadata: Tsoa.Metadata = {
+        controllers: [
+          {
+            hasSpecPaths: true,
+            location: 'controller.ts',
+            methods: [],
+            name: 'ExampleController',
+            path: 'example',
+          },
+        ],
+        referenceTypeMap: {},
+      }
+
+      const generator = new DefaultRouteGenerator(metadata, {
+        bodyCoercion: true,
+        entryFile: 'mockEntryFile',
+        middleware: 'express',
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        routesDir: '.',
+        runtimeSpecConfig: {
+          spec: {
+            basePath: '/v1',
+            entryFile: 'mockEntryFile',
+            noImplicitAdditionalProperties: 'silently-remove-extras',
+            outputDirectory: '.',
+          },
+        },
+      })
+
+      const runtimeSpecConfig = JSON.parse(generator.buildContent('{{{json runtimeSpecConfig}}}')) as {
+        metadata?: Tsoa.Metadata
+      }
+
+      expect(runtimeSpecConfig.metadata).to.deep.equal(metadata)
     })
   })
 

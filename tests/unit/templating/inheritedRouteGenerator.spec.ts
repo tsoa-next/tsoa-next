@@ -150,6 +150,7 @@ describe('RouteGenerator inherited routes', () => {
       const generatedRoutes = await readGeneratedRoutesFile(paths.routesDir)
 
       expect(generatedRoutes).to.contain('createOpenApiSpecGenerator')
+      expect(generatedRoutes).not.to.contain('createEmbeddedSpecGenerator')
       expect(generatedRoutes).to.contain('fetchSpecPaths(ChildController)')
       expect(generatedRoutes).to.contain("import { pipeline } from 'node:stream';")
     })

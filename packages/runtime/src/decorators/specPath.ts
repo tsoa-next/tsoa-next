@@ -10,6 +10,15 @@ export type BuiltinSpecPathTarget = 'json' | 'yaml' | 'swagger' | 'redoc' | 'rap
 export type SpecDocumentFormat = 'json' | 'yaml'
 /** Response body types accepted from built-in and custom {@link SpecPath} handlers. */
 export type SpecResponseValue = string | Readable
+/** OpenAPI document shapes that can be served by built-in spec routes. */
+export type ServedSpec = Swagger.Spec & Record<string, unknown>
+
+/** Prebuilt OpenAPI artifacts that can be embedded into generated routes for runtime serving. */
+export interface EmbeddedSpecGeneratorArtifacts {
+  json?: string
+  spec: ServedSpec
+  yaml?: string
+}
 
 /** Describes the runtime contract needed to rebuild an OpenAPI document on demand. */
 export interface SpecGenerator {

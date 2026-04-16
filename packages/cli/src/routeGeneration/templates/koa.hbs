@@ -4,7 +4,7 @@
 import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
 import { fetchMiddlewares, KoaTemplateService } from 'tsoa-next';
 {{#if useSpecPaths}}
-import { createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+import { {{#if embeddedSpecGeneratorArtifacts}}createEmbeddedSpecGenerator{{else}}createOpenApiSpecGenerator{{/if}}, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
 {{/if}}
 {{#each controllers}}
 
@@ -52,13 +52,17 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-    {{/each}}
+{{/each}}
 };
 {{#if useSpecPaths}}
+{{#if embeddedSpecGeneratorArtifacts}}
+const specGenerator = createEmbeddedSpecGenerator({{{json embeddedSpecGeneratorArtifacts}}} as Parameters<typeof createEmbeddedSpecGenerator>[0]);
+{{else}}
 {{#if runtimeSpecConfig}}
 const specGenerator = createOpenApiSpecGenerator({{{json runtimeSpecConfig}}});
 {{else}}
 const specGenerator = createOpenApiSpecGenerator();
+{{/if}}
 {{/if}}
 {{/if}}
 

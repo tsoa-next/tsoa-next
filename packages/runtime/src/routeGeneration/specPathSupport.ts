@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { BuiltinSpecPathTarget, SpecCacheContext, SpecCacheHandler, SpecGenerator, SpecPathDefinition, SpecRequestContext, SpecResponseValue, SpecRuntime } from '../decorators/specPath'
 import { Config, SpecConfig } from '../config'
+import type { Tsoa } from '../metadataGeneration/tsoa'
 import { Swagger } from '../swagger/swagger'
 
 /** Snapshot of spec-generation settings embedded into generated routes for {@link SpecPath}. */
@@ -12,6 +13,7 @@ export interface RuntimeSpecConfigSnapshot {
   compilerOptions?: Record<string, unknown>
   defaultNumberType?: Config['defaultNumberType']
   ignore?: string[]
+  metadata?: Tsoa.Metadata
   spec: SpecConfig & {
     entryFile: Config['entryFile']
     controllerPathGlobs?: Config['controllerPathGlobs']

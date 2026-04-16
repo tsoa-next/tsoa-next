@@ -81,6 +81,8 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     const canImportByAlias = true
 
     const normalisedBasePath = normalisePath(this.options.basePath as string, '/')
+    const useSpecPaths = this.metadata.controllers.some(controller => controller.hasSpecPaths === true)
+    const embeddedSpecGeneratorArtifacts = this.buildEmbeddedSpecGeneratorArtifacts(useSpecPaths)
 
     return {
       authenticationModule,
@@ -132,8 +134,14 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       iocModule,
       minimalSwaggerConfig: { noImplicitAdditionalProperties: this.options.noImplicitAdditionalProperties, bodyCoercion: this.options.bodyCoercion },
       models: this.buildModels(),
-      runtimeSpecConfig: this.options.runtimeSpecConfig,
-      useSpecPaths: this.metadata.controllers.some(controller => controller.hasSpecPaths === true),
+      embeddedSpecGeneratorArtifacts,
+      runtimeSpecConfig: this.options.runtimeSpecConfig
+        ? {
+            ...this.options.runtimeSpecConfig,
+            metadata: this.metadata,
+          }
+        : undefined,
+      useSpecPaths,
       useFileUploads: this.metadata.controllers.some(controller => controller.methods.some(method => method.parameters.some(parameter => this.isFileUploadParameter(parameter)))),
       multerOpts: {
         limits: {
@@ -143,6 +151,25 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       } as Config['multerOpts'],
       useSecurity: this.metadata.controllers.some(controller => controller.methods.some(method => method.security.length > 0)),
       esm: this.options.esm,
+    }
+  }
+
+  protected buildEmbeddedSpecGeneratorArtifacts(useSpecPaths: boolean) {
+    if (!useSpecPaths || !this.options.runtimeSpecConfig) {
+      return undefined
+    }
+
+    const { buildSpec, serializeSpec } = require('../module/generate-spec') as typeof import('../module/generate-spec')
+    const spec = buildSpec(
+      this.options.runtimeSpecConfig.spec,
+      this.options.runtimeSpecConfig.compilerOptions as import('typescript').CompilerOptions | undefined,
+      this.options.runtimeSpecConfig.ignore,
+      this.metadata,
+      this.options.runtimeSpecConfig.defaultNumberType,
+    )
+    return {
+      spec,
+      yaml: serializeSpec(spec, true),
     }
   }
 
