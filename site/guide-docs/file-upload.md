@@ -1,128 +1,91 @@
 # Uploading files
 
-This requires to have multer installed:
+## Install the runtime upload middleware
+
+For Express:
 
 ```bash
 npm install multer
 npm install -D @types/multer
 ```
 
-## Using the UploadedFile / UploadedFiles decorator
+For Koa:
 
-The simplest way to add support for file upload is by adding `@UploadedFiles` or `@UploadedFile` as a parameter decorator. This loads multer allowing multipart/form-data submissions to work. `@FormField` can be used to access other multipart form fields.
+```bash
+npm install @koa/multer
+```
+
+## Using the `@UploadedFile` / `@UploadedFiles` decorators
+
+The built-in upload decorators use tsoa-next's exported `File` interface.
+Use `@FormField()` for the non-file multipart fields that arrive alongside the upload.
+
+```ts
+import { Controller, File, FormField, Post, Route, UploadedFile, UploadedFiles } from 'tsoa-next'
+
+@Route('files')
+export class FilesController extends Controller {
+  @Post('single')
+  public async uploadSingle(@FormField() title: string, @UploadedFile('asset') asset: File): Promise<{ title: string; originalName: string }> {
+    return {
+      title,
+      originalName: asset.originalname,
+    }
+  }
+
+  @Post('many')
+  public async uploadMany(@UploadedFiles('assets') assets: File[]): Promise<{ count: number }> {
+    return {
+      count: assets.length,
+    }
+  }
+}
+```
+
+## Default storage behavior
+
+Generated Express and Koa routes create a default multer instance when you use upload decorators.
+By default that instance keeps uploaded files in memory.
+
+If you want uploads written to disk or handled by a custom multer configuration, pass your own multer instance into `RegisterRoutes(...)`.
+
+## Custom multer configuration
 
 Express example:
 
 ```ts
-import { Post, Route, FormField, UploadedFiles, UploadedFile } from 'tsoa-next'
+import express, { json, urlencoded } from 'express'
+import multer from 'multer'
+import { RegisterRoutes } from '../build/routes'
 
-@Route('files')
-export class FilesController {
-  @Post('uploadFile')
-  public async uploadFile(@FormField() title: string, @FormField() description: string, @UploadedFiles() files: Express.Multer.File[], @UploadedFile() file: Express.Multer.File): Promise<void> {
-    console.log(files)
-  }
-}
+const app = express()
+
+app.use(urlencoded({ extended: true }))
+app.use(json())
+
+RegisterRoutes(app, {
+  multer: multer({ dest: 'uploads/' }),
+})
 ```
 
 Koa example:
 
 ```ts
-import { Post, Route, FormField, UploadedFiles, UploadedFile } from 'tsoa-next'
+import Router from '@koa/router'
+import multer from '@koa/multer'
+import { RegisterRoutes } from '../build/routes'
 
-@Route('files')
-export class FilesController {
-  @Post('uploadFile')
-  public async uploadFile(@FormField() title: string, @FormField() description: string, @UploadedFiles() files: File[], @UploadedFile() file: File): Promise<void> {
-    console.log(files)
-  }
-}
+const router = new Router()
+
+RegisterRoutes(router, {
+  multer: multer({ dest: 'uploads/' }),
+})
 ```
 
-Note, that using the decorator defaults to saving on the disk with a default file location set to the OS's temp folder.
+There is also a legacy top-level `multerOpts` config field in `tsoa.json`, but it is deprecated.
+Prefer passing a concrete multer instance into `RegisterRoutes(...)`.
 
-## Custom multer upload
+## Manual multipart handling
 
-To customize the multer upload, you have to use multer inside a controller resource.
-
-To use it with Express, call handleFile and pass the express Request to resolve 'file'. This also handles multipart/form-data. A quick sample:
-
-```ts
-import { Post, Request, Route } from 'tsoa-next'
-import express from 'express'
-import multer from 'multer'
-
-@Route('files')
-export class FilesController {
-  @Post('uploadFile')
-  public async uploadFile(@Request() request: express.Request): Promise<any> {
-    await this.handleFile(request)
-    // file will be in request.randomFileIsHere, it is a buffer
-    return {}
-  }
-
-  private handleFile(request: express.Request): Promise<any> {
-    const multerSingle = multer().single('file')
-    return new Promise((resolve, reject) => {
-      multerSingle(request, undefined, async error => {
-        if (error) {
-          reject(error)
-        }
-        resolve()
-      })
-    })
-  }
-}
-```
-
-To use it with Koa, pass Koa's Request context object to resolve 'file'. This also handles multipart/form-data. A quick sample:
-
-```ts
-import { Post, Request, Route } from 'tsoa-next'
-import { Request as KoaRequest } from 'koa'
-import multer from 'multer'
-
-@Route('files')
-export class FilesController {
-  @Post('uploadFile')
-  public async uploadFile(@Request() request: KoaRequest): Promise<any> {
-    const uploadSingle = multer().single('randomFileIsHere')
-    await uploadSingle(request.ctx, async () => null)
-    // file will be in request.randomFileIsHere, it is a buffer
-    return {}
-  }
-}
-```
-
-The according OpenAPI definition can be merge-overwritten inside `tsoa.json`. Here is a quick sample, what the previous request should look like.
-
-```js
-{
-  "spec": {
-    ...
-    "specMerging": "recursive",
-    "spec": {
-      "paths": {
-        "/files/uploadFile": {
-          "post": {
-            "consumes": [
-              "multipart/form-data"
-            ],
-            "parameters": [
-              {
-                "in": "formData",
-                "name": "randomFileIsHere",
-                "required": true,
-                "type": "file"
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
-  "routes": {
-     ...
-  }
-}
-```
+If you choose to bypass `@UploadedFile(...)` and call multer yourself inside a controller using `@Request()`, you are also responsible for documenting that request shape yourself.
+In that case, merge the multipart request details into `spec.spec` in `tsoa.json` so the generated OpenAPI document still describes the endpoint accurately.

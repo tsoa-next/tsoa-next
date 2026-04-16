@@ -43,7 +43,7 @@ export function Res(): ParameterDecorator {
  * Overrides the response media type on a controller or a single action.
  *
  * @param _value The response media type, for example `application/json`.
- * @link https://swagger.io/docs/specification/media-types/
+ * See https://swagger.io/docs/specification/media-types/.
  */
 export function Produces(_value: string): MethodDecorator & ClassDecorator {
   return createNoopClassMethodDecorator('produces')

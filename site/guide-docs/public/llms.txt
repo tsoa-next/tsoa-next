@@ -28,9 +28,9 @@ Quick start checklist
 3. Create `tsoa.json` with at least:
    - `entryFile`
    - `controllerPathGlobs`
-   - `spec.outputDirectory`
-   - `spec.specVersion`
-   - `routes.routesDir`
+- `spec.outputDirectory`
+- `spec.specVersion`
+- `routes.routesDir`
 4. Enable `experimentalDecorators` in `tsconfig.json`.
 5. Use named exports for controllers. Default-exported controllers are not supported.
 6. Write controllers with `@Route`, HTTP method decorators, and parameter decorators.
@@ -42,10 +42,10 @@ Important config notes
   - `ignore`
   - `silently-remove-extras`
   - `throw-on-extras`
-- `spec.specVersion` can be `2` or `3`.
+- `spec.specVersion` can be `2`, `3`, or `3.1`.
 - `routes.authenticationModule` is used for auth middleware integration.
 - Generated routes import from `tsoa-next`, so controllers and generated routes use the same package surface.
-- `emitDecoratorMetadata` is not required for basic tsoa-next usage. The docs only call it out as relevant for some custom middleware patterns.
+- `emitDecoratorMetadata` is not required by tsoa-next itself. Enable it only when other libraries in your stack need design-time metadata.
 
 Controller authoring rules
 - Decorate classes with `@Route('path')`.
@@ -61,7 +61,9 @@ Controller authoring rules
   - `@UploadedFile`
   - `@UploadedFiles`
   - `@Request`
+  - `@RequestProp`
   - `@Res`
+  - `@Inject`
 - Path parameters follow OpenAPI path templating, for example `@Get('{userId}')`.
 
 Generation commands
@@ -74,6 +76,7 @@ Generation commands
   - import from `tsoa-next/cli`
   - `generateSpec(...)`
   - `generateRoutes(...)`
+  - `generateSpecAndRoutes(...)`
 
 Runtime setup pattern
 - Add framework body parsers first.
@@ -156,15 +159,18 @@ External validators
 
 Authentication
 - Define security schemes in the OpenAPI config.
+- `spec.rootSecurity` can apply a default security requirement across the API.
 - Point `routes.authenticationModule` at a module exporting framework-specific authentication handlers.
 - Use `@Security('name', ['scope'])` on controller methods.
+- Use `@NoSecurity()` to clear inherited or default security for a controller or action.
 - The security definition name in config must match the decorator security name.
 - Guide:
   - https://tsoa-next.dev/authentication
 
 File uploads
-- Install `multer` and `@types/multer` for Express-based file upload workflows.
-- Use `@UploadedFile`, `@UploadedFiles`, and `@FormField` for multipart inputs.
+- Install `multer` and `@types/multer` for Express-based file upload workflows, or `@koa/multer` for Koa.
+- Use the exported `File` type together with `@UploadedFile`, `@UploadedFiles`, and `@FormField` for multipart inputs.
+- Generated upload middleware defaults to in-memory storage unless you provide your own multer instance.
 - Custom multer handling can be done inside controller methods when you need custom storage behavior.
 - Guide:
   - https://tsoa-next.dev/file-upload
@@ -190,12 +196,16 @@ Decorators commonly referenced in the docs
 - `@Route`
 - `@Tags`
 - `@Security`
+- `@NoSecurity`
 - `@OperationId`
 - `@Deprecated`
 - `@Hidden`
 - `@Request`
+- `@RequestProp`
 - `@SpecPath`
 - `@Validate`
+- `@Consumes`
+- `@Produces`
 - Decorator guide:
   - https://tsoa-next.dev/decorators
 

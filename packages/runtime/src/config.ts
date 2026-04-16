@@ -43,9 +43,6 @@ export interface Config {
   /**
    * TypeScript CompilerOptions to be used during generation.
    * These are merged over compiler options resolved from tsconfig.
-   *
-   * @type {Record<string, unknown>}
-   * @memberof RoutesConfig
    */
   compilerOptions?: Record<string, unknown>
 
@@ -230,7 +227,7 @@ export interface SpecConfig {
 
   /**
    * Applies a default security to the entire API.
-   * Can be overridden with @Security or @NoSecurity decorators on controllers or methods
+   * Can be overridden with `@Security(...)` or `@NoSecurity()` decorators on controllers or methods.
    */
   rootSecurity?: Swagger.Security[]
 }

@@ -87,8 +87,8 @@ If you check out the Documentation endpoint, you'll notice that we don't have an
 Since TypeScript does not check throwing Errors, tsoa can't infer the type of response we're sending out in these cases.
 
 ::: warning
-Please note that `@Response` has to be the tsoa import and can not currently be renamed
-(i.e. `import { Response as TsoaResponse } from 'tsoa-next'`)
+Use the `@Response` decorator exported by `tsoa-next`, not Express's `Response` type.
+Aliasing the tsoa-next import is fine, but it still needs to resolve to the tsoa-next decorator.
 :::
 
 However, we have a way for you to manually specify these returns:
@@ -137,10 +137,6 @@ public async getResponse(): Promise<TestModel> {
 
 ## Typechecked alternate responses
 
-::: warning
-This section applies to tsoa >=3.1
-:::
-
 In recent versions of tsoa, we have the option to inject a framework-agnostic responder function into our function that we can call to formulate a response that does not comply with the return type of our controller method/status code and headers (which is used for the success response).
 This is especially useful to reply with an error response without the risk of type mismatches associated with throwing errors.
 In order to inject one/more responders, we can use the `@Res()` decorator:
@@ -161,4 +157,6 @@ export class GreetingsController extends Controller {
 
     return `Hello, ${name}`
   }
+}
+```
 ```

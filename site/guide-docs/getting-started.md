@@ -59,13 +59,14 @@ Let's take a look at what we are telling tsoa here:
 First, we specify where the entry point to our application will be.
 Most likely, this file will be called `index.ts` or `app.ts`. We will create this file in a second.
 
-Afterwards, the `controllerPathGlob` tells tsoa where it can look for controllers so we don't manually have to import them.
+Afterwards, the top-level `controllerPathGlobs` setting tells tsoa where it can look for controllers so we don't manually have to import them.
 
 Next, we tell tsoa how strict excess property checking (to use the TypeScript term) or additionalProperty checking (to use OpenAPI terminology) should be.
 We can choose to "ignore" additional Properties (the OpenAPI default), remove them during validation ("silently-remove-extras"), or throw an Error back to the Client ("throw-on-extras").
 Next, we set the output directory for out OpenAPI specification (OAS) and our `routes.ts` file, which we will talk about later.
 
 We set the `specVersion` to `3` so tsoa will generate an OpenAPI v3 specification.
+You can also use `3.1` when you want OpenAPI 3.1 output.
 
 For a full list of all the possible config, take a look at the [API Reference](../reference/interfaces/tsoa-next.Config.html)
 
@@ -105,7 +106,7 @@ While the default ts config will work for this guide, an improved tsconfig.json 
 
     /* Experimental Options */
     "experimentalDecorators": true,
-    // emitDecoratorMetadata is not needed by tsoa (unless you are using Custom Middlewares)
+    // emitDecoratorMetadata is not needed by tsoa-next itself
 
     /* Advanced Options */
     "forceConsistentCasingInFileNames": true,
@@ -201,7 +202,7 @@ While express allows you to use regex-ish route definitions, we prefer to split 
 Because you're asking for the _id_ to be a _number_ by using the `@Path()` decorator with an `userId` of type number, tsoa will reject passing i.e. a _string_ here.
 Similarly, if you want to accept a _string_ with a certain pattern, you can do that using JSON Schema annotations. You can learn more about that [here](#what-s-next).
 
-tsoa will allow 4 types of parameters: Path parameters (using `@Path()`), Query Parameters (`@Query()`or `@Queries()`), Header Parameters (`@Header()`) and Body Parameters (`@Body()` or individual properties using `@BodyProp()`).
+tsoa-next supports the usual path, query, header, and body decorators, and also supports multipart form-data decorators such as `@FormField()`, `@UploadedFile()`, and `@UploadedFiles()`, plus runtime-only injected parameters such as `@Request()` and `@Res()`.
 
 ::: tip
 If the parameter name is equal to the http message parameter, you may omit the argument to the decorators, otherwise you may provide an argument:

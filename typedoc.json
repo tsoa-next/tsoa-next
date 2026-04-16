@@ -6,5 +6,14 @@
   ],
   "name": "tsoa-next",
   "includeVersion": true,
-  "out": "./.typedoc"
+  "out": "./.typedoc",
+  "hostedBaseUrl": "https://tsoa-next.dev/reference/",
+  "packageOptions": {
+    "validation": {
+      "notExported": false
+    }
+  },
+  "validation": {
+    "notExported": false
+  }
 }

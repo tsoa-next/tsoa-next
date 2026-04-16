@@ -4,7 +4,7 @@ You have two options for how to tell tsoa where it can find the controllers that
 
 ## Using automatic controllers discovery
 
-You can tell `tsoa-next` to use your automatic controllers discovery by providing a [minimatch glob](http://www.globtester.com/) in the [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`). It can be provided on `config.spec` or `config.routes`.
+You can tell `tsoa-next` to use automatic controller discovery by providing one or more [minimatch globs](http://www.globtester.com/) in the top-level `controllerPathGlobs` field of your [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (for example `tsoa.json`).
 
 Pros:
 
@@ -12,36 +12,36 @@ Pros:
 
 Cons:
 
-- It could be potentially slower (but not significantly slow) than the alternative option described further down in the readme.
+- It can be slightly slower than the alternative explicit-import approach because tsoa needs to expand and load the configured globs.
 
 As you can see from the the controllers globs patterns below, you can provide multiple globs of various patterns:
 
 ```js
 {
   "entryFile": "...",
+  "controllerPathGlobs": [
+    "./dir-with-controllers/*",
+    "./recursive-dir/**/*",
+    "./custom-filerecursive-dir/**/*.controller.ts"
+  ],
   "routes": {
     "routesDir": "...",
-    "middleware": "...",
-    "controllerPathGlobs": [
-      "./dir-with-controllers/*",
-      "./recursive-dir/**/*",
-      "./custom-filerecursive-dir/**/*.controller.ts"
-    ]
+    "middleware": "..."
   }
 }
 ```
 
 ## Manually telling tsoa which controllers to use in the app entry file
 
-Tsoa can "crawl" the index file to look for controllers that have the `@Route` decorator.
+If you omit `controllerPathGlobs`, tsoa can crawl the application entry file and follow controller imports that have the `@Route` decorator.
 
 Pros:
 
-- The tsoa route generation will be faster.
+- Route generation will usually be faster because tsoa follows your explicit imports instead of expanding globs.
 
 Cons:
 
-- New developers on your team might add a controller and not understand why the new controller was not exposed to the router or to the OpenAPI generation. If this is a problem for you, please use the automatic controller discovery option described above.
+- New developers on your team might add a controller and not understand why the new controller was not exposed to the router or the OpenAPI generation. If that is a problem for you, prefer `controllerPathGlobs`.
 
 ```typescript
 import * as methodOverride from 'method-override'

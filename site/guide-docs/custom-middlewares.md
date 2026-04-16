@@ -2,18 +2,26 @@
 
 The `@Middlewares` decorator is used to apply custom middleware to an endpoint in your TypeScript code. This middleware intercepts incoming HTTP requests before they reach the endpoint and allows you to perform additional operations or modifications. It provides support for Express, Koa, and Hapi middlewares.
 
-## Example 
+## Example
 
 ```ts
-async function customMiddleware(req: Req, res: ExpRes, next: NextFunction) {
-    // Perform any necessary operations or modifications
-    next();
+import type { NextFunction, Request, Response } from 'express'
+import { Controller, Get, Middlewares, Request as TsoaRequest, Route } from 'tsoa-next'
+
+async function customMiddleware(req: Request, _res: Response, next: NextFunction) {
+  req.headers['x-middleware-hit'] = 'true'
+  next()
 }
 
-@Get("/custom-middleware")
-@Middlewares(customMiddleware)
-async exampleGetEndpoint(@Request() req: Req): Promise<void> {
-    console.log(`Custom middleware`);
+@Route('examples')
+export class ExampleController extends Controller {
+  @Get('custom-middleware')
+  @Middlewares(customMiddleware)
+  public async exampleGetEndpoint(@TsoaRequest() req: Request): Promise<{ middlewareHit: boolean }> {
+    return {
+      middlewareHit: req.header('x-middleware-hit') === 'true',
+    }
+  }
 }
 ```
 
@@ -28,18 +36,21 @@ After completing the middleware logic, you must call the `next()` function to pa
 
 Finally, the request reaches the exampleGetEndpoint method, where you can handle the request and provide the appropriate response.
 
-It's important to note that the order of the decorators and middlewares matters. If multiple middlewares are specified, they are executed in the order they are applied.
+If multiple middlewares are specified, they are executed in the order they are passed to `@Middlewares(...)`.
 
 ## TypeScript Requirements
 
-Using custom middleware requires emitting decorator metadata. You must have these flags enabled in your `tsconfig.json`:
+Using custom middleware requires decorators to be enabled in TypeScript:
+
 ```jsonc
 {
   "compilerOptions": {
     // ...
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     // ...
   }
 }
 ```
+
+`emitDecoratorMetadata` is not required by `tsoa-next` for `@Middlewares(...)`.
+Only enable it when your own middleware, DI container, or validation stack depends on design-time metadata.

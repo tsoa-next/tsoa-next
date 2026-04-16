@@ -32,7 +32,7 @@ First, define the security definitions for OpenAPI, and also configure where the
 }
 ```
 
-In the middleware, export the function based on which library (Express, Koa, Hapi) you are using. You only create 1 function to handle all authenticate types. The `securityName` and `scopes` come from the annotation you put above your controller function.
+In the middleware, export the function based on which library (Express, Koa, Hapi) you are using. You only create one function per runtime and handle the security types inside it. The `securityName` and `scopes` come from the annotation you put above your controller function.
 
 \* *securityDefinitions* name and *securityName* name should be the same
 
@@ -63,7 +63,7 @@ export function expressAuthentication(
     }
   }
 
-  if (securityName === "jwt") {
+  if (securityName === "tsoa_auth") {
     const token =
       request.body.token ||
       request.query.token ||
@@ -112,21 +112,38 @@ export function koaAuthentication(
 `./controllers/securityController.ts`
 
 ```ts
-import { Get, Route, Security, Response } from "tsoa-next";
+import { Get, Request, Response, Route, Security } from "tsoa-next";
 
 @Route("secure")
 export class SecureController {
-  @Response<ErrorResponseModel>("Unexpected error")
+  @Response<{ message: string }>("default", "Unexpected error")
   @Security("api_key")
   @Get("UserInfo")
-  public async userInfo(@Request() request: any): Promise<UserResponseModel> {
+  public async userInfo(@Request() request: { user: { id: number; name: string } }): Promise<{ id: number; name: string }> {
     return Promise.resolve(request.user);
   }
 
-  @Security("jwt", ["admin"])
+  @Response<{ message: string }>("404", "Not Found")
+  @Security("tsoa_auth", ["admin"])
   @Get("EditUser")
-  public async userInfo(@Request() request: any): Promise<string> {
-    // Do something here
+  public async editUser(@Request() request: { user?: { id: number; name: string } }): Promise<{ id: number; name: string }> {
+    if (!request.user) {
+      throw new Error("Not found");
+    }
+
+    return request.user;
+  }
+}
+```
+
+## Default API-wide security
+
+If most of your API shares the same requirement, you can apply it once at the spec level with `spec.rootSecurity` and then override it on individual controllers or actions with `@Security(...)` or `@NoSecurity()`.
+
+```js
+{
+  "spec": {
+    "rootSecurity": [{ "api_key": [] }]
   }
 }
 ```

@@ -1,6 +1,6 @@
 # Decorators
 
-Please note that this Section only covers Decorators that are not described separately, such as [`@Response`](./error-handling) or [`@Parameters`](./getting-started).
+Please note that this section only covers decorators that are not described separately, such as [`@Response`](./error-handling) or the core parameter decorators introduced in [Getting started](./getting-started).
 For a full overview, please check out the [API Reference](../reference/).
 
 ## Security
@@ -27,27 +27,50 @@ public async GetWithAndSecurity(@Request() request: express.Request): Promise<an
 }
 ```
 
+## NoSecurity
+
+Use `@NoSecurity()` when a controller or action should clear inherited or API-wide security requirements.
+
+```ts
+import { Controller, Get, NoSecurity, Route, Security } from 'tsoa-next'
+
+@Route('users')
+@Security('api_key')
+export class UsersController extends Controller {
+  @Get('private')
+  public async privateEndpoint(): Promise<string> {
+    return 'private'
+  }
+
+  @Get('public')
+  @NoSecurity()
+  public async publicEndpoint(): Promise<string> {
+    return 'public'
+  }
+}
+```
+
 ## Tags
 
 Tags are defined with the `@Tags('tag1', 'tag2', ...)` decorator in the controllers and/or in the methods like in the following examples.
 
 ```ts
-import { Get, Route, Response, Tags } from "tsoa-next";
+import { Controller, Get, Request, Response, Route, Tags } from 'tsoa-next'
 
-@Route("users")
-@Tags("User")
-export class UsersController {
-  @Response<ErrorResponseModel>("Unexpected error")
-  @Get("UserInfo")
-  @Tags("Info", "Get")
-  public async userInfo(@Request() request: any): Promise<UserResponseModel> {
-    return Promise.resolve(request.user);
+@Route('users')
+@Tags('User')
+export class UsersController extends Controller {
+  @Get('UserInfo')
+  @Tags('Info', 'Get')
+  @Response<{ message: string }>('default', 'Unexpected error')
+  public async userInfo(@Request() request: { user: { id: number; name: string } }): Promise<{ id: number; name: string }> {
+    return Promise.resolve(request.user)
   }
 
-  @Get("EditUser")
-  @Tags("Edit")
-  public async userInfo(@Request() request: any): Promise<string> {
-    // Do something here
+  @Get('EditUser')
+  @Tags('Edit')
+  public async editUser(): Promise<string> {
+    return 'ok'
   }
 }
 ```
@@ -282,18 +305,20 @@ When caching is enabled and a custom handler returns a stream, `tsoa-next` buffe
 Use on methods to exclude an endpoint from the generated OpenAPI Specification document.
 
 ```ts
-  @Get()
-  @Hidden()
-  public async find(): Promise<any> {
-
-  }
+@Get()
+@Hidden()
+public async find(): Promise<any> {
+}
 ```
 
 Use on controllers to exclude all of its endpoints from the generated OpenAPI Specification document.
 
 ```ts
+import { Controller, Get, Hidden, Post, Route } from 'tsoa-next'
+
+@Route('hidden')
 @Hidden()
-export class HiddenController {
+export class HiddenController extends Controller {
   @Get()
   public async find(): Promise<any> {}
 
@@ -322,18 +347,21 @@ To access the request object of express in a controller method use the `@Request
 ```typescript
 // src/users/usersController.ts
 
-import * as express from "express";
-import { Get, Route, Request } from "tsoa-next";
-import { User, UserCreationRequest } from "../models/user";
+import * as express from 'express'
+import { Controller, Get, Path, Request, Route } from 'tsoa-next'
 
-@Route("users")
-export class UsersController {
-  @Get("{userId}")
+@Route('users')
+export class UsersController extends Controller {
+  @Get('{userId}')
   public async getUser(
-    userId: number,
+    @Path() userId: number,
     @Request() request: express.Request
-  ): Promise<User> {
+  ): Promise<{ id: number; requestedBy?: string }> {
     // TODO: implement some code that uses the request as well
+    return {
+      id: userId,
+      requestedBy: request.header('x-requested-by'),
+    }
   }
 }
 ```
@@ -342,28 +370,46 @@ To access Koa's request object (which has the ctx object) in a controller method
 ```typescript
 // src/users/usersController.ts
 
-import * as koa from "koa";
-import { Get, Route, Request } from "tsoa-next";
-import { User, UserCreationRequest } from "../models/user";
+import * as koa from 'koa'
+import { Controller, Get, Path, Request, Route } from 'tsoa-next'
 
-@Route("users")
-export class UsersController {
-  @Get("{userId}")
+@Route('users')
+export class UsersController extends Controller {
+  @Get('{userId}')
   public async getUser(
-    userrId: number,
+    @Path() userId: number,
     @Request() request: koa.Request
-  ): Promise<User> {
+  ): Promise<{ id: number; path: string }> {
     const ctx = request.ctx;
-    // TODO: implement some code that uses the request as well
+    return {
+      id: userId,
+      path: ctx.path,
+    }
   }
 }
 ```
 
 ::: danger
 Note that the parameter `request` does not appear in your OAS file.
-Likewise you can use the decorator `@Inject` to mark a parameter as being injected manually and should be omitted in Spec generation.
-In this case you should write your own custom template where you inject the needed objects/values in the method-call.
+Use `@RequestProp(...)` when the value already lives on the underlying runtime request object.
+Use `@Inject()` when a parameter is supplied entirely by your own route template or wrapper code and should be omitted from spec generation.
 :::
+
+## RequestProp
+
+`@RequestProp(...)` binds a single property from the underlying runtime request object.
+
+```ts
+import { Controller, Post, RequestProp, Route } from 'tsoa-next'
+
+@Route('request-props')
+export class RequestPropsController extends Controller {
+  @Post('body')
+  public async getBody(@RequestProp('body') body: { name: string }): Promise<{ name: string }> {
+    return body
+  }
+}
+```
 
 ## Produces
 
@@ -376,19 +422,19 @@ Here's an example of how to use the `@Produces` decorator:
 @Produces('application/vnd.mycompany.myapp+json')
 export class MediaTypeTestController extends Controller {
   @Get('users/{userId}')
-  public async getDefaultProduces(@Path() userId: number): Promise<UserResponseModel> {
-    this.setHeader('Content-Type', 'application/vnd.mycompany.myapp+json');
+  public async getDefaultProduces(@Path() userId: number): Promise<{ id: number; name: string }> {
+    this.setHeader('Content-Type', 'application/vnd.mycompany.myapp+json')
     return Promise.resolve({
       id: userId,
       name: 'foo',
-    });
+    })
   }
   @Get('custom/security.txt')
   @Produces('text/plain')
   public async getCustomProduces(): Promise<string> {
-    const securityTxt = 'Contact: mailto: security@example.com\nExpires: 2012-12-12T12:37:00.000Z';
-    this.setHeader('Content-Type', 'text/plain');
-    return securityTxt;
+    const securityTxt = 'Contact: mailto: security@example.com\nExpires: 2012-12-12T12:37:00.000Z'
+    this.setHeader('Content-Type', 'text/plain')
+    return securityTxt
   }
 }
 ```
@@ -396,3 +442,26 @@ export class MediaTypeTestController extends Controller {
 ::: danger
 Please note that using the `@Produces` decorator only affects the generated OpenAPI Specification. You must also ensure that you send the correct header using `this.setHeader('Content-Type', 'MEDIA_TYPE')` in your controller methods.
 :::
+
+## Consumes
+
+Use `@Consumes(...)` when an action accepts a non-default request body media type.
+
+```ts
+import { Body, Consumes, Controller, Post, Response, Route, SuccessResponse } from 'tsoa-next'
+
+@Route('MediaTypeTest')
+export class MediaTypeTestController extends Controller {
+  @Post('custom')
+  @Consumes('application/vnd.mycompany.myapp.v2+json')
+  @SuccessResponse('202', 'Accepted', 'application/vnd.mycompany.myapp.v2+json')
+  @Response<{ message: string }>('400', 'Bad Request', undefined, 'application/problem+json')
+  public async postCustomConsumes(@Body() body: { name: string }): Promise<{ id: number; name: string }> {
+    this.setStatus(202)
+    return {
+      id: body.name.length,
+      name: body.name,
+    }
+  }
+}
+```

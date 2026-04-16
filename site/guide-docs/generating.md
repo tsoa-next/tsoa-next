@@ -78,7 +78,7 @@ For information on the configuration object (tsoa.json), you may also me interes
 Import programmatic generation APIs from `tsoa-next/cli`. The root `tsoa-next` entrypoint is runtime-only and should be used for decorators and runtime helpers.
 
 ```typescript
-import { generateRoutes, generateSpec, ExtendedRoutesConfig, ExtendedSpecConfig } from 'tsoa-next/cli'
+import { generateRoutes, generateSpec, generateSpecAndRoutes, ExtendedRoutesConfig, ExtendedSpecConfig } from 'tsoa-next/cli'
 
 ;(async () => {
   const specOptions: ExtendedSpecConfig = {
@@ -98,6 +98,21 @@ import { generateRoutes, generateSpec, ExtendedRoutesConfig, ExtendedSpecConfig 
   await generateSpec(specOptions)
 
   await generateRoutes(routeOptions)
+
+  // Or generate both outputs from one shared metadata pass:
+  await generateSpecAndRoutes({
+    configuration: {
+      entryFile: './api/server.ts',
+      controllerPathGlobs: ['./routeControllers/**/*Controller.ts'],
+      spec: {
+        outputDirectory: './api/dist',
+        specVersion: 3.1,
+      },
+      routes: {
+        routesDir: './api',
+      },
+    },
+  })
 })()
 ```
 
