@@ -49,6 +49,7 @@ app.use(function errorHandler(err: unknown, req: ExRequest, res: ExResponse, nex
 
   next()
 })
+```
 
 Now, the same request will respond like this:
 
@@ -157,5 +158,4 @@ export class GreetingsController extends Controller {
     return `Hello, ${name}`
   }
 }
-```
 ```
