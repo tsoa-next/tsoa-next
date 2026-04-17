@@ -237,6 +237,17 @@ const createRuntimeSpecConfig = (entryFile: string) => ({
         runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/hapi-specpath/server.ts'),
       }),
     ),
+    log('Hapi Route Generation, SpecPath priority', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/hapi-specpath-priority/server.ts',
+        middleware: 'hapi',
+        routesDir: './fixtures/hapi-specpath-priority',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/hapi-specpath-priority/server.ts'),
+      }),
+    ),
     log('Custom Route Generation', () =>
       generateRoutes(
         {

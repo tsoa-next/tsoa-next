@@ -8,6 +8,7 @@ type ExpressSpecPathPriorityFixture = typeof import('../fixtures/express-specpat
 type KoaSpecPathFixture = typeof import('../fixtures/koa-specpath/server')
 type KoaSpecPathPriorityFixture = typeof import('../fixtures/koa-specpath-priority/server')
 type HapiSpecPathFixture = typeof import('../fixtures/hapi-specpath/server')
+type HapiSpecPathPriorityFixture = typeof import('../fixtures/hapi-specpath-priority/server')
 type ControllerFixture = typeof import('../fixtures/controllers/specPathController')
 
 let expressFixture: ExpressSpecPathFixture
@@ -15,6 +16,7 @@ let expressPriorityFixture: ExpressSpecPathPriorityFixture
 let koaFixture: KoaSpecPathFixture
 let koaPriorityFixture: KoaSpecPathPriorityFixture
 let hapiFixture: HapiSpecPathFixture
+let hapiPriorityFixture: HapiSpecPathPriorityFixture
 let controllerFixture: ControllerFixture
 
 describe('SpecPath integration', () => {
@@ -26,7 +28,9 @@ describe('SpecPath integration', () => {
     koaFixture = require('../fixtures/koa-specpath/server') as KoaSpecPathFixture
     koaPriorityFixture = require('../fixtures/koa-specpath-priority/server') as KoaSpecPathPriorityFixture
     hapiFixture = require('../fixtures/hapi-specpath/server') as HapiSpecPathFixture
+    hapiPriorityFixture = require('../fixtures/hapi-specpath-priority/server') as HapiSpecPathPriorityFixture
     await hapiFixture.ready
+    await hapiPriorityFixture.ready
   })
 
   beforeEach(() => {
@@ -55,6 +59,7 @@ describe('SpecPath integration', () => {
     })
 
     await hapiFixture.server.stop()
+    await hapiPriorityFixture.server.stop()
     cleanupMockUiPeers()
   })
 
@@ -149,6 +154,12 @@ describe('SpecPath integration', () => {
     })
 
     await verifyGetRequest(koaPriorityFixture.server, '/v1/SpecPath/spec', (_err, res) => {
+      expect(res.type).to.equal('application/json')
+      expect(res.body).to.have.property('openapi', '3.1.0')
+      expect(res.body).not.to.have.property('matched', 'dynamic')
+    })
+
+    await verifyGetRequest(hapiPriorityFixture.server.listener, '/v1/SpecPath/spec', (_err, res) => {
       expect(res.type).to.equal('application/json')
       expect(res.body).to.have.property('openapi', '3.1.0')
       expect(res.body).not.to.have.property('matched', 'dynamic')
