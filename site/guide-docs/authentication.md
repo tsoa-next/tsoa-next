@@ -113,7 +113,7 @@ export function koaAuthentication(
 `./controllers/securityController.ts`
 
 ```ts
-import { Get, Request, Response, Route, Security } from "tsoa-next";
+import { Get, Request, Res, Response, Route, Security, TsoaResponse } from "tsoa-next";
 
 @Route("secure")
 export class SecureController {
@@ -124,12 +124,15 @@ export class SecureController {
     return Promise.resolve(request.user);
   }
 
-  @Response<{ message: string }>("404", "Not Found")
+  @Response<{ message: string }>("default", "Unexpected error")
   @Security("jwt", ["admin"])
   @Get("EditUser")
-  public async editUser(@Request() request: { user?: { id: number; name: string } }): Promise<{ id: number; name: string }> {
+  public async editUser(
+    @Request() request: { user?: { id: number; name: string } },
+    @Res() notFoundResponse: TsoaResponse<404, { message: string }>
+  ): Promise<{ id: number; name: string }> {
     if (!request.user) {
-      throw new Error("Not found");
+      return notFoundResponse(404, { message: "Not found" });
     }
 
     return request.user;
