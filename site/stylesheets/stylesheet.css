@@ -46,19 +46,6 @@ a:hover {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 0.75rem;
-}
-
-.btn-icon svg {
-  display: block;
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
 @media screen and (min-width: 64em) {
   .btn {
     padding: 0.75rem 1rem;

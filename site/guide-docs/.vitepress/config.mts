@@ -17,6 +17,19 @@ const siteHomeUrl = new URL('/', siteUrl).toString()
 const repositoryUrl = 'https://github.com/tsoa-next/tsoa-next'
 const playgroundUrl = 'https://github.com/tsoa-next/playground'
 const npmPackageUrl = 'https://www.npmjs.com/package/tsoa-next'
+const githubIconSvg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+    <path fill="currentColor" d="M8 1.3a6.665 6.665 0 0 1 5.413 10.56 6.677 6.677 0 0 1-3.288 2.432c-.333.067-.458-.142-.458-.316 0-.226.008-.942.008-1.834 0-.625-.208-1.025-.45-1.233 1.483-.167 3.042-.734 3.042-3.292a2.58 2.58 0 0 0-.684-1.792c.067-.166.3-.85-.066-1.766 0 0-.559-.184-1.834.683a6.186 6.186 0 0 0-1.666-.225c-.567 0-1.134.075-1.667.225-1.275-.858-1.833-.683-1.833-.683-.367.916-.134 1.6-.067 1.766a2.594 2.594 0 0 0-.683 1.792c0 2.55 1.55 3.125 3.033 3.292-.192.166-.367.458-.425.891-.383.175-1.342.459-1.942-.55-.125-.2-.5-.691-1.025-.683-.558.008-.225.317.009.442.283.158.608.75.683.941.133.376.567 1.092 2.242.784 0 .558.008 1.083.008 1.242 0 .174-.125.374-.458.316a6.662 6.662 0 0 1-4.559-6.325A6.665 6.665 0 0 1 8 1.3Z"/>
+  </svg>
+`.trim()
+const npmIconSvg = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+    <g fill="none" fill-rule="evenodd">
+      <rect width="24" height="24" fill="#D40001"/>
+      <path fill="#FFF" d="M16.7179487,7.92840493 L12.2051282,7.92840493 L12.2051282,20.2494172 L4,20.2494172 L4,3 L12.2051282,3 L20,3 L20,7.92840493 L20,20.2494172 L16.7179487,20.2494172 L16.7179487,7.92840493 Z"/>
+    </g>
+  </svg>
+`.trim()
 const socialImageUrl = new URL('/tsoa-next-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/tsoa-next-logo-590.png', siteHomeUrl).toString()
 const siteOrigin = new URL(siteHomeUrl).origin
@@ -538,7 +551,10 @@ export default defineConfig({
         link: playgroundUrl,
       },
     ],
-    socialLinks: [{ icon: 'github', link: repositoryUrl, ariaLabel: 'GitHub' }],
+    socialLinks: [
+      { icon: { svg: githubIconSvg }, link: repositoryUrl, ariaLabel: 'GitHub' },
+      { icon: { svg: npmIconSvg }, link: npmPackageUrl, ariaLabel: 'npm' },
+    ],
     sidebar,
   },
 })
