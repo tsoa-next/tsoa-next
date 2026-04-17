@@ -14,7 +14,7 @@ Cons:
 
 - It can be slightly slower than the alternative explicit-import approach because tsoa needs to expand and load the configured globs.
 
-As you can see from the the controllers globs patterns below, you can provide multiple globs of various patterns:
+As you can see from the controllers globs patterns below, you can provide multiple globs of various patterns:
 
 ```js
 {

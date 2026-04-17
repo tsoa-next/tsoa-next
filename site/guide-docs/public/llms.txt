@@ -28,9 +28,9 @@ Quick start checklist
 3. Create `tsoa.json` with at least:
    - `entryFile`
    - `controllerPathGlobs`
-- `spec.outputDirectory`
-- `spec.specVersion`
-- `routes.routesDir`
+   - `spec.outputDirectory`
+   - `spec.specVersion`
+   - `routes.routesDir`
 4. Enable `experimentalDecorators` in `tsconfig.json`.
 5. Use named exports for controllers. Default-exported controllers are not supported.
 6. Write controllers with `@Route`, HTTP method decorators, and parameter decorators.
