@@ -56,34 +56,6 @@ const exactTranslations = {
       'للمساهمة (عبر طلب سحب PR)، يرجى الاطلاع أولاً على [دليل المساهمة](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
     'The HTTP status code returned when the operation succeeds.': 'The HTTP status code returned when the operation succeeds.',
   },
-  bn: {
-    'Project Lineage': 'প্রকল্পের উৎস',
-    Goal: 'লক্ষ্য',
-    Philosophy: 'দর্শন',
-    'Feature List': 'বৈশিষ্ট্যের তালিকা',
-    'Getting Started': 'শুরু করা',
-    'Package Surface': 'প্যাকেজ API',
-    Examples: 'উদাহরণ',
-    'Help wanted': 'সাহায্য প্রয়োজন',
-    'Contributing code': 'কোডে অবদান রাখা',
-    Documentation: 'ডকুমেন্টেশন',
-    'API Reference': 'API রেফারেন্স',
-    'Getting started': 'শুরু করা',
-    'Getting started guide': 'শুরু করার নির্দেশিকা',
-    guides: 'গাইডসমূহ',
-    'playground repository': 'playground রিপোজিটরি',
-    'the tests': 'টেস্টসমূহ',
-    'Contributing Guide': 'অবদান নির্দেশিকা',
-    'Check out the [guides](https://tsoa-next.dev/)': '[গাইডসমূহ](https://tsoa-next.dev/) দেখে নিন',
-    'Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.':
-      'চালানো যায় এমন উদাহরণ অ্যাপ এবং সার্ভার-কেন্দ্রিক পরিস্থিতির জন্য সহায়ক [playground রিপোজিটরি](https://github.com/tsoa-next/playground) ব্যবহার করুন।',
-    'See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)':
-      'উদাহরণ কন্ট্রোলার [টেস্টসমূহ](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers) এ দেখুন',
-    'See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)':
-      'উদাহরণ মডেল [টেস্টসমূহ](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts) এ দেখুন',
-    'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
-      'অবদান রাখতে (PR-এর মাধ্যমে), আগে [অবদান নির্দেশিকা](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md) দেখুন',
-  },
   es: {
     'Project Lineage': 'Origen del proyecto',
     Goal: 'Objetivo',
@@ -112,34 +84,6 @@ const exactTranslations = {
     'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
       'Para contribuir (mediante un PR), consulta primero la [Guía de contribución](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
   },
-  fr: {
-    'Project Lineage': 'Origines du projet',
-    Goal: 'Objectif',
-    Philosophy: 'Philosophie',
-    'Feature List': 'Liste des fonctionnalités',
-    'Getting Started': 'Prise en main',
-    'Package Surface': 'API du package',
-    Examples: 'Exemples',
-    'Help wanted': 'Aide recherchée',
-    'Contributing code': 'Contribuer au code',
-    Documentation: 'Documentation',
-    'API Reference': 'Référence d’API',
-    'Getting started': 'Prise en main',
-    'Getting started guide': 'Guide de démarrage',
-    guides: 'guides',
-    'playground repository': 'dépôt playground',
-    'the tests': 'les tests',
-    'Contributing Guide': 'Guide de contribution',
-    'Check out the [guides](https://tsoa-next.dev/)': 'Consultez les [guides](https://tsoa-next.dev/)',
-    'Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.':
-      'Utilisez le [dépôt playground](https://github.com/tsoa-next/playground) compagnon pour des applications d\'exemple exécutables et des scénarios orientés serveur.',
-    'See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)':
-      'Consultez des contrôleurs d\'exemple dans [les tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)',
-    'See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)':
-      'Consultez des modèles d\'exemple dans [les tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)',
-    'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
-      'Pour contribuer (via une PR), consultez d\'abord le [Guide de contribution](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
-  },
   hi: {
     'Project Lineage': 'परियोजना की पृष्ठभूमि',
     Goal: 'लक्ष्य',
@@ -167,90 +111,6 @@ const exactTranslations = {
       'उदाहरण मॉडल [परीक्षण](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts) में देखें',
     'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
       'योगदान करने के लिए (PR के माध्यम से), पहले [योगदान मार्गदर्शिका](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md) देखें',
-  },
-  id: {
-    'Project Lineage': 'Asal-usul proyek',
-    Goal: 'Tujuan',
-    Philosophy: 'Filosofi',
-    'Feature List': 'Daftar fitur',
-    'Getting Started': 'Memulai',
-    'Package Surface': 'API paket',
-    Examples: 'Contoh',
-    'Help wanted': 'Bantuan dibutuhkan',
-    'Contributing code': 'Berkontribusi pada kode',
-    Documentation: 'Dokumentasi',
-    'API Reference': 'Referensi API',
-    'Getting started': 'Memulai',
-    'Getting started guide': 'Panduan memulai',
-    guides: 'panduan',
-    'playground repository': 'repositori playground',
-    'the tests': 'pengujian',
-    'Contributing Guide': 'Panduan kontribusi',
-    'Check out the [guides](https://tsoa-next.dev/)': 'Lihat [panduan](https://tsoa-next.dev/)',
-    'Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.':
-      'Gunakan [repositori playground](https://github.com/tsoa-next/playground) pendamping untuk aplikasi contoh yang dapat dijalankan dan skenario yang berfokus pada server.',
-    'See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)':
-      'Lihat contoh controller di [pengujian](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)',
-    'See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)':
-      'Lihat contoh model di [pengujian](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)',
-    'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
-      'Untuk berkontribusi (melalui PR), lihat terlebih dahulu [Panduan kontribusi](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
-  },
-  pt: {
-    'Project Lineage': 'Histórico do projeto',
-    Goal: 'Objetivo',
-    Philosophy: 'Filosofia',
-    'Feature List': 'Lista de recursos',
-    'Getting Started': 'Primeiros passos',
-    'Package Surface': 'API do pacote',
-    Examples: 'Exemplos',
-    'Help wanted': 'Ajuda necessária',
-    'Contributing code': 'Contribuindo com código',
-    Documentation: 'Documentação',
-    'API Reference': 'Referência da API',
-    'Getting started': 'Primeiros passos',
-    'Getting started guide': 'Guia de primeiros passos',
-    guides: 'guias',
-    'playground repository': 'repositório playground',
-    'the tests': 'os testes',
-    'Contributing Guide': 'Guia de contribuição',
-    'Check out the [guides](https://tsoa-next.dev/)': 'Confira os [guias](https://tsoa-next.dev/)',
-    'Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.':
-      'Use o [repositório playground](https://github.com/tsoa-next/playground) complementar para aplicações de exemplo executáveis e cenários voltados ao servidor.',
-    'See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)':
-      'Veja controladores de exemplo nos [testes](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)',
-    'See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)':
-      'Veja modelos de exemplo nos [testes](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)',
-    'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
-      'Para contribuir (por meio de um PR), consulte primeiro o [Guia de contribuição](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
-  },
-  ru: {
-    'Project Lineage': 'История проекта',
-    Goal: 'Цель',
-    Philosophy: 'Философия',
-    'Feature List': 'Список возможностей',
-    'Getting Started': 'Быстрый старт',
-    'Package Surface': 'Состав пакета',
-    Examples: 'Примеры',
-    'Help wanted': 'Нужна помощь',
-    'Contributing code': 'Вклад в код',
-    Documentation: 'Документация',
-    'API Reference': 'Справочник API',
-    'Getting started': 'Быстрый старт',
-    'Getting started guide': 'Руководство по быстрому старту',
-    guides: 'руководства',
-    'playground repository': 'репозиторий playground',
-    'the tests': 'тесты',
-    'Contributing Guide': 'Руководство по участию',
-    'Check out the [guides](https://tsoa-next.dev/)': 'Ознакомьтесь с [руководствами](https://tsoa-next.dev/)',
-    'Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.':
-      'Используйте вспомогательный [репозиторий playground](https://github.com/tsoa-next/playground) для запускаемых примеров приложений и серверных сценариев.',
-    'See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)':
-      'Смотрите примеры контроллеров в [тестах](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)',
-    'See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)':
-      'Смотрите примеры моделей в [тестах](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)',
-    'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
-      'Чтобы внести вклад (через PR), сначала прочитайте [Руководство по участию](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
   },
   'zh-hans': {
     'Project Lineage': '项目沿革',
