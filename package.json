@@ -11,7 +11,7 @@
     "clean": "turbo run clean --output-logs=full",
     "coverage": "node ./scripts/run-coverage.cjs",
     "docs:api": "typedoc --options ./typedoc.json && node ./scripts/postprocess-reference-docs.cjs",
-    "docs:build": "NODE_OPTIONS=--max-old-space-size=8192 vitepress build site/guide-docs",
+    "docs:build": "node --max-old-space-size=8192 ./node_modules/vitepress/dist/node/cli.js build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
     "docs:i18n": "node ./scripts/sync-doc-locales.mjs",
     "docs:preview": "vitepress preview site/guide-docs",

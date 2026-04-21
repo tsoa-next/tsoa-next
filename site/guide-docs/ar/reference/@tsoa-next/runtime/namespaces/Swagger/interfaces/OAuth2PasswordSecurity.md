@@ -1,11 +1,11 @@
 ---
-lastUpdated: 2026-04-20T21:59:41.315Z
+lastUpdated: 2026-04-21T00:17:00.528Z
 ---
 [tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Swagger](../index.md) / OAuth2PasswordSecurity
 
-# Interface: OAuth2Passwordsecurity
+# Interface: OAuth2PasswordSecurity
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:530](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L530)
+Defined in: [packages/runtime/src/swagger/swagger.ts:530](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L530)
 
 ## التذييلات
 
@@ -19,7 +19,7 @@ lastUpdated: 2026-04-20T21:59:41.315Z
 optional description?: string;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:479](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L479)
+Defined in: [packages/runtime/src/swagger/swagger.ts:479](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L479)
 
 #### Inherited from
 
@@ -35,7 +35,7 @@ BaseOAuthSecurity.description
 flow: "password";
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:532](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L532)
+Defined in: [packages/runtime/src/swagger/swagger.ts:532](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L532)
 
 ***
 
@@ -45,7 +45,7 @@ flow: "password";
 optional scopes?: OAuthScope;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:489](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L489)
+Defined in: [packages/runtime/src/swagger/swagger.ts:489](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L489)
 
 #### Inherited from
 
@@ -61,7 +61,7 @@ BaseOAuthSecurity.scopes
 tokenUrl: string;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:533](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L533)
+Defined in: [packages/runtime/src/swagger/swagger.ts:533](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L533)
 
 ***
 
@@ -71,4 +71,4 @@ tokenUrl: string;
 type: "oauth2";
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:531](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L531)
+Defined in: [packages/runtime/src/swagger/swagger.ts:531](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L531)

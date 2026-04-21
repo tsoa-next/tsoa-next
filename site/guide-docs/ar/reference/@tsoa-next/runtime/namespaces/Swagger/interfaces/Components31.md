@@ -1,11 +1,11 @@
 ---
-lastUpdated: 2026-04-20T21:59:41.314Z
+lastUpdated: 2026-04-21T00:17:00.527Z
 ---
 [tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Swagger](../index.md) / Components31
 
-# Interface: componentss31
+# Interface: Components31
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:89](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L89)
+Defined in: [packages/runtime/src/swagger/swagger.ts:89](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L89)
 
 ## التذييلات
 
@@ -19,7 +19,7 @@ lastUpdated: 2026-04-20T21:59:41.314Z
 optional callbacks?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:78](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L78)
+Defined in: [packages/runtime/src/swagger/swagger.ts:78](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L78)
 
 #### مؤشر التوقيع
 
@@ -39,7 +39,7 @@ optional callbacks?: object;
 optional examples?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:79](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L79)
+Defined in: [packages/runtime/src/swagger/swagger.ts:79](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L79)
 
 #### مؤشر التوقيع
 
@@ -59,7 +59,7 @@ optional examples?: object;
 optional headers?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:80](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L80)
+Defined in: [packages/runtime/src/swagger/swagger.ts:80](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L80)
 
 #### مؤشر التوقيع
 
@@ -79,7 +79,7 @@ optional headers?: object;
 optional links?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:81](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L81)
+Defined in: [packages/runtime/src/swagger/swagger.ts:81](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L81)
 
 #### مؤشر التوقيع
 
@@ -99,7 +99,7 @@ optional links?: object;
 optional parameters?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:82](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L82)
+Defined in: [packages/runtime/src/swagger/swagger.ts:82](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L82)
 
 #### مؤشر التوقيع
 
@@ -119,7 +119,7 @@ optional parameters?: object;
 optional requestBodies?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:83](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L83)
+Defined in: [packages/runtime/src/swagger/swagger.ts:83](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L83)
 
 #### مؤشر التوقيع
 
@@ -139,7 +139,7 @@ optional requestBodies?: object;
 optional responses?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:84](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L84)
+Defined in: [packages/runtime/src/swagger/swagger.ts:84](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L84)
 
 #### مؤشر التوقيع
 
@@ -159,7 +159,7 @@ optional responses?: object;
 optional schemas?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:90](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L90)
+Defined in: [packages/runtime/src/swagger/swagger.ts:90](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L90)
 
 #### مؤشر التوقيع
 
@@ -175,7 +175,7 @@ optional schemas?: object;
 optional securitySchemes?: object;
 ```
 
-محددة في: [packages/runtime/src/swagger/swagger.ts:86](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L86)
+Defined in: [packages/runtime/src/swagger/swagger.ts:86](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L86)
 
 #### مؤشر التوقيع
 

@@ -693,14 +693,28 @@ const referenceHeadingTerms = new Set([
   'Variables',
 ])
 
+const referenceSymbolHeadingKinds = [...referenceHeadingTerms].sort((left, right) => right.length - left.length).join('|')
+const referenceSymbolHeadingPattern = new RegExp(`^(?:${referenceSymbolHeadingKinds}):\\s+[A-Za-z_$][A-Za-z0-9_$]*(?:\\(\\))?$`)
+
+function normalizeReferenceSymbolHeading(text) {
+  return text
+    .trim()
+    .replace(/^~~(.+)~~$/, '$1')
+    .replace(/^`(.+)`$/, '$1')
+}
+
 function isLikelyReferenceSymbolHeading(text) {
-  const trimmed = text.trim()
+  const trimmed = normalizeReferenceSymbolHeading(text)
 
   if (!trimmed || referenceHeadingTerms.has(trimmed)) {
     return false
   }
 
-  return /^[A-Za-z_$][A-Za-z0-9_$]*(?:[<][^>\n]+[>])?(?:\(\))?\??$/.test(trimmed)
+  return referenceSymbolHeadingPattern.test(trimmed) || /^[A-Za-z_$][A-Za-z0-9_$]*(?:[<][^>\n]+[>])?(?:\(\))?\??$/.test(trimmed)
+}
+
+function isReferenceSourceLocationLine(line) {
+  return line.trim().startsWith('Defined in: ')
 }
 
 function collectPreparedText(texts, prepared) {
@@ -840,7 +854,7 @@ function collectReferenceMarkdownTexts(content, localeKey, relativePath, texts) 
       continue
     }
 
-    if (trimmed === '' || trimmed === '[[toc]]' || trimmed.startsWith('<!--') || isReferenceBreadcrumbLine(line)) {
+    if (trimmed === '' || trimmed === '[[toc]]' || trimmed.startsWith('<!--') || isReferenceBreadcrumbLine(line) || isReferenceSourceLocationLine(line)) {
       continue
     }
 
@@ -1069,7 +1083,7 @@ async function translateReferenceMarkdown(content, localeKey, relativePath) {
       continue
     }
 
-    if (isReferenceBreadcrumbLine(line)) {
+    if (isReferenceBreadcrumbLine(line) || isReferenceSourceLocationLine(line)) {
       pieces.push({ kind: 'raw', value: line })
       continue
     }
