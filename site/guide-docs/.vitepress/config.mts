@@ -8,13 +8,27 @@ import { GitChangelog, GitChangelogMarkdownSection } from '@nolebase/vitepress-p
 import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
 import llmstxt from 'vitepress-plugin-llms'
 
+import {
+  buildGuideSidebar,
+  buildLocaleRelativePath,
+  buildThemeConfig,
+  getLocaleSearchTranslations,
+  getSearchLocaleOptions,
+  localeByKey,
+  localeDefinitions,
+  localizeRoute,
+  localizeTypedocSidebar,
+  parseLocaleRelativePath,
+} from './i18n.mjs'
+
 const siteName = 'tsoa-next'
-const siteDescription =
-  'Build OpenAPI-compliant REST APIs with TypeScript and Node.js using tsoa-next, with generated routes, schemas, and runtime validation.'
+const siteDescription = 'Build OpenAPI-compliant REST APIs with TypeScript and Node.js using tsoa-next, with generated routes, schemas, and runtime validation.'
 const defaultSiteUrl = 'https://tsoa-next.dev'
 const siteUrl = stripTrailingSlash(process.env.SITE_URL || defaultSiteUrl)
 const siteHomeUrl = new URL('/', siteUrl).toString()
 const repositoryUrl = 'https://github.com/tsoa-next/tsoa-next'
+const docsEditBranch = process.env.DOCS_EDIT_BRANCH || 'main'
+const docsEditLinkPattern = `${repositoryUrl}/edit/${docsEditBranch}/site/guide-docs/:path`
 const playgroundUrl = 'https://github.com/tsoa-next/playground'
 const npmPackageUrl = 'https://www.npmjs.com/package/tsoa-next'
 const githubIconSvg = `
@@ -34,55 +48,34 @@ const socialImageUrl = new URL('/tsoa-next-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/tsoa-next-logo-590.png', siteHomeUrl).toString()
 const siteOrigin = new URL(siteHomeUrl).origin
 const apiReferenceTarget = resolveReferenceTarget(process.env.API_REFERENCE_URL || '/reference/')
-const apiReferenceBasePath = apiReferenceTarget.basePath
 const apiReferenceBaseUrl = apiReferenceTarget.baseUrl
 const apiReferenceLink = apiReferenceTarget.linkHref
+const hasExternalApiReference = /^https?:\/\//i.test(apiReferenceLink)
 const typedocSidebarPath = join(process.cwd(), 'site/guide-docs/reference/typedoc-sidebar.json')
-const referenceLinkPattern = /^(?:\.\.\/|\/)?reference\/(.*)$/
+const referenceLinkPattern = /^(?:\.{1,2}\/|\/)?reference\/(.*)$/
 const pageDescriptionCache = new Map<string, string>()
 const pageDescriptions: Record<string, string> = {
-  'annotations.md':
-    'Use JSON Schema and tsoa keyword annotations to express constraints that TypeScript alone cannot capture in generated OpenAPI schemas.',
-  'authentication.md':
-    'Configure authentication and security definitions in tsoa-next so generated OpenAPI output and runtime middleware stay in sync.',
-  'custom-middlewares.md':
-    'Apply custom Express, Koa, or Hapi middleware to tsoa-next endpoints with the @Middlewares decorator and understand request flow.',
-  'custom-validation.md':
-    'Extend tsoa-next runtime validation with class-validator and custom middleware when the built-in validator is not enough.',
-  'decorators.md':
-    'Review the core tsoa-next decorators for security, tags, operation metadata, request handling, and OpenAPI customization.',
-  'descriptions.md':
-    'Use JSDoc descriptions in tsoa-next to improve generated OpenAPI docs for endpoints, parameters, models, and schema properties.',
-  'di.md':
-    'Configure dependency injection for tsoa-next controllers with an IoC module and integrate common DI containers into route generation.',
-  'error-handling.md':
-    'Handle validation and server errors in a tsoa-next Express app with consistent responses and typed OpenAPI error documentation.',
-  'examples.md':
-    'Add practical examples to your tsoa-next OpenAPI output with JSDoc metadata and see where full runnable example apps live.',
-  'external-validators.md':
-    'Use the @Validate decorator with zod, joi, yup, superstruct, and io-ts while keeping TypeScript-based OpenAPI generation.',
-  'faq.md':
-    'Find quick answers about OpenAPI versions, supported frameworks, additional properties, duplicate models, and other common tsoa-next questions.',
-  'file-upload.md':
-    'Handle multipart file uploads in tsoa-next with UploadedFile, UploadedFiles, and FormField decorators in Express and other runtimes.',
-  'generating.md':
-    'Generate OpenAPI specs and route files with tsoa-next from the CLI or programmatically, including discovery and configuration options.',
-  'getting-started.md':
-    'Set up a new tsoa-next project with Express, TypeScript, generated routes, and OpenAPI output in a minimal getting started workflow.',
-  'index.md':
-    'tsoa-next helps you build OpenAPI-compliant REST APIs with TypeScript and Node.js from one source of truth, with generated routes, specs, and validation.',
-  'introduction.md':
-    'Learn what tsoa-next is, how it continues tsoa, and why TypeScript types, generated OpenAPI specs, and runtime validation stay aligned.',
-  'live-reloading.md':
-    'Add live reloading to a tsoa-next development setup with nodemon, ts-node, and automatic spec and route regeneration.',
-  'path-mapping.md':
-    'Use TypeScript path mapping with tsoa-next by reading tsconfig paths or overriding compiler options in your tsoa configuration.',
-  'routes.md':
-    'Learn how tsoa-next discovers controllers and generates routes, whether you prefer glob-based discovery or explicit controller imports.',
-  'templates.md':
-    'Override the default route template when you need framework-specific behavior or advanced custom route generation in tsoa-next.',
-  'upgrading.md':
-    'Review the key features, fixes, and breaking changes when upgrading from historical tsoa releases to newer behavior.',
+  'annotations.md': 'Use JSON Schema and tsoa keyword annotations to express constraints that TypeScript alone cannot capture in generated OpenAPI schemas.',
+  'authentication.md': 'Configure authentication and security definitions in tsoa-next so generated OpenAPI output and runtime middleware stay in sync.',
+  'custom-middlewares.md': 'Apply custom Express, Koa, or Hapi middleware to tsoa-next endpoints with the @Middlewares decorator and understand request flow.',
+  'custom-validation.md': 'Extend tsoa-next runtime validation with class-validator and custom middleware when the built-in validator is not enough.',
+  'decorators.md': 'Review the core tsoa-next decorators for security, tags, operation metadata, request handling, and OpenAPI customization.',
+  'descriptions.md': 'Use JSDoc descriptions in tsoa-next to improve generated OpenAPI docs for endpoints, parameters, models, and schema properties.',
+  'di.md': 'Configure dependency injection for tsoa-next controllers with an IoC module and integrate common DI containers into route generation.',
+  'error-handling.md': 'Handle validation and server errors in a tsoa-next Express app with consistent responses and typed OpenAPI error documentation.',
+  'examples.md': 'Add practical examples to your tsoa-next OpenAPI output with JSDoc metadata and see where full runnable example apps live.',
+  'external-validators.md': 'Use the @Validate decorator with zod, joi, yup, superstruct, and io-ts while keeping TypeScript-based OpenAPI generation.',
+  'faq.md': 'Find quick answers about OpenAPI versions, supported frameworks, additional properties, duplicate models, and other common tsoa-next questions.',
+  'file-upload.md': 'Handle multipart file uploads in tsoa-next with UploadedFile, UploadedFiles, and FormField decorators in Express and other runtimes.',
+  'generating.md': 'Generate OpenAPI specs and route files with tsoa-next from the CLI or programmatically, including discovery and configuration options.',
+  'getting-started.md': 'Set up a new tsoa-next project with Express, TypeScript, generated routes, and OpenAPI output in a minimal getting started workflow.',
+  'index.md': 'tsoa-next helps you build OpenAPI-compliant REST APIs with TypeScript and Node.js from one source of truth, with generated routes, specs, and validation.',
+  'introduction.md': 'Learn what tsoa-next is, how it continues tsoa, and why TypeScript types, generated OpenAPI specs, and runtime validation stay aligned.',
+  'live-reloading.md': 'Add live reloading to a tsoa-next development setup with nodemon, ts-node, and automatic spec and route regeneration.',
+  'path-mapping.md': 'Use TypeScript path mapping with tsoa-next by reading tsconfig paths or overriding compiler options in your tsoa configuration.',
+  'routes.md': 'Learn how tsoa-next discovers controllers and generates routes, whether you prefer glob-based discovery or explicit controller imports.',
+  'templates.md': 'Override the default route template when you need framework-specific behavior or advanced custom route generation in tsoa-next.',
+  'upgrading.md': 'Review the key features, fixes, and breaking changes when upgrading from historical tsoa releases to newer behavior.',
 }
 
 function stripTrailingSlash(value: string) {
@@ -123,6 +116,10 @@ function resolveReferenceTarget(value: string) {
 }
 
 function rewriteReferenceLink(href: string) {
+  if (!hasExternalApiReference) {
+    return
+  }
+
   const match = href.match(referenceLinkPattern)
   if (!match) {
     return
@@ -149,14 +146,53 @@ function getTypedocSidebar(): DefaultTheme.SidebarItem[] {
   }
 }
 
+const logo = {
+  src: '/tsoa-next-logo-590.png',
+  alt: 'tsoa-next logo',
+}
+
+const socialLinks = [
+  { icon: { svg: githubIconSvg }, link: repositoryUrl, ariaLabel: 'GitHub' },
+  { icon: { svg: npmIconSvg }, link: npmPackageUrl, ariaLabel: 'npm' },
+]
+
+const typedocSidebar = getTypedocSidebar()
+const generatedLocalePrefixes = localeDefinitions.filter(locale => locale.key !== 'root').map(locale => `${locale.key}/`)
+const llmsIgnorePatterns = ['reference/**', ...localeDefinitions.filter(locale => locale.key !== 'root').map(locale => `${locale.key}/**`)]
+const localeThemeConfigs = Object.fromEntries(
+  localeDefinitions.map(locale => {
+    const guideSidebar = buildGuideSidebar(locale.key)
+    const localizedTypedocSidebar = localizeTypedocSidebar(typedocSidebar, locale.key)
+
+    return [locale.key, buildThemeConfig(locale.key, guideSidebar, localizedTypedocSidebar, apiReferenceLink, socialLinks, logo, docsEditLinkPattern)]
+  }),
+)
+
+const docsLocales = Object.fromEntries(
+  localeDefinitions.map(locale => [
+    locale.key,
+    {
+      label: locale.label,
+      lang: locale.lang,
+      dir: locale.dir,
+      title: siteName,
+      description: siteDescription,
+      link: locale.routePrefix,
+      themeConfig: localeThemeConfigs[locale.key],
+    },
+  ]),
+)
+
 function normalizePagePath(relativePath: string) {
   if (!relativePath) {
     return '/'
   }
 
-  const path = relativePath
-    .replace(/(^|\/)index\.md$/, '$1')
-    .replace(/\.md$/, '.html')
+  const path = relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
+
+  if (path === '') {
+    return '/'
+  }
 
   return path.startsWith('/') ? path : `/${path}`
 }
@@ -202,11 +238,7 @@ function extractMarkdownDescription(markdown: string) {
     const paragraph = stripMarkdown(paragraphLines.join(' '))
     paragraphLines.length = 0
 
-    if (
-      paragraph.length < 60 ||
-      paragraph.startsWith('What we will talk about') ||
-      paragraph.startsWith('Jump to the breaking changes')
-    ) {
+    if (paragraph.length < 60 || paragraph.startsWith('What we will talk about') || paragraph.startsWith('Jump to the breaking changes')) {
       return
     }
 
@@ -226,15 +258,7 @@ function extractMarkdownDescription(markdown: string) {
       continue
     }
 
-    if (
-      line === '' ||
-      line === '[[toc]]' ||
-      line.startsWith('#') ||
-      line.startsWith(':::') ||
-      line.startsWith('![') ||
-      line.startsWith('>') ||
-      /^[*-]\s/.test(line)
-    ) {
+    if (line === '' || line === '[[toc]]' || line.startsWith('#') || line.startsWith(':::') || line.startsWith('![') || line.startsWith('>') || /^[*-]\s/.test(line)) {
       flushParagraph()
       continue
     }
@@ -273,7 +297,9 @@ async function getPageDescription(relativePath: string, filePath: string, srcDir
 }
 
 function getPageSchemaType(relativePath: string) {
-  if (relativePath === 'index.md') {
+  const { baseRelativePath } = parseLocaleRelativePath(relativePath)
+
+  if (baseRelativePath === 'index.md') {
     return 'CollectionPage'
   }
 
@@ -281,8 +307,12 @@ function getPageSchemaType(relativePath: string) {
 }
 
 function createStructuredData(relativePath: string, title: string, description: string) {
+  const { localeKey, baseRelativePath } = parseLocaleRelativePath(relativePath)
+  const locale = localeByKey[localeKey]
   const canonicalUrl = getCanonicalUrl(relativePath)
-  const isHomePage = relativePath === 'index.md'
+  const localeHomeUrl = new URL(localizeRoute(localeKey, '/'), siteHomeUrl).toString()
+  const websiteId = `${localeHomeUrl}#website`
+  const isHomePage = baseRelativePath === 'index.md'
 
   const graph: Array<Record<string, unknown>> = [
     {
@@ -298,14 +328,14 @@ function createStructuredData(relativePath: string, title: string, description: 
     },
     {
       '@type': 'WebSite',
-      '@id': `${siteHomeUrl}#website`,
+      '@id': websiteId,
       name: siteName,
-      url: siteHomeUrl,
+      url: localeHomeUrl,
       description: siteDescription,
       publisher: {
         '@id': `${siteHomeUrl}#organization`,
       },
-      inLanguage: 'en-US',
+      inLanguage: locale.lang,
     },
     {
       '@type': 'SoftwareSourceCode',
@@ -329,13 +359,13 @@ function createStructuredData(relativePath: string, title: string, description: 
       name: title,
       description,
       isPartOf: {
-        '@id': `${siteHomeUrl}#website`,
+        '@id': websiteId,
       },
       about: {
         '@id': `${siteHomeUrl}#software`,
       },
       image: socialImageUrl,
-      inLanguage: 'en-US',
+      inLanguage: locale.lang,
     },
   ]
 
@@ -347,8 +377,8 @@ function createStructuredData(relativePath: string, title: string, description: 
         {
           '@type': 'ListItem',
           position: 1,
-          name: 'Home',
-          item: siteHomeUrl,
+          name: locale.breadcrumbHome,
+          item: localeHomeUrl,
         },
         {
           '@type': 'ListItem',
@@ -366,57 +396,18 @@ function createStructuredData(relativePath: string, title: string, description: 
   }).replace(/</g, '\\u003c')
 }
 
-const guideSidebar: DefaultTheme.SidebarItem[] = [
-  { items: [{ text: 'Introduction', link: '/introduction' }] },
-  {
-    text: 'Guides',
-    items: [
-      { text: 'Getting Started', link: '/getting-started' },
-      { text: 'Generating', link: '/generating' },
-      { text: 'Live reloading', link: '/live-reloading' },
-      { text: 'Error handling', link: '/error-handling' },
-      { text: 'Descriptions', link: '/descriptions' },
-      { text: 'Examples', link: '/examples' },
-      { text: 'Annotations', link: '/annotations' },
-      { text: 'Custom Middlewares', link: '/custom-middlewares' },
-      { text: 'Custom Validation', link: '/custom-validation' },
-      { text: 'External Validators', link: '/external-validators' },
-      { text: 'Dependency Injection', link: '/di' },
-      { text: 'Authentication', link: '/authentication' },
-      { text: 'Decorators', link: '/decorators' },
-    ],
-  },
-  {
-    items: [{ text: 'FAQ', link: '/faq' }],
-  },
-  {
-    text: 'Advanced Guides',
-    items: [
-      { text: 'File upload', link: '/file-upload' },
-      { text: 'Path mapping', link: '/path-mapping' },
-      { text: 'Templates', link: '/templates' },
-      { text: 'Routes', link: '/routes' },
-      { text: 'Upgrading', link: '/upgrading' },
-    ],
-  },
-]
-
-const sidebar: DefaultTheme.Sidebar = {
-  '/reference/': getTypedocSidebar(),
-  '/': guideSidebar,
-}
-
 export default defineConfig({
   title: siteName,
   description: siteDescription,
   base: process.env.BASE_URL || '/',
+  lastUpdated: true,
+  locales: docsLocales,
+  ignoreDeadLinks: [/reference\//],
   markdown: {
     config(md) {
       groupIconMdPlugin(md)
 
-      const defaultLinkOpen =
-        md.renderer.rules.link_open ??
-        ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+      const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
       md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
         const hrefAttrIndex = tokens[idx].attrIndex('href')
@@ -448,20 +439,20 @@ export default defineConfig({
     plugins: [
       llmstxt({
         domain: siteUrl,
-        sidebar: { '/': guideSidebar },
+        sidebar: { '/': buildGuideSidebar('root') },
         ignoreFilesPerOutput: {
-          llmsTxt: ['reference/**'],
-          llmsFullTxt: ['reference/**'],
-          pages: ['reference/**'],
+          llmsTxt: llmsIgnorePatterns,
+          llmsFullTxt: llmsIgnorePatterns,
+          pages: llmsIgnorePatterns,
         },
       }),
       groupIconVitePlugin(),
       GitChangelog({
         repoURL: repositoryUrl,
-        include: ['site/guide-docs/**/*.md', '!site/guide-docs/reference/**', '!node_modules'],
+        include: ['site/guide-docs/*.md', '!node_modules'],
       }),
       GitChangelogMarkdownSection({
-        exclude: (_id, { helpers }) => helpers.idEquals('index.md') || helpers.idStartsWith('reference/'),
+        exclude: (id, { helpers }) => helpers.idEquals('index.md') || helpers.idStartsWith('reference/') || generatedLocalePrefixes.some(prefix => id.startsWith(prefix)),
       }),
     ],
   },
@@ -478,10 +469,9 @@ export default defineConfig({
       }
     }
 
+    const { localeKey, baseRelativePath } = parseLocaleRelativePath(pageData.relativePath)
     const description =
-      pageDescriptions[pageData.relativePath] ??
-      (await getPageDescription(pageData.relativePath, pageData.filePath, ctx.siteConfig.srcDir)) ??
-      siteDescription
+      (localeKey === 'root' ? pageDescriptions[baseRelativePath] : undefined) ?? (await getPageDescription(pageData.relativePath, pageData.filePath, ctx.siteConfig.srcDir)) ?? siteDescription
 
     return {
       description,
@@ -489,8 +479,11 @@ export default defineConfig({
   },
   transformHead({ pageData }) {
     const isNotFound = Boolean(pageData.isNotFound)
+    const { localeKey, baseRelativePath } = parseLocaleRelativePath(pageData.relativePath)
+    const locale = localeByKey[localeKey]
+    const isHomePage = baseRelativePath === 'index.md'
     const canonicalUrl = getCanonicalUrl(pageData.relativePath)
-    const pageTitle = pageData.relativePath === 'index.md' ? siteName : `${pageData.title} | ${siteName}`
+    const pageTitle = isHomePage ? siteName : `${pageData.title} | ${siteName}`
     const description = pageData.description || siteDescription
     const jsonLd = createStructuredData(pageData.relativePath, pageTitle, description)
 
@@ -498,8 +491,8 @@ export default defineConfig({
       ['meta', { name: 'robots', content: isNotFound ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' }],
       ['meta', { name: 'googlebot', content: isNotFound ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' }],
       ['meta', { property: 'og:site_name', content: siteName }],
-      ['meta', { property: 'og:locale', content: 'en_US' }],
-      ['meta', { property: 'og:type', content: pageData.relativePath === 'index.md' ? 'website' : 'article' }],
+      ['meta', { property: 'og:locale', content: locale.ogLocale }],
+      ['meta', { property: 'og:type', content: isHomePage ? 'website' : 'article' }],
       ['meta', { property: 'og:title', content: pageTitle }],
       ['meta', { property: 'og:description', content: description }],
       ['meta', { property: 'og:url', content: canonicalUrl }],
@@ -515,46 +508,40 @@ export default defineConfig({
 
     if (!isNotFound) {
       head.unshift(['link', { rel: 'canonical', href: canonicalUrl }])
+
+      for (const alternateLocale of localeDefinitions) {
+        const alternatePath = buildLocaleRelativePath(alternateLocale.key, baseRelativePath)
+        const alternateUrl = getCanonicalUrl(alternatePath)
+
+        head.unshift([
+          'link',
+          {
+            rel: 'alternate',
+            hreflang: alternateLocale.lang,
+            href: alternateUrl,
+          },
+        ])
+      }
+
+      head.unshift([
+        'link',
+        {
+          rel: 'alternate',
+          hreflang: 'x-default',
+          href: getCanonicalUrl(baseRelativePath),
+        },
+      ])
     }
 
     return head
   },
   themeConfig: {
-    logo: {
-      src: '/tsoa-next-logo-590.png',
-      alt: 'tsoa-next logo',
-    },
-    footer: {
-      message: 'TypeScript-first OpenAPI generation, route generation, and runtime validation.',
-      copyright: 'Released under the MIT License.',
-    },
     search: {
       provider: 'local',
+      options: {
+        translations: getLocaleSearchTranslations('root'),
+        locales: getSearchLocaleOptions(),
+      },
     },
-    nav: [
-      {
-        text: 'Home',
-        link: '/',
-      },
-      {
-        text: 'Guides',
-        link: '/introduction',
-      },
-      {
-        text: 'API Reference',
-        link: apiReferenceLink,
-        noIcon: true,
-        target: '_self',
-      },
-      {
-        text: 'Playground',
-        link: playgroundUrl,
-      },
-    ],
-    socialLinks: [
-      { icon: { svg: githubIconSvg }, link: repositoryUrl, ariaLabel: 'GitHub' },
-      { icon: { svg: npmIconSvg }, link: npmPackageUrl, ariaLabel: 'npm' },
-    ],
-    sidebar,
   },
 })

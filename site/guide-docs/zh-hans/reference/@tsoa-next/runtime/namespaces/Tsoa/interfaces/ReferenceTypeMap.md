@@ -1,0 +1,14 @@
+---
+lastUpdated: 2026-04-20T21:59:41.323Z
+---
+[tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Tsoa](../index.md) / ReferenceTypeMap
+
+# 界面: 参考 TypeMap
+
+定义如下: [packages/runtime/src/metadataGeneration/tsoa.ts:338](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L338)
+
+## Indexable
+
+```ts
+[refName: string]: ReferenceType
+```

@@ -1,0 +1,12 @@
+---
+lastUpdated: 2026-04-20T21:59:41.318Z
+---
+[tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Swagger](../index.md) / OAuth2FlowTypes
+
+# ধরন: OAppliceType
+
+```ts
+type OAuth2FlowTypes = "authorizationCode" | "implicit" | "password" | "clientCredentials";
+```
+
+নির্ধারিত মান: [packages/runtime/src/swagger/swagger.ts:556](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/swagger/swagger.ts#L556)

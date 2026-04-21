@@ -1,0 +1,14 @@
+---
+lastUpdated: 2026-04-20T21:59:41.360Z
+---
+[tsoa-next](../../../../packages.md) / [tsoa-next](../../../index.md) / [Tsoa](../index.md) / Security
+
+# Interface : Sécurité
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:115](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L115)
+
+## Indexable
+
+```ts
+[key: string]: string[]
+```

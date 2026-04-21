@@ -1,0 +1,78 @@
+---
+lastUpdated: 2026-04-20T21:59:41.323Z
+---
+[tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Tsoa](../index.md) / Response
+
+# Interfaz: Respuesta
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:124](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L124)
+
+## Propiedades
+
+### description
+
+```ts
+description: string;
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:125](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L125)
+
+***
+
+### exampleLabels?
+
+```ts
+optional exampleLabels?: (string | undefined)[];
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:130](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L130)
+
+***
+
+### examples?
+
+```ts
+optional examples?: Example[];
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:129](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L129)
+
+***
+
+### headers?
+
+```ts
+optional headers?: HeaderType;
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:131](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L131)
+
+***
+
+### name
+
+```ts
+name: string | number;
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:126](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L126)
+
+***
+
+### produces?
+
+```ts
+optional produces?: string[];
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:127](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L127)
+
+***
+
+### schema?
+
+```ts
+optional schema?: Type;
+```
+
+Definido en: [packages/runtime/src/metadataGeneration/tsoa.ts:128](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L128)

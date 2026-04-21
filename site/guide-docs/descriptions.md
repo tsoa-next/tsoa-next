@@ -38,11 +38,11 @@ export class UsersController extends Controller {
 
 By hovering over the name of the method, we can already see the result in our editor:
 
-![Method description](./assets/jsdoc-method.png)
+![Method description](/docs-images/jsdoc-method.png)
 
 But that's only half of the benefit:
 
-![SwaggerUI endpoint descriptions](./assets/swui-endpoint-description.png)
+![SwaggerUI endpoint descriptions](/docs-images/swui-endpoint-description.png)
 
 The OAS reflects this change as well, and so will the documentation rendered from that spec!
 
@@ -127,7 +127,7 @@ export interface User {
 Now, we define `UUID` as a reusable type alias.
 Modern editors will nicely display the information text when we hover over references
 
-![JSDoc Type Alias](./assets/jsdoc-alias.png)
+![JSDoc Type Alias](/docs-images/jsdoc-alias.png)
 
 tsoa will translate this to a reusable component that can be referenced every time you use that type alias:
 
@@ -154,7 +154,7 @@ Which will look like like this when rendered:
 
 <details>
 
-![Rendered](./assets/swui-alias.png)
+![Rendered](/docs-images/swui-alias.png)
 
 </details>
 

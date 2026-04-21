@@ -16,4 +16,5 @@ site/guide-docs/.vitepress/cache
 site/guide-docs/.vitepress/.temp
 site/guide-docs/.vitepress/dist
 site/guide-docs/reference
+scripts/.cache
 tsconfig.tsbuildinfo

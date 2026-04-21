@@ -1,0 +1,22 @@
+---
+lastUpdated: 2026-04-20T21:59:41.365Z
+---
+[tsoa-next](../../packages.md) / [tsoa-next](../index.md) / ExtensionType
+
+# ধরন: ধরন
+
+```ts
+type ExtensionType = 
+  | string
+  | number
+  | boolean
+  | null
+  | ExtensionType[]
+  | {
+[name: string]: ExtensionType | ExtensionType[];
+};
+```
+
+নির্ধারিত মান: [packages/runtime/src/decorators/extension.ts:14](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/decorators/extension.ts#L14)
+
+সমর্থিত ধরন OpenAPI নির্ধারিত এক্সটেনশন।

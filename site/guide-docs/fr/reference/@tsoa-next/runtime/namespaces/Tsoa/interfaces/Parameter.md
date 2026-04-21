@@ -1,0 +1,183 @@
+---
+lastUpdated: 2026-04-20T21:59:41.322Z
+---
+[tsoa-next](../../../../../packages.md) / [@tsoa-next/runtime](../../../index.md) / [Tsoa](../index.md) / Parameter
+
+# Interface : Paramètres
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:74](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L74)
+
+## Prorogé par
+
+- [`ResParameter`](ResParameter.md)
+- [`ArrayParameter`](ArrayParameter.md)
+
+## Propriétés
+
+### $ref?
+
+```ts
+optional $ref?: BaseSchema<unknown>;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:90](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L90)
+
+***
+
+### default?
+
+```ts
+optional default?: unknown;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:83](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L83)
+
+***
+
+### deprecated
+
+```ts
+deprecated: boolean;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:87](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L87)
+
+***
+
+### description?
+
+```ts
+optional description?: string;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:78](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L78)
+
+***
+
+### example?
+
+```ts
+optional example?: Example[];
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:77](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L77)
+
+***
+
+### exampleLabels?
+
+```ts
+optional exampleLabels?: (string | undefined)[];
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:88](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L88)
+
+***
+
+### externalValidator?
+
+```ts
+optional externalValidator?: ExternalValidatorDescriptor;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:86](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L86)
+
+***
+
+### in
+
+```ts
+in: 
+  | "path"
+  | "body"
+  | "query"
+  | "request"
+  | "header"
+  | "res"
+  | "formData"
+  | "body-prop"
+  | "request-prop"
+  | "queries";
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:79](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L79)
+
+***
+
+### name
+
+```ts
+name: string;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:80](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L80)
+
+***
+
+### parameterIndex?
+
+```ts
+optional parameterIndex?: number;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:75](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L75)
+
+***
+
+### parameterName
+
+```ts
+parameterName: string;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:76](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L76)
+
+***
+
+### required?
+
+```ts
+optional required?: boolean;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:81](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L81)
+
+***
+
+### title?
+
+```ts
+optional title?: string;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:89](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L89)
+
+***
+
+### type
+
+```ts
+type: Type;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:82](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L82)
+
+***
+
+### validationStrategy?
+
+```ts
+optional validationStrategy?: ValidationStrategy;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:85](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L85)
+
+***
+
+### validators
+
+```ts
+validators: Validators;
+```
+
+Définie dans : [packages/runtime/src/metadataGeneration/tsoa.ts:84](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/metadataGeneration/tsoa.ts#L84)

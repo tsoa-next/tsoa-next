@@ -16,11 +16,11 @@ Relevant API reference: [`ValidateError`](../reference/tsoa-next/classes/Validat
 
 As you may have noticed after following all the steps from the [getting started guide](./getting-started), our server does not allow for invalid parameters, but the response isn't very ideal yet.
 
-![Current Error Response](./assets/errors-server.png)
+![Current Error Response](/docs-images/errors-server.png)
 
 For the Client, it looks something like this:
 
-![Client Error Response](./assets/errors-client.png)
+![Client Error Response](/docs-images/errors-client.png)
 
 ## Setting up error handling
 
@@ -55,11 +55,11 @@ app.use(function errorHandler(err: unknown, req: ExRequest, res: ExResponse, nex
 
 Now, the same request will respond like this:
 
-![Client Error with handler](./assets/errors-json-client.png)
+![Client Error with handler](/docs-images/errors-json-client.png)
 
 Additionally, our console will show:
 
-![Server Error with handler](./assets/errors-json-server.png)
+![Server Error with handler](/docs-images/errors-json-server.png)
 
 ### Handling missing routes
 
@@ -122,7 +122,7 @@ export class UsersController extends Controller {
 
 This should make our docs show something like this:
 
-![SwaggerUI showing our 422 Response](./assets/err-422-swui.png)
+![SwaggerUI showing our 422 Response](/docs-images/err-422-swui.png)
 
 ::: tip
 OpenAPI allows matching status codes such as '2xx' or matching all codes using 'default'. tsoa will support this:

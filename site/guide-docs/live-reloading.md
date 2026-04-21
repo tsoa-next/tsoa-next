@@ -118,14 +118,14 @@ Because the docs endpoint is generated from the same runtime metadata as your ro
 
 Now, when we navigate to <a href="http://localhost:3000/users/docs" target="_blank" rel="noreferrer">localhost:3000/users/docs</a>, we should see a current reflection of our API.
 
-![SwaggerUI](./assets/SwaggerUI.png)
+![SwaggerUI](/docs-images/SwaggerUI.png)
 
 ### Sending requests through Swagger UI
 
 We can select endpoints, click the "Try it out" button and submit some data by filling out the form.
 When we hit "Execute", that request will be sent to our server and the response will be displayed below the form.
 
-![SwaggerUI Response](./assets/SwUi-Response.png)
+![SwaggerUI Response](/docs-images/SwUi-Response.png)
 
 ### Other built-in targets
 
