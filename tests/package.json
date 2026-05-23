@@ -45,7 +45,7 @@
     "@types/sinon": "^17.0.3",
     "@types/supertest": "^6.0.2",
     "aws-cdk-lib": "^2.248.0",
-    "body-parser": "^1.20.3",
+    "body-parser": "^1.20.5",
     "chai": "^4.3.10",
     "chalk": "^4.1.2",
     "constructs": "^10.4.2",
