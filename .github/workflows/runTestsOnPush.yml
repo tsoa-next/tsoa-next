@@ -93,10 +93,52 @@ jobs:
       - name: Generate coverage
         run: npm run coverage
 
-      - name: Sonar Scan
+      - name: Sonar Scan (attempt 1)
+        id: sonar_scan_1
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        with:
+          args: >
+            -Dsonar.projectKey=tsoa-next_tsoa-next
+            -Dsonar.organization=tsoa-next
+            -Dsonar.projectName=tsoa-next
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=packages/cli/src,packages/runtime/src,packages/tsoa/src
+            -Dsonar.tests=tests
+            -Dsonar.exclusions=**/*.d.ts,**/dist/**,**/fixtures/**,coverage/**,site/**
+            -Dsonar.test.inclusions=tests/**/*.spec.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.qualitygate.wait=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Sonar Scan (attempt 2)
+        id: sonar_scan_2
+        if: steps.sonar_scan_1.outcome == 'failure'
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        with:
+          args: >
+            -Dsonar.projectKey=tsoa-next_tsoa-next
+            -Dsonar.organization=tsoa-next
+            -Dsonar.projectName=tsoa-next
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=packages/cli/src,packages/runtime/src,packages/tsoa/src
+            -Dsonar.tests=tests
+            -Dsonar.exclusions=**/*.d.ts,**/dist/**,**/fixtures/**,coverage/**,site/**
+            -Dsonar.test.inclusions=tests/**/*.spec.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.qualitygate.wait=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Sonar Scan (attempt 3)
+        if: steps.sonar_scan_1.outcome == 'failure' && steps.sonar_scan_2.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         with:
           args: >
