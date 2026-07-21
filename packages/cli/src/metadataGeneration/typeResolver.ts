@@ -1215,10 +1215,9 @@ export class TypeResolver {
   }
 
   private sanitizeInlineTypeName(typeName: string): string {
-    return typeName
-      .replaceAll(/[^A-Za-z0-9]/g, '_')
-      .replaceAll(/_+/g, '_')
-      .replaceAll(/^_+|_+$/g, '')
+    const normalizedName = typeName.replaceAll(/[^A-Za-z0-9]/g, '_').replaceAll(/_+/g, '_')
+    const withoutLeadingUnderscore = normalizedName.startsWith('_') ? normalizedName.slice(1) : normalizedName
+    return withoutLeadingUnderscore.endsWith('_') ? withoutLeadingUnderscore.slice(0, -1) : withoutLeadingUnderscore
   }
 
   private getDeclarationBasedRefTypeName(type: ts.EntityName, declarations: UsableDeclarationWithoutPropertySignature[]): string {

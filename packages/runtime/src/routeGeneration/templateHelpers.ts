@@ -1,4 +1,10 @@
-import validator from 'validator'
+import equals from 'validator/lib/equals'
+import isFloat from 'validator/lib/isFloat'
+import isInt from 'validator/lib/isInt'
+import isISO8601 from 'validator/lib/isISO8601'
+import matches from 'validator/lib/matches'
+import toFloat from 'validator/lib/toFloat'
+import toInt from 'validator/lib/toInt'
 import { getParameterExternalValidatorMetadata } from '../decorators/validate'
 import { Tsoa } from '../metadataGeneration/tsoa'
 import { assertNever } from '../utils/assertNever'
@@ -285,7 +291,7 @@ export class ValidationService {
     }
 
     const pattern = validators?.pattern?.value
-    if (pattern && !validator.matches(stringValue, pattern)) {
+    if (pattern && !matches(stringValue, pattern)) {
       return this.createFieldError(validators?.pattern?.errorMsg || `Not match in '${pattern}'`, rawValue)
     }
 
@@ -567,12 +573,12 @@ export class ValidationService {
   }
 
   public validateInt(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: IntegerValidator, parent = ''): number | undefined {
-    if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isInt(String(value))) {
+    if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !isInt(String(value))) {
       fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, `invalid integer number`, 'isInt'), value)
       return
     }
 
-    const numberValue = validator.toInt(String(value), 10)
+    const numberValue = toInt(String(value), 10)
     if (!validators) {
       return numberValue
     }
@@ -586,12 +592,12 @@ export class ValidationService {
   }
 
   public validateFloat(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: FloatValidator, parent = ''): number | undefined {
-    if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isFloat(String(value))) {
+    if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !isFloat(String(value))) {
       fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, 'invalid float number', 'isFloat'), value)
       return
     }
 
-    const numberValue = validator.toFloat(String(value))
+    const numberValue = toFloat(String(value))
     if (!validators) {
       return numberValue
     }
@@ -613,7 +619,7 @@ export class ValidationService {
       return
     }
 
-    const enumMatchIndex = members.findIndex(member => validator.equals(String(member), String(value)))
+    const enumMatchIndex = members.findIndex(member => equals(String(member), String(value)))
 
     if (enumMatchIndex === -1) {
       const membersInQuotes = members.map(member => (typeof member === 'string' ? `'${member}'` : String(member)))
@@ -628,7 +634,7 @@ export class ValidationService {
   }
 
   public validateDate(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateValidator, parent = ''): Date | undefined {
-    if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
+    if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !isISO8601(String(value), { strict: true })) {
       fieldErrors[parent + name] = this.createFieldError(this.getDateTypeErrorMessage(validators, 'isDate', `invalid ISO 8601 date format, i.e. YYYY-MM-DD`), value)
       return
     }
@@ -647,7 +653,7 @@ export class ValidationService {
   }
 
   public validateDateTime(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateTimeValidator, parent = ''): Date | undefined {
-    if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
+    if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !isISO8601(String(value), { strict: true })) {
       fieldErrors[parent + name] = this.createFieldError(this.getDateTypeErrorMessage(validators, 'isDateTime', `invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss`), value)
       return
     }

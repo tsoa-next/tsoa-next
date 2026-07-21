@@ -10,7 +10,7 @@ describe('Metadata generation', () => {
 
   describe('ControllerGenerator', () => {
     it('should generate one controller', () => {
-      expect(metadata.controllers.length).to.equal(1)
+      expect(metadata.controllers).to.have.lengthOf(1)
       expect(metadata.controllers[0].name).to.equal('GetTestController')
       expect(metadata.controllers[0].path).to.equal('GetTest')
     })
@@ -73,11 +73,11 @@ describe('Metadata generation', () => {
     ]
 
     it('should only generate the defined methods', () => {
-      expect(controller.methods.filter(m => definedMethods.indexOf(m.name) === -1).length).to.equal(0)
+      expect(controller.methods.filter(m => definedMethods.indexOf(m.name) === -1)).to.have.lengthOf(0)
     })
 
     it('should generate the defined methods', () => {
-      expect(definedMethods.filter(methodName => controller.methods.map(m => m.name).indexOf(methodName) === -1).length).to.equal(0)
+      expect(definedMethods.filter(methodName => controller.methods.map(m => m.name).indexOf(methodName) === -1)).to.have.lengthOf(0)
     })
 
     it('fails clearly when TypeScript cannot represent an inferred return type', () => {
@@ -179,7 +179,7 @@ describe('Metadata generation', () => {
         throw new Error('Method multiResponse not defined!')
       }
 
-      expect(method.responses.length).to.equal(5)
+      expect(method.responses).to.have.lengthOf(5)
 
       const badResponse = method.responses[1]
       expect(badResponse.name).to.equal('400')
@@ -210,7 +210,7 @@ describe('Metadata generation', () => {
         throw new Error('Method decoratorVariousValues not defined!')
       }
 
-      expect(method.responses.length).to.equal(4)
+      expect(method.responses).to.have.lengthOf(4)
 
       const valuesFromObject = method.responses[0]
       expect(valuesFromObject.name).to.equal('401')
@@ -251,7 +251,7 @@ describe('Metadata generation', () => {
         throw new Error('Method successResponse not defined!')
       }
 
-      expect(method.responses.length).to.equal(1)
+      expect(method.responses).to.have.lengthOf(1)
 
       const mainResponse = method.responses[0]
       expect(mainResponse.name).to.equal('201')
@@ -264,7 +264,7 @@ describe('Metadata generation', () => {
         throw new Error('Method returnAliasedVoidType not defined!')
       }
 
-      expect(method.responses.length).to.equal(1)
+      expect(method.responses).to.have.lengthOf(1)
 
       const mainResponse = method.responses[0]
       expect(mainResponse.name).to.equal('204')
@@ -384,17 +384,17 @@ describe('Metadata generation', () => {
         throw new Error('Method example not defined!')
       }
 
-      expect(method.parameters.length).to.equal(4)
+      expect(method.parameters).to.have.lengthOf(4)
 
       const firstnameParam = method.parameters[0]
       expect(firstnameParam.example).not.to.be.undefined
       expect(firstnameParam.example).to.deep.equal(['name1', 'name2'])
-      expect((firstnameParam.example as unknown[]).length).to.be.equal(2)
+      expect(firstnameParam.example as unknown[]).to.have.lengthOf(2)
 
       const lastnameParam = method.parameters[1]
       expect(lastnameParam.example).not.to.be.undefined
       expect(lastnameParam.example).to.deep.equal(['lastname'])
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(1)
+      expect(lastnameParam.example as unknown[]).to.have.lengthOf(1)
 
       const genderParam = method.parameters[2]
       expect(genderParam.example).not.to.be.undefined
@@ -402,7 +402,7 @@ describe('Metadata generation', () => {
         { MALE: 'MALE', FEMALE: 'FEMALE' },
         { MALE: 'MALE2', FEMALE: 'FEMALE2' },
       ])
-      expect((genderParam.example as unknown[]).length).to.be.equal(2)
+      expect(genderParam.example as unknown[]).to.have.lengthOf(2)
 
       const nicknamesParam = method.parameters[3]
       expect(nicknamesParam.example).not.to.be.undefined
@@ -410,7 +410,7 @@ describe('Metadata generation', () => {
         ['name1', 'name2'],
         ['name2_1', 'name2_2'],
       ])
-      expect((nicknamesParam.example as unknown[]).length).to.be.equal(2)
+      expect(nicknamesParam.example as unknown[]).to.have.lengthOf(2)
     })
 
     it('should generate a query parameter', () => {
@@ -419,7 +419,7 @@ describe('Metadata generation', () => {
         throw new Error('Method getQuery not defined!')
       }
 
-      expect(method.parameters.length).to.equal(7)
+      expect(method.parameters).to.have.lengthOf(7)
 
       const firstnameParam = method.parameters[0]
       expect(firstnameParam.in).to.equal('query')
@@ -439,7 +439,7 @@ describe('Metadata generation', () => {
       expect(lastnameParam.type.dataType).to.equal('string')
       expect(lastnameParam.example).not.to.be.undefined
       expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
+      expect(lastnameParam.example as unknown[]).to.have.lengthOf(2)
 
       const ageParam = method.parameters[2]
       expect(ageParam.in).to.equal('query')
@@ -499,7 +499,7 @@ describe('Metadata generation', () => {
         throw new Error('Parameter queryParams not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
       expect(parameter.description).to.equal('Queries description')
       expect(parameter.in).to.equal('queries')
       expect(parameter.name).to.equal('queryParams')
@@ -518,7 +518,7 @@ describe('Metadata generation', () => {
           age: 2,
         },
       ])
-      expect((parameter.example as unknown[]).length).to.be.equal(2)
+      expect(parameter.example as unknown[]).to.have.lengthOf(2)
     })
 
     it('should generate a path parameter', () => {
@@ -527,7 +527,7 @@ describe('Metadata generation', () => {
         throw new Error('Method getPath not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6)
+      expect(method.parameters).to.have.lengthOf(6)
 
       const firstnameParam = method.parameters[0]
       expect(firstnameParam.in).to.equal('path')
@@ -546,7 +546,7 @@ describe('Metadata generation', () => {
       expect(lastnameParam.type.dataType).to.equal('string')
       expect(lastnameParam.example).not.to.be.undefined
       expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
+      expect(lastnameParam.example as unknown[]).to.have.lengthOf(2)
 
       const ageParam = method.parameters[2]
       expect(ageParam.in).to.equal('path')
@@ -587,7 +587,7 @@ describe('Metadata generation', () => {
         throw new Error('Method getPathColonDelimiter not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6)
+      expect(method.parameters).to.have.lengthOf(6)
 
       const firstnameParam = method.parameters[0]
       expect(firstnameParam.in).to.equal('path')
@@ -644,7 +644,7 @@ describe('Metadata generation', () => {
         throw new Error('Method getPathTemplateLiteral not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
 
       const idParam = method.parameters[0]
       expect(idParam.in).to.equal('path')
@@ -661,7 +661,7 @@ describe('Metadata generation', () => {
         throw new Error('Method getHeader not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6)
+      expect(method.parameters).to.have.lengthOf(6)
 
       const firstnameParam = method.parameters[0]
       expect(firstnameParam.in).to.equal('header')
@@ -680,7 +680,7 @@ describe('Metadata generation', () => {
       expect(lastnameParam.type.dataType).to.equal('string')
       expect(lastnameParam.example).not.to.be.undefined
       expect(lastnameParam.example).to.deep.equal(['name1', 'name2'])
-      expect((lastnameParam.example as unknown[]).length).to.be.equal(2)
+      expect(lastnameParam.example as unknown[]).to.have.lengthOf(2)
 
       const ageParam = method.parameters[2]
       expect(ageParam.in).to.equal('header')
@@ -725,7 +725,7 @@ describe('Metadata generation', () => {
         throw new Error('Parameter request not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
       expect(parameter.description).to.equal('Request description')
       expect(parameter.in).to.equal('request')
       expect(parameter.name).to.equal('request')
@@ -744,7 +744,7 @@ describe('Metadata generation', () => {
         throw new Error('Parameter body not defined!')
       }
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
       expect(parameter.description).to.equal('Body description')
       expect(parameter.in).to.equal('body')
       expect(parameter.name).to.equal('body')
@@ -763,7 +763,7 @@ describe('Metadata generation', () => {
           age: 2,
         },
       ])
-      expect((parameter.example as unknown[]).length).to.be.equal(2)
+      expect(parameter.example as unknown[]).to.have.lengthOf(2)
     })
 
     it('should generate an body props parameter', () => {
@@ -776,7 +776,7 @@ describe('Metadata generation', () => {
         throw new Error('Parameter firstname not defined!')
       }
 
-      expect(method.parameters.length).to.equal(6)
+      expect(method.parameters).to.have.lengthOf(6)
       expect(parameter.description).to.equal('firstname description')
       expect(parameter.in).to.equal('body-prop')
       expect(parameter.name).to.equal('firstname')
@@ -784,7 +784,7 @@ describe('Metadata generation', () => {
       expect(parameter.required).to.be.true
       expect(parameter.example).not.to.be.undefined
       expect(parameter.example).to.deep.equal(['name1', 'name2'])
-      expect((parameter.example as unknown[]).length).to.be.equal(2)
+      expect(parameter.example as unknown[]).to.have.lengthOf(2)
     })
 
     it('should generate a res parameter and the corresponding additional response', () => {
@@ -798,7 +798,7 @@ describe('Metadata generation', () => {
       }
       const additionalResponse = method.responses[1]
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
       expect(parameter.description).to.equal('The alternate response')
       expect(parameter.in).to.equal('res')
       expect(parameter.name).to.equal('400')
@@ -888,7 +888,7 @@ describe('Metadata generation', () => {
       const optionalSecret = method.parameters.find(p => p.name === 'optionalSecret')
       expect(optionalSecret).to.be.undefined
 
-      expect(method.parameters.length).to.equal(1)
+      expect(method.parameters).to.have.lengthOf(1)
 
       const normalParam = method.parameters[0]
       expect(normalParam.in).to.equal('query')
@@ -918,7 +918,7 @@ describe('Metadata generation', () => {
     it('should add common responses to every method', () => {
       expect(controller.methods).to.have.lengthOf(2)
       controller.methods.forEach(method => {
-        expect(method.responses.length).to.equal(2)
+        expect(method.responses).to.have.lengthOf(2)
 
         let response = method.responses[0]
         expect(response.name).to.equal('401')

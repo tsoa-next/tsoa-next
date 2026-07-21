@@ -388,7 +388,7 @@ describe('External validation runtime', () => {
       parameterIndex: 0,
     })
 
-    expect(result).to.equal(undefined)
+    expect(result).to.be.undefined
     expect(fieldErrors).to.have.property('payload')
   })
 
@@ -417,7 +417,7 @@ describe('External validation runtime', () => {
       parameterIndex: 0,
     })
 
-    expect(result).to.equal(undefined)
+    expect(result).to.be.undefined
     expect(fieldErrors).to.deep.equal({
       payload: {
         message: "'payload' is required",
