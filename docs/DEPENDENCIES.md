@@ -41,7 +41,7 @@ The repository uses the latest `@types/node` release on the supported Node.js 22
 
 ### Optional peer dependencies
 
-Optional peer ranges are compatibility contracts, not requests to install one exact newest version. Existing supported lower bounds remain in place where a newer tested release is already included by the range. Express retains both the 4.x and 5.x lines, and Joi retains both the 17.x and 18.x lines.
+Optional peer ranges are compatibility contracts, not requests to install one exact newest version. Existing supported lower bounds remain in place where a newer tested release is already included by the range. Express retains both the 4.x and full stable 5.x lines through `^4.21.0 || ^5.0.0`, and Joi retains both the 17.x and 18.x lines. CI tests the current Express 5.x release throughout the Node.js and operating-system matrix, plus every earlier stable Express 5.x release available at the time of this refresh on Linux and Node.js 24.
 
 ## Remaining root override
 

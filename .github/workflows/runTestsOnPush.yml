@@ -176,6 +176,24 @@ jobs:
         node-version: [22, 24, 26]
         os: [macos-latest, ubuntu-latest, windows-latest]
         typescript-version: ['^5.0.0']
+        express-version: ['^5.0.0']
+        include:
+          - node-version: 24
+            os: ubuntu-latest
+            typescript-version: '^5.0.0'
+            express-version: '5.0.0'
+          - node-version: 24
+            os: ubuntu-latest
+            typescript-version: '^5.0.0'
+            express-version: '5.0.1'
+          - node-version: 24
+            os: ubuntu-latest
+            typescript-version: '^5.0.0'
+            express-version: '5.1.0'
+          - node-version: 24
+            os: ubuntu-latest
+            typescript-version: '^5.0.0'
+            express-version: '5.2.0'
 
     steps:
       - name: Skip when no impacted packages changed
@@ -207,6 +225,13 @@ jobs:
         run: >-
           node -e 'const fs = require("node:fs"); const manifests = [["package.json", "devDependencies"], ["packages/cli/package.json", "dependencies"], ["packages/runtime/package.json", "devDependencies"], ["packages/tsoa/package.json", "devDependencies"], ["tests/package.json", "devDependencies"], ["tests/esm/package.json", "devDependencies"]]; for (const [file, section] of manifests) { const packageJson = JSON.parse(fs.readFileSync(file, "utf8")); packageJson[section].typescript = process.env.MATRIX_TYPESCRIPT_VERSION; fs.writeFileSync(file, JSON.stringify(packageJson, null, 2) + "\n"); }'
 
+      - name: Set matrix Express version
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
+        env:
+          MATRIX_EXPRESS_VERSION: ${{ matrix.express-version }}
+        run: >-
+          node -e 'const fs = require("node:fs"); const manifests = [["packages/runtime/package.json", "devDependencies"], ["tests/package.json", "devDependencies"]]; for (const [file, section] of manifests) { const packageJson = JSON.parse(fs.readFileSync(file, "utf8")); packageJson[section].express = process.env.MATRIX_EXPRESS_VERSION; fs.writeFileSync(file, JSON.stringify(packageJson, null, 2) + "\n"); }'
+
       - name: Install
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm install --ignore-scripts
@@ -217,7 +242,7 @@ jobs:
 
       - name: Output packages version
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
-        run: npm ls --workspaces --depth=0
+        run: npm ls --workspaces --depth=0 && npm ls express --all
 
       - name: Build
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'

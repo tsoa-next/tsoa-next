@@ -14,25 +14,24 @@ interface PackageLock {
 
 describe('Security dependency resolutions', () => {
   it('should keep serialize-javascript on a patched version', () => {
-    expect(findVulnerablePackages('serialize-javascript', '7.0.5')).to.deep.equal([])
+    expectPatchedPackageResolution('serialize-javascript', '7.0.5')
   })
 
   it('should keep esbuild on a patched version', () => {
-    expect(findVulnerablePackages('esbuild', '0.25.0')).to.deep.equal([])
+    expectPatchedPackageResolution('esbuild', '0.25.0')
   })
 
   it('should keep vite on a patched version', () => {
-    expect(findVulnerablePackages('vite', '6.4.3')).to.deep.equal([])
+    expectPatchedPackageResolution('vite', '6.4.3')
   })
 })
 
-function findVulnerablePackages(packageName: string, minimumVersion: string) {
+function expectPatchedPackageResolution(packageName: string, minimumVersion: string) {
   const packageLock = readPackageLock()
+  const matchingPackages = Object.entries(packageLock.packages).filter(([, metadata]) => metadata.name === packageName || hasPackageResolution(packageName, metadata))
 
-  return Object.entries(packageLock.packages)
-    .filter(([, metadata]) => metadata.name === packageName || hasPackageResolution(packageName, metadata))
-    .filter(([, metadata]) => compareVersions(metadata.version, minimumVersion) < 0)
-    .map(([packagePath, metadata]) => `${packagePath}: ${metadata.version}`)
+  expect(matchingPackages, `${packageName} should be present in package-lock.json`).not.to.be.empty
+  expect(matchingPackages.filter(([, metadata]) => compareVersions(metadata.version, minimumVersion) < 0).map(([packagePath, metadata]) => `${packagePath}: ${metadata.version}`)).to.deep.equal([])
 }
 
 function readPackageLock() {
