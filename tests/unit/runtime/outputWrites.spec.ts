@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import 'mocha'
@@ -62,9 +62,9 @@ describe('change-aware output writes', () => {
       await fsWriteFile(missingOutputPath, 'new route output', { encoding: 'utf8' })
     })
 
-    expect(output.changedFiles).to.deep.equal([missingOutputPath, existingOutputPath].sort())
+    expect(output.changedFiles).to.deep.equal([missingOutputPath, existingOutputPath])
     expect(readFileSync(existingOutputPath, 'utf8')).to.equal('old output')
-    expect(() => statSync(missingDirectory)).to.throw()
+    expect(existsSync(missingDirectory)).to.equal(false)
   })
 
   it('keeps concurrent output modes isolated', async () => {
@@ -83,7 +83,7 @@ describe('change-aware output writes', () => {
 
     expect(checkedOutput.changedFiles).to.deep.equal([checkedPath])
     expect(writtenOutput.changedFiles).to.deep.equal([writtenPath])
-    expect(() => statSync(checkedPath)).to.throw()
+    expect(existsSync(checkedPath)).to.equal(false)
     expect(readFileSync(writtenPath, 'utf8')).to.equal('written output')
   })
 })

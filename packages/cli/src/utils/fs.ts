@@ -94,7 +94,7 @@ export const withOutputWriteMode = async <T>(mode: OutputWriteMode, action: () =
 
   return {
     result,
-    changedFiles: [...context.changedFiles].sort(),
+    changedFiles: [...context.changedFiles].sort((left, right) => left.localeCompare(right)),
   }
 }
 

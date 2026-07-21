@@ -91,6 +91,8 @@ tsoa check "services/*"
 
 Each discovered config used by these combined commands must include both `spec` and `routes` sections. `check` reports the stale output paths and suggests running `tsoa generate`, which makes it suitable as a pull request CI gate.
 
+Because config discovery is automatic, `generate` and `check` ignore the `--configuration` (`-c`) and `--discover` options and print a warning when either is supplied. Use the optional `[pathOrGlob]` argument to limit discovery instead.
+
 Change-aware generation cannot safely control file writes performed by a custom `routes.routeGenerator`, so `generate` and `check` reject those configs. The existing `routes` and `spec-and-routes` commands continue to support custom route generators.
 
 You can find the Reference for the tsoa configuration file [here](../reference/tsoa-next/interfaces/Config.md)

@@ -61,6 +61,16 @@ const specCommandArgs = {
   yaml: yamlArgs,
 }
 
+const ignoredAutomaticConfigurationArgs = {
+  ...configurationArgs,
+  describe: 'Ignored by automatic discovery commands; use pathOrGlob to scope config discovery',
+}
+
+const ignoredAutomaticDiscoverArgs = {
+  ...discoverArgs,
+  describe: 'Ignored by automatic discovery commands; use pathOrGlob to scope config discovery',
+}
+
 type DiscoverOptionArguments = {
   discover?: string
 }
@@ -242,20 +252,12 @@ const createDiscoveredCommandTask = <TArguments extends ConfigCommandArguments |
   return async () => await executeDiscoveredTask(commandName, api, args, discoveredConfig.absolutePath, discoveredConfig.displayPath, execute)
 }
 
-const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
+const runCommandForDiscoveredConfigs = async <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
   commandName: string,
   args: TArguments,
+  discoveryInput: string,
   execute: (api: CLIApi, configurationPath: ConfigArgs['configuration'] | undefined, resolvedArgs: TArguments) => Promise<unknown>,
-  automaticDiscoveryInput?: string,
 ) => {
-  ensureExclusiveConfigurationModes(args.configuration, args.discover)
-
-  const discoveryInput = automaticDiscoveryInput ?? args.discover
-  if (!discoveryInput) {
-    const api = await loadCLIAPI()
-    return await execute(api, args.configuration, args)
-  }
-
   const discoveredConfigs = await ensureDiscoveredConfigs(discoveryInput)
   const api = await loadCLIAPI()
   const concurrency = Math.min(discoveredConfigs.length, availableParallelism())
@@ -287,6 +289,21 @@ const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | 
   return results
 }
 
+const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
+  commandName: string,
+  args: TArguments,
+  execute: (api: CLIApi, configurationPath: ConfigArgs['configuration'] | undefined, resolvedArgs: TArguments) => Promise<unknown>,
+) => {
+  ensureExclusiveConfigurationModes(args.configuration, args.discover)
+
+  if (!args.discover) {
+    const api = await loadCLIAPI()
+    return await execute(api, args.configuration, args)
+  }
+
+  return await runCommandForDiscoveredConfigs(commandName, args, args.discover, execute)
+}
+
 const runDiscoverCommand = async (pathOrGlob?: string) => {
   const discoveryResult = await ensureDiscoveredConfigs(pathOrGlob)
 
@@ -304,33 +321,40 @@ const configureAutomaticGenerationCommand = (command: ReturnType<YargsFactory>) 
     })
     .options({
       basePath: basePathArgs,
+      configuration: ignoredAutomaticConfigurationArgs,
+      discover: ignoredAutomaticDiscoverArgs,
       host: hostArgs,
       json: jsonArgs,
       yaml: yamlArgs,
     })
 }
 
-const runAutomaticGenerationCommand = async (commandName: string, outputWriteMode: 'if-changed' | 'check', args: AutomaticCommandArguments) => {
-  await runDiscoveredCommand(
-    commandName,
-    args,
-    async (api, configurationPath, resolvedArgs) => {
-      const output = await withOutputWriteMode(outputWriteMode, async () => {
-        return await api.generateSpecAndRoutes({
-          basePath: resolvedArgs.basePath,
-          configuration: configurationPath,
-          host: resolvedArgs.host,
-          json: resolvedArgs.json,
-          yaml: resolvedArgs.yaml,
-        })
-      })
+const warnForIgnoredAutomaticOptions = (commandName: string, args: AutomaticCommandArguments) => {
+  const ignoredOptionNames = [args.configuration === undefined ? undefined : '--configuration', args.discover === undefined ? undefined : '--discover'].filter(optionName => optionName !== undefined)
 
-      if (outputWriteMode === 'check' && output.changedFiles.length > 0) {
-        throw new Error(`Generated outputs are out of date: ${output.changedFiles.join(', ')}. Run 'tsoa generate' to update them.`)
-      }
-    },
-    args.pathOrGlob ?? getDefaultDiscoverRoot(),
-  )
+  for (const optionName of ignoredOptionNames) {
+    process.stdout.write(`Warning: ${optionName} is ignored by 'tsoa ${commandName}'; use [pathOrGlob] to scope config discovery.\n`)
+  }
+}
+
+const runAutomaticGenerationCommand = async (commandName: string, outputWriteMode: 'if-changed' | 'check', args: AutomaticCommandArguments) => {
+  warnForIgnoredAutomaticOptions(commandName, args)
+
+  await runCommandForDiscoveredConfigs(commandName, args, args.pathOrGlob ?? getDefaultDiscoverRoot(), async (api, configurationPath, resolvedArgs) => {
+    const output = await withOutputWriteMode(outputWriteMode, async () => {
+      return await api.generateSpecAndRoutes({
+        basePath: resolvedArgs.basePath,
+        configuration: configurationPath,
+        host: resolvedArgs.host,
+        json: resolvedArgs.json,
+        yaml: resolvedArgs.yaml,
+      })
+    })
+
+    if (outputWriteMode === 'check' && output.changedFiles.length > 0) {
+      throw new Error(`Generated outputs are out of date: ${output.changedFiles.join(', ')}. Run 'tsoa generate' to update them.`)
+    }
+  })
 }
 
 export async function runCLI() {

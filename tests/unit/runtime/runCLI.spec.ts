@@ -55,6 +55,23 @@ const loadRunCLI = (cliExports: CLIExports, discoveryExports?: Partial<Discovery
   return require('../../../packages/cli/src/runCLI').runCLI
 }
 
+const captureStdout = async (action: () => Promise<unknown>): Promise<string> => {
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout)
+  const output: string[] = []
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    output.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'))
+    return true
+  }) as typeof process.stdout.write
+
+  try {
+    await action()
+  } finally {
+    process.stdout.write = originalStdoutWrite
+  }
+
+  return output.join('')
+}
+
 describe('runCLI', () => {
   afterEach(() => {
     clearModule(cliModulePath)
@@ -195,20 +212,9 @@ describe('runCLI', () => {
 
     process.argv = ['node', 'tsoa', 'discover']
 
-    const originalStdoutWrite = process.stdout.write.bind(process.stdout)
-    const output: string[] = []
-    process.stdout.write = ((chunk: string | Uint8Array) => {
-      output.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'))
-      return true
-    }) as typeof process.stdout.write
+    const output = await captureStdout(runCLI)
 
-    try {
-      await runCLI()
-    } finally {
-      process.stdout.write = originalStdoutWrite
-    }
-
-    expect(output.join('')).to.equal('a/tsoa.json\nb/tsoa.yaml\n')
+    expect(output).to.equal('a/tsoa.json\nb/tsoa.yaml\n')
   })
 
   it('dispatches one spec run per discovered config', async () => {
@@ -405,6 +411,53 @@ describe('runCLI', () => {
         yaml: undefined,
       },
     ])
+  })
+
+  it('warns on stdout and ignores explicit configuration modes for automatic generation', async () => {
+    const calls: Array<Parameters<CLIExports['generateSpecAndRoutes']>[0]> = []
+    const discoveryInputs: Array<string | undefined> = []
+    const runCLI = loadRunCLI(
+      {
+        async generateSpecFromArgs() {
+          throw new Error('spec command should not run')
+        },
+        async generateRoutesFromArgs() {
+          throw new Error('routes command should not run')
+        },
+        async generateSpecAndRoutes(args) {
+          calls.push(args)
+          return {
+            controllers: [],
+            referenceTypeMap: {},
+          }
+        },
+      },
+      {
+        async discoverConfigs(input) {
+          discoveryInputs.push(input)
+          return {
+            effectiveRoot: '/mock/services',
+            matches: [
+              {
+                absolutePath: '/mock/services/api/tsoa.json',
+                displayPath: 'api/tsoa.json',
+                sortKey: 'api/tsoa.json',
+              },
+            ],
+            mode: 'path',
+          }
+        },
+      },
+    )
+
+    process.argv = ['node', 'tsoa', 'generate', 'services/*', '-c', 'ignored.json', '--discover', 'ignored/*']
+
+    const output = await captureStdout(runCLI)
+
+    expect(discoveryInputs).to.deep.equal(['services/*'])
+    expect(calls[0]?.configuration).to.equal('/mock/services/api/tsoa.json')
+    expect(output).to.contain("Warning: --configuration is ignored by 'tsoa generate'; use [pathOrGlob] to scope config discovery.\n")
+    expect(output).to.contain("Warning: --discover is ignored by 'tsoa generate'; use [pathOrGlob] to scope config discovery.\n")
   })
 
   it('checks discovered configs without enabling writes', async () => {
