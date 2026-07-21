@@ -4,7 +4,7 @@ import * as ts from 'typescript'
 import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
-import { fsExists, fsReadFile } from './utils/fs'
+import { fsExists, fsReadFile, getOutputWriteMode } from './utils/fs'
 import { AbstractRouteGenerator } from './routeGeneration/routeGenerator'
 import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { Options as MulterOptions } from 'multer'
@@ -532,6 +532,11 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
   const [swaggerConfig, routesConfig] = await Promise.all([validateSpecConfig(config), validateRoutesConfig(config)])
+
+  if (getOutputWriteMode() !== 'always' && routesConfig.routeGenerator) {
+    throw new Error('Change-aware generation is not supported with routes.routeGenerator because custom generators control their own file writes.')
+  }
+
   applySwaggerArgs(swaggerConfig, args)
   applyBasePathArg(routesConfig, args)
 

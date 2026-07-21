@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { availableParallelism } from 'node:os'
 import { format } from 'node:util'
 import { discoverConfigs, getDefaultDiscoverRoot } from './discovery'
+import { withOutputWriteMode } from './utils/fs'
 import type { ConfigArgs, SwaggerArgs } from './api'
 import type yargs from 'yargs'
 import type { hideBin as hideBinImport } from 'yargs/helpers'
@@ -67,6 +68,7 @@ type DiscoverOptionArguments = {
 type ConfigCommandArguments = ArgumentsCamelCase<ConfigArgs & DiscoverOptionArguments>
 type DiscoverCommandArguments = ArgumentsCamelCase<{ pathOrGlob?: string }>
 type SpecCommandArguments = ArgumentsCamelCase<SwaggerArgs & DiscoverOptionArguments>
+type AutomaticCommandArguments = SpecCommandArguments & { pathOrGlob?: string }
 type CLIApi = typeof import('./api')
 type YargsFactory = typeof yargs
 type HideBin = typeof hideBinImport
@@ -244,15 +246,17 @@ const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | 
   commandName: string,
   args: TArguments,
   execute: (api: CLIApi, configurationPath: ConfigArgs['configuration'] | undefined, resolvedArgs: TArguments) => Promise<unknown>,
+  automaticDiscoveryInput?: string,
 ) => {
   ensureExclusiveConfigurationModes(args.configuration, args.discover)
 
-  if (!args.discover) {
+  const discoveryInput = automaticDiscoveryInput ?? args.discover
+  if (!discoveryInput) {
     const api = await loadCLIAPI()
     return await execute(api, args.configuration, args)
   }
 
-  const discoveredConfigs = await ensureDiscoveredConfigs(args.discover)
+  const discoveredConfigs = await ensureDiscoveredConfigs(discoveryInput)
   const api = await loadCLIAPI()
   const concurrency = Math.min(discoveredConfigs.length, availableParallelism())
 
@@ -291,6 +295,44 @@ const runDiscoverCommand = async (pathOrGlob?: string) => {
   }
 }
 
+const configureAutomaticGenerationCommand = (command: ReturnType<YargsFactory>) => {
+  return command
+    .positional('pathOrGlob', {
+      describe: 'Path or glob to search. Defaults to the current working directory.',
+      string: true,
+      type: 'string',
+    })
+    .options({
+      basePath: basePathArgs,
+      host: hostArgs,
+      json: jsonArgs,
+      yaml: yamlArgs,
+    })
+}
+
+const runAutomaticGenerationCommand = async (commandName: string, outputWriteMode: 'if-changed' | 'check', args: AutomaticCommandArguments) => {
+  await runDiscoveredCommand(
+    commandName,
+    args,
+    async (api, configurationPath, resolvedArgs) => {
+      const output = await withOutputWriteMode(outputWriteMode, async () => {
+        return await api.generateSpecAndRoutes({
+          basePath: resolvedArgs.basePath,
+          configuration: configurationPath,
+          host: resolvedArgs.host,
+          json: resolvedArgs.json,
+          yaml: resolvedArgs.yaml,
+        })
+      })
+
+      if (outputWriteMode === 'check' && output.changedFiles.length > 0) {
+        throw new Error(`Generated outputs are out of date: ${output.changedFiles.join(', ')}. Run 'tsoa generate' to update them.`)
+      }
+    },
+    args.pathOrGlob ?? getDefaultDiscoverRoot(),
+  )
+}
+
 export async function runCLI() {
   const [yargsModule, yargsHelpers] = await Promise.all([import('yargs'), import('yargs/helpers')])
   const yargsFactory = getYargsFactory(yargsModule)
@@ -311,6 +353,17 @@ export async function runCLI() {
         }),
       async (args: DiscoverCommandArguments) => {
         await runDiscoverCommand(args.pathOrGlob)
+      },
+    )
+    .command('generate [pathOrGlob]', 'Discover configs and update changed OpenAPI specs and routes', configureAutomaticGenerationCommand, async (args: AutomaticCommandArguments) => {
+      await runAutomaticGenerationCommand('generate', 'if-changed', args)
+    })
+    .command(
+      'check [pathOrGlob]',
+      'Check whether discovered OpenAPI specs and routes are current without writing files',
+      configureAutomaticGenerationCommand,
+      async (args: AutomaticCommandArguments) => {
+        await runAutomaticGenerationCommand('check', 'check', args)
       },
     )
     .command('spec', 'Generate OpenAPI spec', specCommandArgs, async (args: SpecCommandArguments) => {
