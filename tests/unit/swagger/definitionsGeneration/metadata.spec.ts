@@ -80,6 +80,21 @@ describe('Metadata generation', () => {
       expect(definedMethods.filter(methodName => controller.methods.map(m => m.name).indexOf(methodName) === -1).length).to.equal(0)
     })
 
+    it('fails clearly when TypeScript cannot represent an inferred return type', () => {
+      const generator = new MetadataGenerator('./fixtures/controllers/duplicateMethodsController.ts')
+      const typeChecker = generator.typeChecker as unknown as {
+        typeToTypeNode: MetadataGenerator['typeChecker']['typeToTypeNode']
+      }
+      const originalTypeToTypeNode = typeChecker.typeToTypeNode
+      typeChecker.typeToTypeNode = () => undefined
+
+      try {
+        expect(() => generator.Generate()).to.throw("Could not resolve the return type for 'DuplicateMethodsTestController.getModel'.")
+      } finally {
+        typeChecker.typeToTypeNode = originalTypeToTypeNode
+      }
+    })
+
     it('should generate options method', () => {
       const method = controller.methods.find(m => m.name === 'optionsMethod')
       if (!method) {

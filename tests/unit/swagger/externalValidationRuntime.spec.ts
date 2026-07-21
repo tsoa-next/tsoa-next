@@ -210,6 +210,42 @@ describe('External validation runtime', () => {
     }
   })
 
+  it('preserves the module resolution cause when an optional validator is not installed', () => {
+    const moduleLoader = require('node:module') as {
+      _resolveFilename: (request: string, parent: unknown, isMain?: boolean, options?: unknown) => string
+    }
+    const originalResolveFilename = moduleLoader._resolveFilename
+    const runtimeModulePath = require.resolve('../../../packages/runtime/src/routeGeneration/externalValidation')
+    const missingModuleError = Object.assign(new Error("Cannot find module 'superstruct'"), { code: 'MODULE_NOT_FOUND' })
+
+    delete require.cache[runtimeModulePath]
+    moduleLoader._resolveFilename = function patchedResolveFilename(request, parent, isMain, options) {
+      if (request === 'superstruct') {
+        throw missingModuleError
+      }
+
+      return originalResolveFilename.call(this, request, parent, isMain, options)
+    }
+
+    try {
+      const { validateExternalSchema } =
+        require('../../../packages/runtime/src/routeGeneration/externalValidation') as typeof import('../../../packages/runtime/src/routeGeneration/externalValidation')
+      let thrownError: (Error & { cause?: unknown }) | undefined
+
+      try {
+        validateExternalSchema('superstruct', {}, {})
+      } catch (error) {
+        thrownError = error as Error & { cause?: unknown }
+      }
+
+      expect(thrownError?.message).to.equal("External validator 'superstruct' is not installed. Install it in your application to use @Validate with that schema kind.")
+      expect(thrownError?.cause).to.equal(missingModuleError)
+    } finally {
+      moduleLoader._resolveFilename = originalResolveFilename
+      delete require.cache[runtimeModulePath]
+    }
+  })
+
   it('normalizes zod failures', () => {
     const result = sourceValidateExternalSchema('zod', ZodBodySchema, {
       name: 'xy',

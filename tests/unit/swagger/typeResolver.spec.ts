@@ -151,6 +151,49 @@ describe('TypeResolver', () => {
         "TypeOperator 'keyof' on node produced a never type",
       )
     })
+
+    it('ignores keyof index types whose target is not a type parameter', () => {
+      const keyOfResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
+      const keyOfNode = ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      const indexedType = {
+        isIndexType: () => true,
+        type: {
+          flags: ts.TypeFlags.String,
+          getSymbol: () => ({ getEscapedName: () => 'NotATypeParameter' }),
+        },
+      } as unknown as ts.Type
+
+      expect((keyOfResolver as any).resolveKeyOfIndexType(indexedType, keyOfNode, {}, {}, undefined)).to.equal(undefined)
+    })
+
+    it('fails clearly when TypeScript cannot represent an inferred toJSON return type', () => {
+      const sourceFile = ts.createSourceFile('model.ts', `class Model { toJSON() { return { value: 'ok' } } }`, ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const model = sourceFile.statements.find(ts.isClassDeclaration)
+      const toJSONDeclaration = model?.members.find((member): member is ts.MethodDeclaration => ts.isMethodDeclaration(member) && member.name.getText(sourceFile) === 'toJSON')
+
+      if (!model || !toJSONDeclaration) {
+        throw new Error('Failed to create the toJSON test model')
+      }
+
+      const modelType = {} as ts.Type
+      const implicitType = {} as ts.Type
+      const current = {
+        typeChecker: {
+          getPropertyOfType: () => ({ valueDeclaration: toJSONDeclaration }),
+          getReturnTypeOfSignature: () => implicitType,
+          getSignatureFromDeclaration: () => ({}) as ts.Signature,
+          getTypeAtLocation: () => modelType,
+          typeToTypeNode: () => undefined,
+        },
+      }
+      const modelResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current as any)
+
+      ;(modelResolver as any).getNodeDescription = () => undefined
+      ;(modelResolver as any).getNodeExample = () => undefined
+      ;(modelResolver as any).getNodeTitle = () => undefined
+
+      expect(() => (modelResolver as any).getModelReference(model, 'Model')).to.throw(GenerateMetadataError, 'Could not resolve the return type for Model.')
+    })
   })
 
   describe('reference fallback helpers', () => {
