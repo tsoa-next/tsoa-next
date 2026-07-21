@@ -202,10 +202,10 @@ jobs:
 
       - name: Set matrix TypeScript version
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
-        run: |
-          npm pkg set 'devDependencies.typescript=${{ matrix.typescript-version }}' --workspaces --include-workspace-root
-          npm pkg delete devDependencies.typescript --workspace @tsoa-next/cli
-          npm pkg set 'dependencies.typescript=${{ matrix.typescript-version }}' --workspace @tsoa-next/cli
+        env:
+          MATRIX_TYPESCRIPT_VERSION: ${{ matrix.typescript-version }}
+        run: >-
+          node -e 'const fs = require("node:fs"); const manifests = [["package.json", "devDependencies"], ["packages/cli/package.json", "dependencies"], ["packages/runtime/package.json", "devDependencies"], ["packages/tsoa/package.json", "devDependencies"], ["tests/package.json", "devDependencies"], ["tests/esm/package.json", "devDependencies"]]; for (const [file, section] of manifests) { const packageJson = JSON.parse(fs.readFileSync(file, "utf8")); packageJson[section].typescript = process.env.MATRIX_TYPESCRIPT_VERSION; fs.writeFileSync(file, JSON.stringify(packageJson, null, 2) + "\n"); }'
 
       - name: Install
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
