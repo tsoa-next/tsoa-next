@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export type OutputWriteMode = 'always' | 'if-changed' | 'check'
 
@@ -15,6 +16,8 @@ type OutputWriteContext = {
 }
 
 const outputWriteStorage = new AsyncLocalStorage<OutputWriteContext>()
+
+const resolvePathLike = (path: fs.PathLike): string => resolve(path instanceof URL ? fileURLToPath(path) : path.toString())
 
 export async function fsExists(path: fs.PathLike): Promise<boolean> {
   try {
@@ -33,7 +36,7 @@ const validateExistingDirectory = async (path: fs.PathLike): Promise<void> => {
   try {
     const stats = await fs.promises.stat(path)
     if (!stats.isDirectory()) {
-      throw new Error(`Output directory '${path.toString()}' is not a directory.`)
+      throw new Error(`Output directory '${resolvePathLike(path)}' is not a directory.`)
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -90,7 +93,7 @@ export const fsWriteFile = async (path: fs.PathLike, data: string | NodeJS.Array
       return
     }
 
-    context.changedFiles.add(resolve(path.toString()))
+    context.changedFiles.add(resolvePathLike(path))
     if (context.mode === 'check') {
       return
     }

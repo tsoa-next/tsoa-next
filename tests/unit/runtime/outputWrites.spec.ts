@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import 'mocha'
 import { fsMkDir, fsWriteFile, withOutputWriteMode } from '../../../packages/cli/src/utils/fs'
 
@@ -43,6 +44,18 @@ describe('change-aware output writes', () => {
 
     const output = await withOutputWriteMode('if-changed', async () => {
       await fsWriteFile(outputPath, 'new output', { encoding: 'utf8' })
+    })
+
+    expect(output.changedFiles).to.deep.equal([outputPath])
+    expect(readFileSync(outputPath, 'utf8')).to.equal('new output')
+  })
+
+  it('reports file URL outputs as filesystem paths', async () => {
+    const directory = createTemporaryDirectory()
+    const outputPath = join(directory, 'swagger.json')
+
+    const output = await withOutputWriteMode('if-changed', async () => {
+      await fsWriteFile(pathToFileURL(outputPath), 'new output', { encoding: 'utf8' })
     })
 
     expect(output.changedFiles).to.deep.equal([outputPath])
