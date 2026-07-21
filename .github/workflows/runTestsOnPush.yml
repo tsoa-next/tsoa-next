@@ -200,9 +200,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Set override for matrix TypeScript version
+      - name: Set matrix TypeScript version
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
-        run: npm pkg set 'overrides.typescript=${{ matrix.typescript-version }}'
+        run: |
+          npm pkg set 'devDependencies.typescript=${{ matrix.typescript-version }}' --workspaces --include-workspace-root
+          npm pkg delete devDependencies.typescript --workspace @tsoa-next/cli
+          npm pkg set 'dependencies.typescript=${{ matrix.typescript-version }}' --workspace @tsoa-next/cli
 
       - name: Install
         if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
