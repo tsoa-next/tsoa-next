@@ -198,7 +198,7 @@ const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
     rootStats = await lstat(resolvedPath)
   } catch (error) {
     if (isFileSystemMissingError(error)) {
-      throw new Error(`Discover path '${input}' does not exist.`)
+      throw new Error(`Discover path '${input}' does not exist.`, { cause: error })
     }
 
     throw error

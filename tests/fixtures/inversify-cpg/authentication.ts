@@ -1,4 +1,4 @@
-import * as express from 'express'
+import express from 'express'
 
 export function expressAuthentication(req: express.Request, name: string, _scopes: string[] | undefined): Promise<any> {
   if (req.query && req.query.tsoa && req.query.tsoa === 'abc123456') {

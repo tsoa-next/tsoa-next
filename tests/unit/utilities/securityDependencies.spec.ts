@@ -14,11 +14,15 @@ interface PackageLock {
 
 describe('Security dependency resolutions', () => {
   it('should keep serialize-javascript on a patched version', () => {
-    expect(findVulnerablePackages('serialize-javascript', '7.0.3')).to.deep.equal([])
+    expect(findVulnerablePackages('serialize-javascript', '7.0.5')).to.deep.equal([])
   })
 
   it('should keep esbuild on a patched version', () => {
     expect(findVulnerablePackages('esbuild', '0.25.0')).to.deep.equal([])
+  })
+
+  it('should keep vite on a patched version', () => {
+    expect(findVulnerablePackages('vite', '6.4.3')).to.deep.equal([])
   })
 })
 

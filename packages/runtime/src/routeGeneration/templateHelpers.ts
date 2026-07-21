@@ -61,7 +61,7 @@ type DateRangeValidators = {
   maxDate?: { value: string; errorMsg?: string }
 }
 
-const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
+const objectHasOwn = (value: object, key: PropertyKey): boolean => Object.getOwnPropertyDescriptor(value, key) !== undefined
 
 type ValidateParamOptions<TValue> = {
   property: TsoaRoute.PropertySchema
@@ -342,7 +342,7 @@ export class ValidationService {
       case 'string':
         return this.validateString(name, value, fieldErrors, property.validators as StringValidator, parent)
       case 'boolean':
-        return this.validateBool(name, value, fieldErrors, isBodyParam, property.validators as BooleanValidator, parent)
+        return this.validateBool(name, value, fieldErrors, isBodyParam, property.validators, parent)
       case 'integer':
       case 'long':
         return this.validateInt(name, value, fieldErrors, isBodyParam, property.validators as IntegerValidator, parent)
@@ -732,7 +732,7 @@ export class ValidationService {
       return
     }
 
-    let arrayValue: unknown[] = []
+    let arrayValue: unknown[]
     const previousErrors = Object.keys(resolvedFieldErrors).length
     const childParent = this.buildChildPath(resolvedParent, name)
     if (Array.isArray(resolvedValue)) {

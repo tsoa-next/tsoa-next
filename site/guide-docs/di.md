@@ -87,72 +87,51 @@ If you wrap your DI's API or even a ControllerFactory to accept this call and re
 
 ## InversifyJS
 
-Here is some example code to setup the container and your controller with inversify.js.
-Usually, you'll have to tell inversify how to create your controller, but since this is not supposed to cover inversify,
-we'll just refer to their [docs](http://inversify.io/).
-For convenience, we will use inversify-binding-controllers here, which makes it very simple to tell inversify how to create tsoa controllers.
-More information can be found [here](https://github.com/inversify/inversify-binding-decorators).
+Configure controller and service bindings explicitly with the native [InversifyJS container API](https://inversify.io/docs/fundamentals/binding/). Controllers must use transient scope because `Controller` stores response-specific status and headers. Services may use a longer scope when they do not hold request state.
 
 ```ts
 // src/ioc.ts
-import { Container, decorate, injectable } from 'inversify'
-import { buildProviderModule } from 'inversify-binding-decorators'
-import { Controller } from 'tsoa-next'
+import { Container } from 'inversify'
+import { UsersController } from './users/usersController'
+import { FooService } from './users/fooService'
 
-// Create a new container tsoa can use
 const iocContainer = new Container()
 
-decorate(injectable(), Controller) // Makes tsoa's Controller injectable
+// Keep controllers transient so response state cannot leak between requests.
+iocContainer.bind(UsersController).toSelf().inTransientScope()
+iocContainer.bind(FooService).toSelf().inSingletonScope()
 
-// make inversify aware of inversify-binding-decorators
-iocContainer.load(buildProviderModule())
-
-// export according to convention
 export { iocContainer }
 ```
 
-We usually don't want to create a new controller instance for every call, so let's create a convenience wrapper around [`@fluentProvide()`](https://github.com/inversify/inversify-binding-decorators#fluent-binding-decorator)
-
-::: danger
-
-If you rely on controller state (for example, because you're using `this.setHeaders` inherited by [Controller](../reference/tsoa-next/classes/Controller.md)), you need to inject a new Controller for every request.
-Instead of `@provideSingleton`, please make sure to use `@fluentProvide` directly (which is the default way to `fluentProvide(identifier).inTransientScope()`).
-
-:::
-
-```ts
-// src/util/provideSingleton.ts
-import { fluentProvide } from 'inversify-binding-decorators'
-import { interfaces } from 'inversify'
-
-export const provideSingleton = function <T>(identifier: interfaces.ServiceIdentifier<T>) {
-  return fluentProvide(identifier).inSingletonScope().done()
-}
-```
-
-Now, in our controllers, we can use `@provideSingleton()`
+Use Inversify's `@injectable()` and `@inject()` decorators for constructor injection:
 
 ```ts
 // src/users/usersController.ts
-import { Route } from 'tsoa-next';
-import { provideSingleton, inject } from '../inversify/ioc';
+import { inject, injectable } from 'inversify'
+import { Controller, Route } from 'tsoa-next'
+import { FooService } from './fooService'
 
+@injectable()
 @Route('foo')
-@provideSingleton(FooController)
-export class UsersController {
-  constructor(
-    @inject(FooService) private fooService: FooService
-  ) { }
-  ...
-}
-
-@provideSingleton(FooService) // or @provide(FooService)
-export class FooService {
-  constructor(
-    // maybe even more dependencies to be injected...
-  )
+export class UsersController extends Controller {
+  public constructor(@inject(FooService) private readonly fooService: FooService) {
+    super()
+  }
 }
 ```
+
+```ts
+// src/users/fooService.ts
+import { injectable } from 'inversify'
+
+@injectable()
+export class FooService {
+  // ...
+}
+```
+
+The repository's legacy binding-decorator fixture remains pinned to `inversify@6.2.2` with `inversify-binding-decorators@4.0.0`; that decorator package does not declare compatibility with Inversify 7 or 8. New integrations should prefer the native bindings above. If you migrate an existing application to Inversify 8, follow Inversify's [v6-to-v8 migration guide](https://inversify.io/docs/guides/migrating-from-v6/) rather than forcing the legacy decorator package through an override.
 
 ## TSyringe
 

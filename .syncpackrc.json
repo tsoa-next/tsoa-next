@@ -1,11 +1,6 @@
 {
   "$schema": "./node_modules/syncpack/schema.json",
-  "source": [
-    "package.json",
-    "packages/*/package.json",
-    "tests/package.json",
-    "tests/esm/package.json"
-  ],
+  "source": ["package.json", "packages/*/package.json", "tests/package.json", "tests/esm/package.json"],
   "sortPackages": true,
   "sortAz": [
     "bin",
@@ -55,40 +50,34 @@
   "semverGroups": [
     {
       "label": "workspace package dependencies stay exact",
-      "dependencies": [
-        "@tsoa-next/cli",
-        "@tsoa-next/runtime"
-      ],
+      "dependencies": ["@tsoa-next/cli", "@tsoa-next/runtime"],
       "range": ""
     },
     {
       "label": "overrides stay pinned",
-      "dependencyTypes": [
-        "overrides"
-      ],
+      "dependencyTypes": ["overrides"],
       "range": ""
     }
   ],
   "versionGroups": [
     {
       "label": "ignore root private workspace package version",
-      "dependencies": [
-        "tsoa-monorepo"
-      ],
+      "dependencies": ["tsoa-monorepo"],
       "isIgnored": true
     },
     {
       "label": "ignore overrides when comparing dependency versions",
-      "dependencyTypes": [
-        "overrides"
-      ],
+      "dependencyTypes": ["overrides"],
       "isIgnored": true
     },
     {
       "label": "express runtime and test fixtures intentionally differ by major version",
-      "dependencies": [
-        "express"
-      ],
+      "dependencies": ["express"],
+      "isIgnored": true
+    },
+    {
+      "label": "public optional peer lower bounds differ from latest test fixtures",
+      "dependencies": ["io-ts", "joi", "zod"],
       "isIgnored": true
     }
   ]

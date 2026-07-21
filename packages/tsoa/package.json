@@ -36,7 +36,7 @@
     "@tsoa-next/runtime": "8.2.2"
   },
   "devDependencies": {
-    "@types/node": "24.12.0",
+    "@types/node": "22.20.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

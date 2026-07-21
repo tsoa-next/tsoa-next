@@ -46,9 +46,9 @@ Cons:
 - New developers on your team might add a controller and not understand why the new controller was not exposed to the router or the OpenAPI generation. If that is a problem for you, prefer `controllerPathGlobs`.
 
 ```typescript
-import * as methodOverride from 'method-override'
-import * as express from 'express'
-import * as bodyParser from 'body-parser'
+import methodOverride from 'method-override'
+import express from 'express'
+import bodyParser from 'body-parser'
 import { RegisterRoutes } from './routes'
 
 // ########################################################################

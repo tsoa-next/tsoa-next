@@ -1,4 +1,4 @@
-import { dim, green } from 'chalk'
+import chalk from 'chalk'
 import { generateSpecAndRoutes, generateRoutes } from '@tsoa-next/cli'
 import { Timer } from './utils/timer'
 import { tmpdir } from 'node:os'
@@ -12,11 +12,11 @@ const spec = async () => {
 }
 
 const log = async <T>(label: string, fn: () => Promise<T>) => {
-  console.log(dim(green(`↻ Starting ${label}...`)))
+  console.log(chalk.dim(chalk.green(`↻ Starting ${label}...`)))
   const timer = new Timer()
 
   const result = await fn()
-  console.log(green(`✓ Finished ${label} in ${timer.elapsed()}ms`))
+  console.log(chalk.green(`✓ Finished ${label} in ${timer.elapsed()}ms`))
 
   return result
 }

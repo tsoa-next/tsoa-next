@@ -7,7 +7,7 @@ lang: en-US
 
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
-We verify support across the previous LTS, current LTS, and Node vNext in CI.
+We verify support on Node.js 22, 24, and 26 in CI.
 Examples below include `npm`, `pnpm`, and `yarn` variants where the command differs.
 We assume your setup is similar to the one recommended for [getting started](/getting-started)
 :::

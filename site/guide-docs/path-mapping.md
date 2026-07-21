@@ -1,17 +1,14 @@
 ### Path mapping
 
-Per the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/basic-types.html) under [module resolution](https://www.typescriptlang.org/docs/handbook/module-resolution.html):
+TypeScript's [`paths` compiler option](https://www.typescriptlang.org/tsconfig/paths.html) remaps import specifiers for type resolution. It does not rewrite emitted imports, so your runtime or bundler must understand the same aliases.
 
-> Sometimes modules are not directly located under baseUrl. For instance, an import to a module "jquery" would be translated at runtime to "node_modules\jquery\dist\jquery.slim.min.js". Loaders use a mapping configuration to map module names to files at run-time, see RequireJs documentation and SystemJS documentation.
->
-> The TypeScript compiler supports the declaration of such mappings using "paths" property in tsconfig.json files. Here is an example for how to specify the "paths" property for jquery.
+`baseUrl` is not required for `paths` and is deprecated in TypeScript 6. Prefer paths relative to the `tsconfig.json` file:
 
 ```js
 {
   "compilerOptions": {
-    "baseUrl": ".", // This must be specified if "paths" is.
     "paths": {
-      "jquery": ["node_modules/jquery/dist/jquery"] // This mapping is relative to "baseUrl"
+      "@app/*": ["./src/*"]
     }
   }
 }
@@ -40,7 +37,6 @@ If `tsconfig` is omitted, `tsoa-next` looks for `tsconfig.json` starting from th
     ...
   },
   "compilerOptions": {
-    "baseUrl": "./path/to/base/url",
     "paths": {
       "exampleLib": ["./path/to/example/lib"]
     }
@@ -59,9 +55,8 @@ You can also continue to provide compiler options directly when you do not want 
     ...
   },
    "compilerOptions": {
-        "baseUrl": "./path/to/base/url",
         "paths": {
-            "exampleLib": "./path/to/example/lib"
+            "exampleLib": ["./path/to/example/lib"]
         }
     }
 }

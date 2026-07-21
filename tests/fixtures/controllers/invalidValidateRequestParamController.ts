@@ -1,6 +1,7 @@
 import { Controller, Get, Request, Route, Validate } from '@tsoa-next/runtime'
 import { z } from 'zod'
 
+// eslint-disable-next-line no-useless-assignment -- The fixture intentionally exercises request validation through decorator metadata.
 const RequestSchema = z.object({
   method: z.string(),
 })

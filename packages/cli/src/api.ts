@@ -358,7 +358,7 @@ const hasFileOrTsSibling = async (path: string): Promise<boolean> => {
 }
 
 const getLegacyMulterOptions = (config: Config): MulterOptions | undefined => {
-  return Reflect.get(config as object, 'multerOpts') as MulterOptions | undefined
+  return Reflect.get(config, 'multerOpts')
 }
 
 export function validateCompilerOptions(config: Config, configBaseDir?: string): CompilerOptions

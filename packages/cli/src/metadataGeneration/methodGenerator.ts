@@ -73,14 +73,17 @@ export class MethodGenerator {
       const signature = this.getResolvedMethodSignature()
       resolvedReturnType = signature?.getReturnType()
       if (resolvedReturnType) {
-        nodeType = this.current.typeChecker.typeToTypeNode(resolvedReturnType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+        nodeType = this.current.typeChecker.typeToTypeNode(resolvedReturnType, undefined, ts.NodeBuilderFlags.NoTruncation)
       }
     }
     if (!nodeType) {
       const typeChecker = this.current.typeChecker
       const signature = typeChecker.getSignatureFromDeclaration(this.node)
       const implicitType = typeChecker.getReturnTypeOfSignature(signature!)
-      nodeType = typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+      nodeType = typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation)
+    }
+    if (!nodeType) {
+      throw new GenerateMetadataError(`Could not resolve the return type for '${this.getCurrentLocation()}'.`, this.node)
     }
     const type = new TypeResolver(nodeType, this.current, this.node, this.context, resolvedReturnType).resolve()
     const responses = this.commonResponses.concat(this.getMethodResponses())
@@ -283,7 +286,7 @@ export class MethodGenerator {
         produces: this.getProducesAdapter(this.getProducesValue(produces)),
         schema: this.getSchemaFromDecorator(decorator, 0),
         headers: this.getHeadersFromDecorator(decorator, 1),
-      } as Tsoa.Response
+      }
     })
   }
 
