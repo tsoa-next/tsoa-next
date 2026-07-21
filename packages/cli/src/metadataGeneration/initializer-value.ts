@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import { Tsoa } from '@tsoa-next/runtime'
 
-const objectHasOwn = Object.hasOwn as (object: object, property: PropertyKey) => boolean
+const objectHasOwn = (value: object, key: PropertyKey): boolean => Object.getOwnPropertyDescriptor(value, key) !== undefined
 const hasInitializer = (node: ts.Node): node is ts.HasInitializer => objectHasOwn(node, 'initializer')
 const extractInitializer = (decl?: ts.Declaration) => (decl && hasInitializer(decl) ? (decl.initializer as ts.Expression) : undefined)
 const extractImportSpecifier = (symbol?: ts.Symbol): ts.ImportSpecifier | undefined => {
@@ -11,7 +11,7 @@ const extractImportSpecifier = (symbol?: ts.Symbol): ts.ImportSpecifier | undefi
 const isIterable = (obj: unknown): obj is Iterable<unknown> => obj != null && typeof (obj as Iterable<unknown>)[Symbol.iterator] === 'function'
 const toSpreadableObject = (value: InitializerValue | DefinedInitializerValue): InitializerObjectValue => {
   const spreadableValue = Object(value) as Record<string, DefinedInitializerValue>
-  return { ...spreadableValue } as InitializerObjectValue
+  return { ...spreadableValue }
 }
 
 export type InitializerObjectValue = { [key: string]: InitializerValue }

@@ -4,15 +4,10 @@
     "rootDir": "src",
     "sourceMap": true,
     "module": "commonjs",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "composite": true,
     "target": "esnext",
-    "lib": [
-      "esnext"
-    ],
-    "downlevelIteration": true,
+    "lib": ["esnext"],
     "experimentalDecorators": true,
     "declaration": true,
     "noUnusedLocals": true,

@@ -358,7 +358,7 @@ const hasFileOrTsSibling = async (path: string): Promise<boolean> => {
 }
 
 const getLegacyMulterOptions = (config: Config): MulterOptions | undefined => {
-  return Reflect.get(config as object, 'multerOpts') as MulterOptions | undefined
+  return Reflect.get(config, 'multerOpts')
 }
 
 export function validateCompilerOptions(config: Config, configBaseDir?: string): CompilerOptions
@@ -387,7 +387,7 @@ export function validateCompilerOptions(configOrCompilerOptions?: Config | Recor
 export interface ExtendedSpecConfig extends SpecConfig {
   entryFile: Config['entryFile']
   noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
-  controllerPathGlobs?: Config['controllerPathGlobs']
+  controllerPathGlobs?: NonNullable<Config['controllerPathGlobs']>
 }
 
 /** Validates and enriches the `spec` section of a tsoa config object. */
@@ -417,9 +417,9 @@ export interface ExtendedRoutesConfig extends RoutesConfig {
   entryFile: Config['entryFile']
   noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
   bodyCoercion: Exclude<RoutesConfig['bodyCoercion'], undefined>
-  controllerPathGlobs?: Config['controllerPathGlobs']
+  controllerPathGlobs?: NonNullable<Config['controllerPathGlobs']>
   multerOpts?: MulterOptions
-  rootSecurity?: Config['spec']['rootSecurity']
+  rootSecurity?: NonNullable<Config['spec']['rootSecurity']>
   runtimeSpecConfig?: RuntimeSpecConfigSnapshot
   routeGenerator?: string | (new (metadata: Tsoa.Metadata, options: ExtendedRoutesConfig) => AbstractRouteGenerator<ExtendedRoutesConfig>)
 }

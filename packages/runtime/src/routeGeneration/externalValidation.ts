@@ -38,7 +38,7 @@ function loadOptionalModule<T>(moduleName: string): T {
       throw error
     }
 
-    throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind.`)
+    throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind.`, { cause: error })
   }
 
   return require(resolvedModuleName) as T

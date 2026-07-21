@@ -50,7 +50,7 @@ describe('TypeResolver', () => {
 
     it('parses and rejects default tags consistently', () => {
       expect(TypeResolver.getDefault(getDefaultProperty('@default "value"'))).to.equal('value')
-      expect(TypeResolver.getDefault(getDefaultProperty('@default undefined'))).to.equal(undefined)
+      expect(TypeResolver.getDefault(getDefaultProperty('@default undefined'))).to.be.undefined
       expect(() => TypeResolver.getDefault(getDefaultProperty('@default {"unterminated": }'))).to.throw(GenerateMetadataError, 'JSON could not parse default str')
     })
 
@@ -63,8 +63,8 @@ describe('TypeResolver', () => {
       expect(
         (builtinResolver as any).resolveBuiltinTypeReference('Array', [ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)], { defaultNumberType: 'double' }, {}, undefined),
       ).to.deep.equal({ dataType: 'array', elementType: { dataType: 'string' } })
-      expect((builtinResolver as any).resolveBuiltinTypeReference('Array', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.equal(undefined)
-      expect((builtinResolver as any).resolveBuiltinTypeReference('Promise', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.equal(undefined)
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Array', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.be.undefined
+      expect((builtinResolver as any).resolveBuiltinTypeReference('Promise', undefined, { defaultNumberType: 'double' }, {}, undefined)).to.be.undefined
     })
 
     it('resolves io-ts helper types from utility references and aliases', () => {
@@ -129,8 +129,8 @@ describe('TypeResolver', () => {
       ;(current.typeChecker.getPropertyOfType as any) = () => undefined
       expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.deep.equal({ dataType: 'double' })
       ;(current.typeChecker.typeToTypeNode as any) = () => ts.factory.createTypeReferenceNode('CodecReference', [])
-      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.equal(undefined)
-      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [])).to.equal(undefined)
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [...(typeNode.typeArguments || [])])).to.be.undefined
+      expect((ioTsResolver as any).resolveIoTsDecodedType(typeNode, current, {}, undefined, [])).to.be.undefined
     })
 
     it('handles fallback keyof types and keyword defaults', () => {
@@ -150,6 +150,49 @@ describe('TypeResolver', () => {
         GenerateMetadataError,
         "TypeOperator 'keyof' on node produced a never type",
       )
+    })
+
+    it('ignores keyof index types whose target is not a type parameter', () => {
+      const keyOfResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
+      const keyOfNode = ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      const indexedType = {
+        isIndexType: () => true,
+        type: {
+          flags: ts.TypeFlags.String,
+          getSymbol: () => ({ getEscapedName: () => 'NotATypeParameter' }),
+        },
+      } as unknown as ts.Type
+
+      expect((keyOfResolver as any).resolveKeyOfIndexType(indexedType, keyOfNode, {}, {}, undefined)).to.be.undefined
+    })
+
+    it('fails clearly when TypeScript cannot represent an inferred toJSON return type', () => {
+      const sourceFile = ts.createSourceFile('model.ts', `class Model { toJSON() { return { value: 'ok' } } }`, ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const model = sourceFile.statements.find(ts.isClassDeclaration)
+      const toJSONDeclaration = model?.members.find((member): member is ts.MethodDeclaration => ts.isMethodDeclaration(member) && member.name.getText(sourceFile) === 'toJSON')
+
+      if (!model || !toJSONDeclaration) {
+        throw new Error('Failed to create the toJSON test model')
+      }
+
+      const modelType = {} as ts.Type
+      const implicitType = {} as ts.Type
+      const current = {
+        typeChecker: {
+          getPropertyOfType: () => ({ valueDeclaration: toJSONDeclaration }),
+          getReturnTypeOfSignature: () => implicitType,
+          getSignatureFromDeclaration: () => ({}) as ts.Signature,
+          getTypeAtLocation: () => modelType,
+          typeToTypeNode: () => undefined,
+        },
+      }
+      const modelResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current as any)
+
+      ;(modelResolver as any).getNodeDescription = () => undefined
+      ;(modelResolver as any).getNodeExample = () => undefined
+      ;(modelResolver as any).getNodeTitle = () => undefined
+
+      expect(() => (modelResolver as any).getModelReference(model, 'Model')).to.throw(GenerateMetadataError, 'Could not resolve the return type for Model.')
     })
   })
 
@@ -358,7 +401,7 @@ describe('TypeResolver', () => {
       ;(resolverWithEquivalentFallback as any).isEquivalentReferenceTypeNode = () => true
       const referenceType = (resolverWithEquivalentFallback as any).getReferenceTypeFromTypeChecker(originalReference, 'Thing<string>', 'Thing_string_')
 
-      expect(referenceType).to.equal(undefined)
+      expect(referenceType).to.be.undefined
     })
 
     it('resolves enum declarations from the resolved type fallback', async () => {

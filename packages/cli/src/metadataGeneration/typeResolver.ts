@@ -51,7 +51,7 @@ const symbolModuleOriginCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, M
 const ioTsUtilityTypeCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, IoTsUtilityType | false>>()
 
 const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
-const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
+const objectHasOwn = (value: object, key: PropertyKey): boolean => Object.getOwnPropertyDescriptor(value, key) !== undefined
 
 const getSymbolModuleOriginCache = (typeChecker: ts.TypeChecker): WeakMap<ts.Symbol, Map<string, boolean>> => {
   let cache = symbolModuleOriginCache.get(typeChecker)
@@ -630,7 +630,7 @@ export class TypeResolver {
     }
 
     const symbol = type.type.getSymbol()
-    if (!symbol || (symbol.getFlags() & ts.TypeFlags.TypeParameter) === 0) {
+    if (!symbol || !this.hasFlag(type.type, ts.TypeFlags.TypeParameter)) {
       return undefined
     }
 
@@ -1215,10 +1215,9 @@ export class TypeResolver {
   }
 
   private sanitizeInlineTypeName(typeName: string): string {
-    return typeName
-      .replaceAll(/[^A-Za-z0-9]/g, '_')
-      .replaceAll(/_+/g, '_')
-      .replaceAll(/^_+|_+$/g, '')
+    const normalizedName = typeName.replaceAll(/[^A-Za-z0-9]/g, '_').replaceAll(/_+/g, '_')
+    const withoutLeadingUnderscore = normalizedName.startsWith('_') ? normalizedName.slice(1) : normalizedName
+    return withoutLeadingUnderscore.endsWith('_') ? withoutLeadingUnderscore.slice(0, -1) : withoutLeadingUnderscore
   }
 
   private getDeclarationBasedRefTypeName(type: ts.EntityName, declarations: UsableDeclarationWithoutPropertySignature[]): string {
@@ -1266,7 +1265,7 @@ export class TypeResolver {
     const def = TypeResolver.getDefault(arg)
     const isDeprecated = isExistJSDocTag(arg, tag => tag.tagName.text === 'deprecated') || isDecorator(arg, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
 
-    const symbol = this.getSymbolAtLocation(arg.name as ts.Node)
+    const symbol = this.getSymbolAtLocation(arg.name)
     const comments = symbol ? symbol.getDocumentationComment(this.current.typeChecker) : []
     const description = symbolDisplayPartsToString(comments)
 
@@ -1567,7 +1566,10 @@ export class TypeResolver {
       if (!nodeType) {
         const signature = this.current.typeChecker.getSignatureFromDeclaration(toJSONDeclaration)
         const implicitType = this.current.typeChecker.getReturnTypeOfSignature(signature!)
-        nodeType = this.current.typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation) as ts.TypeNode
+        nodeType = this.current.typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation)
+      }
+      if (!nodeType) {
+        throw new GenerateMetadataError(`Could not resolve the return type for ${refTypeName}.`, toJSONDeclaration)
       }
       return this.withDefinedReferenceMetadata(
         {

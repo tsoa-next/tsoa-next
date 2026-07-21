@@ -12,7 +12,7 @@ function cloneMergeValue(value: unknown): unknown {
   }
 
   if (isPlainObject(value)) {
-    return recursiveMerge({}, value as UnspecifiedObject)
+    return recursiveMerge({}, value)
   }
 
   return value
@@ -34,7 +34,7 @@ export function recursiveMerge(target: UnspecifiedObject, source: UnspecifiedObj
     }
 
     if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
-      result[key] = recursiveMerge(targetValue as UnspecifiedObject, sourceValue as UnspecifiedObject)
+      result[key] = recursiveMerge(targetValue, sourceValue)
       continue
     }
 

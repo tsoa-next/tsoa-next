@@ -14,21 +14,29 @@ interface PackageLock {
 
 describe('Security dependency resolutions', () => {
   it('should keep serialize-javascript on a patched version', () => {
-    expect(findVulnerablePackages('serialize-javascript', '7.0.3')).to.deep.equal([])
+    expectPatchedPackageResolution('serialize-javascript', '7.0.5')
   })
 
   it('should keep esbuild on a patched version', () => {
-    expect(findVulnerablePackages('esbuild', '0.25.0')).to.deep.equal([])
+    expectPatchedPackageResolution('esbuild', '0.25.0')
+  })
+
+  it('should keep vite on a patched version', () => {
+    expectPatchedPackageResolution('vite', '6.4.3')
+  })
+
+  it('should reject protected dependency resolutions without a version', () => {
+    expect(() => requirePackageVersion('vite', 'node_modules/vite', {})).to.throw('vite resolution at node_modules/vite should declare a version')
   })
 })
 
-function findVulnerablePackages(packageName: string, minimumVersion: string) {
+function expectPatchedPackageResolution(packageName: string, minimumVersion: string) {
   const packageLock = readPackageLock()
+  const matchingPackages = Object.entries(packageLock.packages).filter(([, metadata]) => metadata.name === packageName || hasPackageResolution(packageName, metadata))
 
-  return Object.entries(packageLock.packages)
-    .filter(([, metadata]) => metadata.name === packageName || hasPackageResolution(packageName, metadata))
-    .filter(([, metadata]) => compareVersions(metadata.version, minimumVersion) < 0)
-    .map(([packagePath, metadata]) => `${packagePath}: ${metadata.version}`)
+  expect(matchingPackages, `${packageName} should be present in package-lock.json`).not.to.be.empty
+  const resolvedPackages = matchingPackages.map(([packagePath, metadata]) => [packagePath, requirePackageVersion(packageName, packagePath, metadata)] as const)
+  expect(resolvedPackages.filter(([, version]) => compareVersions(version, minimumVersion) < 0).map(([packagePath, version]) => `${packagePath}: ${version}`)).to.deep.equal([])
 }
 
 function readPackageLock() {
@@ -40,7 +48,15 @@ function hasPackageResolution(packageName: string, metadata: LockfilePackage) {
   return typeof metadata.resolved === 'string' && metadata.resolved.includes(`/${packageName}/-/${packageName}-`)
 }
 
-function compareVersions(left: string | undefined, right: string) {
+function requirePackageVersion(packageName: string, packagePath: string, metadata: LockfilePackage) {
+  if (typeof metadata.version !== 'string' || metadata.version.length === 0) {
+    throw new Error(`${packageName} resolution at ${packagePath} should declare a version`)
+  }
+
+  return metadata.version
+}
+
+function compareVersions(left: string, right: string) {
   const leftParts = normaliseVersion(left)
   const rightParts = normaliseVersion(right)
   const maxLength = Math.max(leftParts.length, rightParts.length)
@@ -55,8 +71,8 @@ function compareVersions(left: string | undefined, right: string) {
   return 0
 }
 
-function normaliseVersion(version: string | undefined) {
-  return String(version)
+function normaliseVersion(version: string) {
+  return version
     .split('.')
     .map(part => Number.parseInt(part, 10))
     .filter(part => Number.isFinite(part))

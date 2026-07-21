@@ -20,17 +20,17 @@ jobs:
     steps:
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3.2.0
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: tsoa-next
           repositories: tsoa-next
 
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -40,10 +40,10 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Create or update release PR
-        uses: changesets/action@v1.7.0
+        uses: changesets/action@v1.9.0
         with:
-          title: "chore(release): version and publish packages"
-          commit: "chore(release): version and publish packages"
+          title: 'chore(release): version and publish packages'
+          commit: 'chore(release): version and publish packages'
           version: npm run version-packages
           commitMode: github-api
         env:

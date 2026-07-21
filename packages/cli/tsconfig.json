@@ -7,7 +7,6 @@
     "module": "commonjs",
     "target": "esnext",
     "lib": ["esnext"],
-    "downlevelIteration": true,
     "experimentalDecorators": true,
     "declaration": true,
     "noUnusedLocals": true,

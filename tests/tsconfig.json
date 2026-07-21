@@ -1,19 +1,19 @@
 {
   "compilerOptions": {
     "rootDir": ".",
-    "baseUrl": ".",
     "module": "commonjs",
     "target": "es2021",
     "lib": ["es2021"],
-    "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
     "newLine": "LF",
     "noEmit": true,
     "strict": true,
     "noImplicitAny": false,
     "skipLibCheck": true,
     "paths": {
+      "*": ["./*"],
       "tsoa-next": ["../packages/tsoa/src/index.ts"],
       "tsoa-next/cli": ["../packages/tsoa/src/cli.ts"],
       "@tsoa-next/cli": ["../packages/cli/src/index.ts"],

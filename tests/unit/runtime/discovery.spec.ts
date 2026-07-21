@@ -147,6 +147,25 @@ describe('CLI discovery', () => {
     expect(thrownError?.message).to.equal(`Discover path '${brokenLink}' does not exist.`)
   })
 
+  it('preserves the filesystem cause when a discover path does not exist', async () => {
+    const missingPath = join(tmpdir(), `tsoa-discovery-missing-${process.pid}`, 'tsoa.json')
+    let thrownError: (Error & { cause?: unknown }) | undefined
+
+    try {
+      await discoverConfigs(missingPath)
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    }
+
+    expect(thrownError?.message).to.equal(`Discover path '${missingPath}' does not exist.`)
+    expect(thrownError?.cause).to.be.instanceOf(Error)
+    expect((thrownError?.cause as NodeJS.ErrnoException | undefined)?.code).to.equal('ENOENT')
+  })
+
   it('throws a clear error when a discover glob matches no filesystem entries', async () => {
     const rootDir = await mkdtemp(join(tmpdir(), 'tsoa-discovery-empty-glob-'))
     temporaryDirectories.add(rootDir)

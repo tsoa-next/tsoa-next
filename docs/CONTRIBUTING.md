@@ -28,6 +28,22 @@ We also accept suggestions in the issue tracker.
 
 # Instructions for Contributing Code
 
+## Local toolchain
+
+The published packages support Node.js 22 or newer and npm 10 or newer. Repository development uses the `packageManager` version declared in the root `package.json` (`npm@12.0.1`), which requires Node.js `^22.22.2`, `^24.15.0`, or `>=26.0.0`. Use a Node.js release that meets one of those npm engine ranges; Node.js 24.15 or newer or Node.js 26 are the practical contributor choices at the time of this update.
+
+Install exactly from the lockfile and run the standard verification suite:
+
+```shell
+npm ci --ignore-scripts
+npm run check:standard
+npm run sync:readmes:check
+npm run docs:build
+npm audit
+```
+
+The install skips lifecycle scripts so dependency installation cannot run the repository build implicitly. Run `npm run build` or the standard suite explicitly. A dependency change must explain any version intentionally held below the registry's latest release, any root override that remains, and any unresolved audit finding. See the [security policy](../SECURITY.md) for the current dependency-security posture.
+
 ## General
 
 If you have a bugfix or new feature that you would like to contribute to `tsoa-next`, please find or open an issue about it first. Talk about what you would like to do. It may be that somebody is already working on it, or that there are particular issues that you should know about before implementing the change.

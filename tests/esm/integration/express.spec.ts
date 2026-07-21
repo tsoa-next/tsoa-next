@@ -1,5 +1,4 @@
-import chai from 'chai'
-const { expect } = chai
+import { expect } from 'chai'
 import request, { Test } from 'supertest'
 import { it, describe } from 'mocha'
 import { app } from '../fixtures/express/server.js'

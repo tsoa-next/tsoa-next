@@ -62,17 +62,21 @@ Where historical release notes or migration references still point upstream, the
 - Customize validation translation and failure formatting through the optional validation context accepted by generated `RegisterRoutes(...)` functions.
 - Support authentication hooks, dependency injection, typed alternate responders, file uploads, custom middleware, and custom validation workflows.
 - Use the `tsoa` CLI for spec and route generation, or call the programmatic APIs from `tsoa-next/cli`.
-- Target modern Node.js releases with the support policy verified in CI across the previous LTS, current LTS, and Node vNext.
+- Target Node.js 22 and newer, with the compatibility matrix running on Node.js 22, 24, and 26.
 
 ## Getting Started
 
 - Requirements:
   - Node.js 22 or newer
   - npm 10 or newer
-  - We verify support across the previous LTS, current LTS, and Node vNext in CI
+  - We verify support on Node.js 22, 24, and 26 in CI
 - [Documentation](https://tsoa-next.dev/)
 - [API Reference](https://tsoa-next.dev/reference/)
 - [Getting started guide](https://tsoa-next.dev/getting-started)
+
+These are consumer requirements for the published packages. Contributors use the repository's pinned `npm@12.0.1` on a Node.js version supported by npm 12; the Node.js 22 compatibility jobs intentionally use the npm version bundled with that Node.js release.
+
+Dependency update policy, intentional version holds, override rationale, and accepted upstream findings are documented in [Dependency Maintenance](https://github.com/tsoa-next/tsoa-next/blob/main/docs/DEPENDENCIES.md).
 
 ## Package Surface
 

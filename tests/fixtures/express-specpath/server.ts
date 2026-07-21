@@ -1,4 +1,4 @@
-import * as express from 'express'
+import express from 'express'
 import '../controllers/specPathController'
 import { RegisterRoutes } from './routes'
 

@@ -7,7 +7,7 @@ lang: en-US
 
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
-We verify support across the previous LTS, current LTS, and Node vNext in CI.
+We verify support on Node.js 22, 24, and 26 in CI.
 Examples in the linked setup guides include `npm`, `pnpm`, and `yarn` variants where the command differs.
 This guide assumes you followed the [getting started guide](./getting-started) or have a similar setup.
 :::
@@ -154,7 +154,7 @@ export class GreetingsController extends Controller {
   @Get('/')
   public async greet(@Query() name?: string, @Res() notFoundResponse: TsoaResponse<404, { reason: string }>): Promise<string> {
     if (!name) {
-      return notFoundResponse(404, { reason: 'We don\'t know you yet. Please provide a name' })
+      return notFoundResponse(404, { reason: "We don't know you yet. Please provide a name" })
     }
 
     return `Hello, ${name}`
