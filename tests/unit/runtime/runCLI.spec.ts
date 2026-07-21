@@ -13,6 +13,7 @@ const cliModulePath = require.resolve('../../../packages/cli/src/api')
 const discoveryModulePath = require.resolve('../../../packages/cli/src/discovery')
 const runCLIModulePath = require.resolve('../../../packages/cli/src/runCLI')
 const originalArgv = [...process.argv]
+const temporaryDirectories = new Set<string>()
 
 const clearModule = (modulePath: string) => {
   delete require.cache[modulePath]
@@ -58,8 +59,10 @@ const loadRunCLI = (cliExports: CLIExports, discoveryExports?: Partial<Discovery
 const captureStdout = async (action: () => Promise<unknown>): Promise<string> => {
   const originalStdoutWrite = process.stdout.write.bind(process.stdout)
   const output: string[] = []
-  process.stdout.write = ((chunk: string | Uint8Array) => {
+  process.stdout.write = ((chunk: string | Uint8Array, encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void), callback?: (error?: Error | null) => void) => {
     output.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'))
+    const writeComplete = typeof encodingOrCallback === 'function' ? encodingOrCallback : callback
+    writeComplete?.()
     return true
   }) as typeof process.stdout.write
 
@@ -78,6 +81,12 @@ describe('runCLI', () => {
     clearModule(discoveryModulePath)
     clearModule(runCLIModulePath)
     process.argv = [...originalArgv]
+
+    for (const directory of temporaryDirectories) {
+      rmSync(directory, { force: true, recursive: true })
+    }
+
+    temporaryDirectories.clear()
   })
 
   it('dispatches the spec command without exposing CLI-only helpers on the public surface', async () => {
@@ -464,6 +473,7 @@ describe('runCLI', () => {
     const calls: Array<Parameters<CLIExports['generateSpecAndRoutes']>[0]> = []
     const discoveryInputs: Array<string | undefined> = []
     const rootDirectory = mkdtempSync(join(tmpdir(), 'tsoa-run-cli-check-'))
+    temporaryDirectories.add(rootDirectory)
     const outputPath = join(rootDirectory, 'routes.ts')
     writeFileSync(outputPath, 'stale routes', 'utf8')
     const runCLI = loadRunCLI(
@@ -519,7 +529,6 @@ describe('runCLI', () => {
     expect(calls[0]?.configuration).to.equal('/mock/services/api/tsoa.yaml')
     expect(readFileSync(outputPath, 'utf8')).to.equal('stale routes')
     expect(thrownError?.message).to.equal(`Failed check for discovered config files:\n- api/tsoa.yaml: Generated outputs are out of date: ${outputPath}. Run 'tsoa generate' to update them.`)
-    rmSync(rootDirectory, { force: true, recursive: true })
   })
 
   it('rejects mixing discover and configuration options', async () => {

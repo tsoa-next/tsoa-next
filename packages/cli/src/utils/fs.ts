@@ -29,8 +29,24 @@ export async function fsExists(path: fs.PathLike): Promise<boolean> {
   }
 }
 
+const validateExistingDirectory = async (path: fs.PathLike): Promise<void> => {
+  try {
+    const stats = await fs.promises.stat(path)
+    if (!stats.isDirectory()) {
+      throw new Error(`Output directory '${path.toString()}' is not a directory.`)
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return
+    }
+
+    throw error
+  }
+}
+
 export const fsMkDir = async (path: fs.PathLike, options?: fs.MakeDirectoryOptions & { recursive?: boolean }): Promise<string | undefined> => {
   if (outputWriteStorage.getStore()?.mode === 'check') {
+    await validateExistingDirectory(path)
     return undefined
   }
 

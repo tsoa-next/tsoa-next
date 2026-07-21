@@ -67,6 +67,27 @@ describe('change-aware output writes', () => {
     expect(existsSync(missingDirectory)).to.equal(false)
   })
 
+  it('rejects an existing output path that is not a directory in check mode', async () => {
+    const directory = createTemporaryDirectory()
+    const outputDirectory = join(directory, 'generated')
+    writeFileSync(outputDirectory, 'not a directory', 'utf8')
+    let thrownError: Error | undefined
+
+    try {
+      await withOutputWriteMode('check', async () => {
+        await fsMkDir(outputDirectory, { recursive: true })
+      })
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    }
+
+    expect(thrownError?.message).to.equal(`Output directory '${outputDirectory}' is not a directory.`)
+  })
+
   it('keeps concurrent output modes isolated', async () => {
     const directory = createTemporaryDirectory()
     const checkedPath = join(directory, 'checked.ts')
