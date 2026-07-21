@@ -165,7 +165,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    name: Build
+    name: Build (${{ matrix.node-version }}, ${{ matrix.os }}, ${{ matrix.typescript-version }})${{ matrix.express-version != '^5.0.0' && format(' [Express {0}]', matrix.express-version) || '' }}
     needs:
       - detect-package-impact
       - coverage
