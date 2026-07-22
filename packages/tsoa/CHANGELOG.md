@@ -1,5 +1,19 @@
 # tsoa-next
 
+## 8.3.0
+
+### Minor Changes
+
+- 74f8c5c: Add `tsoa generate` to auto-discover configs and update only changed route and OpenAPI outputs, plus `tsoa check` to detect stale generated outputs without writing files for CI enforcement.
+
+### Patch Changes
+
+- f792a39: Refresh supported runtime, generation, validation, and documentation dependencies while preserving established TypeScript 5.9 schema output and existing optional peer compatibility ranges.
+- Updated dependencies [74f8c5c]
+- Updated dependencies [f792a39]
+  - @tsoa-next/cli@8.3.0
+  - @tsoa-next/runtime@8.3.0
+
 ## 8.2.2
 
 ### Patch Changes
