@@ -13,6 +13,12 @@ tsoa spec
 # generate routes
 tsoa routes
 
+# discover configs and update only stale route and OpenAPI outputs
+tsoa generate
+
+# fail when generated outputs are stale without writing files
+tsoa check
+
 # discover config files beneath the current directory
 tsoa discover
 
@@ -66,6 +72,28 @@ tsoa spec --discover "packages/*"
 tsoa routes --discover "./services"
 tsoa spec-and-routes --discover .
 ```
+
+#### Change-aware generation and CI checks
+
+`generate` and `check` discover conventional tsoa config files automatically. Both commands search beneath the current working directory by default, or beneath an optional path or glob:
+
+```bash
+# Generate routes and OpenAPI specs for every discovered config.
+# Existing files are written only when their generated content changed.
+tsoa generate
+tsoa generate "services/*"
+
+# Compare generated content with the files on disk without creating directories
+# or writing files. The command exits non-zero when any output is missing or stale.
+tsoa check
+tsoa check "services/*"
+```
+
+Each discovered config used by these combined commands must include both `spec` and `routes` sections. `check` reports the stale output paths and suggests running `tsoa generate`, which makes it suitable as a pull request CI gate.
+
+Because config discovery is automatic, `generate` and `check` ignore the `--configuration` (`-c`) and `--discover` options and print a warning when either is supplied. Use the optional `[pathOrGlob]` argument to limit discovery instead.
+
+Change-aware generation cannot safely control file writes performed by a custom `routes.routeGenerator`, so `generate` and `check` reject those configs. The existing `routes` and `spec-and-routes` commands continue to support custom route generators.
 
 You can find the Reference for the tsoa configuration file [here](../reference/tsoa-next/interfaces/Config.md)
 

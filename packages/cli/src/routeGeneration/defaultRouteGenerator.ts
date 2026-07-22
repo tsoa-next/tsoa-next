@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
-import { fsReadFile, fsWriteFile } from '../utils/fs'
+import { fsReadFile, fsWriteFile, getOutputWriteMode } from '../utils/fs'
 import { convertBracesPathParams } from '../utils/pathUtils'
 import { AbstractRouteGenerator } from './routeGenerator'
 
@@ -44,7 +44,10 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
   public async GenerateRoutes(middlewareTemplate: string) {
     const allowedExtensions = this.options.esm ? ['.ts', '.mts', '.cts'] : ['.ts']
 
-    if (!fs.lstatSync(this.options.routesDir).isDirectory()) {
+    const routesDirectoryExists = fs.existsSync(this.options.routesDir)
+    const shouldValidateRoutesDirectory = routesDirectoryExists || getOutputWriteMode() !== 'check'
+
+    if (shouldValidateRoutesDirectory && !fs.lstatSync(this.options.routesDir).isDirectory()) {
       throw new Error(`routesDir should be a directory`)
     } else if (this.options.routesFileName !== undefined) {
       const ext = path.extname(this.options.routesFileName)
