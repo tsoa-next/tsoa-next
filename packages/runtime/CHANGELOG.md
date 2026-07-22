@@ -1,5 +1,11 @@
 # @tsoa-next/runtime
 
+## 8.3.0
+
+### Patch Changes
+
+- f792a39: Refresh supported runtime, generation, validation, and documentation dependencies while preserving established TypeScript 5.9 schema output and existing optional peer compatibility ranges.
+
 ## 8.2.2
 
 ### Patch Changes
