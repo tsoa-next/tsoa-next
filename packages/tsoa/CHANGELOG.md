@@ -1,5 +1,13 @@
 # tsoa-next
 
+## 8.3.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @tsoa-next/cli@8.3.1
+  - @tsoa-next/runtime@8.3.1
+
 ## 8.3.0
 
 ### Minor Changes

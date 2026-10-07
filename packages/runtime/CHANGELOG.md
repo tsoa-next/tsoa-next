@@ -1,5 +1,7 @@
 # @tsoa-next/runtime
 
+## 8.3.1
+
 ## 8.3.0
 
 ### Patch Changes
