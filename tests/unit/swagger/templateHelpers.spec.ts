@@ -504,7 +504,7 @@ describe('ValidationService', () => {
       const value: any = '10'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateInt(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid integer number')
       expect(error[name].value).to.equal('10')
     })
@@ -621,7 +621,7 @@ describe('ValidationService', () => {
       const value: any = '10.1'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateFloat(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid float number')
       expect(error[name].value).to.equal('10.1')
     })
@@ -669,7 +669,7 @@ describe('ValidationService', () => {
       const value = 'false'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateBool(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid boolean value')
       expect(error[name].value).to.equal('false')
     })
@@ -1242,7 +1242,7 @@ describe('ValidationService', () => {
       const value: any = 1234
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateDate(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid ISO 8601 date format, i.e. YYYY-MM-DD')
       expect(error[name].value).to.equal(1234)
     })
@@ -1311,7 +1311,7 @@ describe('ValidationService', () => {
       const value: any = 1234
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateDateTime(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss')
       expect(error[name].value).to.equal(1234)
     })
@@ -1329,7 +1329,7 @@ describe('ValidationService', () => {
       const value = ['A', 10, true]
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateArray(name, value, error, true, { dataType: 'integer' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[`${name}.$0`].message).to.equal('invalid integer number')
       expect(error[`${name}.$0`].value).to.equal('A')
       expect(error[`${name}.$2`].message).to.equal('invalid integer number')
@@ -1351,7 +1351,7 @@ describe('ValidationService', () => {
         },
         { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true },
       ).validateArray(name, value, error, true, { ref: 'ExampleModel' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error).to.deep.equal({
         [`${name}.$0.a`]: {
           message: 'invalid string value',
@@ -1425,7 +1425,7 @@ describe('ValidationService', () => {
       const value: any = 'some primitive string'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateArray(name, value, error, true, { dataType: 'string' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid array')
       expect(error[name].value).to.equal('some primitive string')
     })
