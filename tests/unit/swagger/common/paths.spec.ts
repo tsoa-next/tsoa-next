@@ -85,9 +85,9 @@ describe('Colon path params conversion', () => {
   })
 
   it('should ignore bad parameters', () => {
-    expect(convertColonPathParams(undefined as any)).to.equal(undefined)
-    expect(convertColonPathParams(null as any)).to.equal(null)
-    expect(convertColonPathParams(1 as any)).to.equal(1)
+    expect(convertColonPathParams(undefined as any)).to.be.undefined
+    expect(convertColonPathParams(null as any)).to.be.null
+    expect(convertColonPathParams(1 as any) as unknown).to.equal(1)
     expect(convertColonPathParams('')).to.equal('')
     const emptyObject = {}
     expect(convertColonPathParams(emptyObject as any)).to.equal(emptyObject)

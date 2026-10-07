@@ -11,7 +11,7 @@ describe('ValidationService', () => {
     it('keeps the deprecated positional wrapper working for custom templates', () => {
       const fieldErrors: FieldErrors = {}
 
-      const result = ValidateParam(property, '42', {}, 'payload', fieldErrors, true, undefined, config)
+      const result = ValidateParam<unknown>(property, '42', {}, 'payload', fieldErrors, true, undefined, config)
 
       expect(result).to.equal(42)
       expect(fieldErrors).to.deep.equal({})
@@ -20,7 +20,7 @@ describe('ValidationService', () => {
     it('supports the object overload for custom templates', () => {
       const fieldErrors: FieldErrors = {}
 
-      const result = ValidateParam({
+      const result = ValidateParam<unknown>({
         property,
         value: '42',
         generatedModels: {},
@@ -417,7 +417,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateInt(name, value, error, true)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`invalid integer number`)
     })
 
@@ -448,7 +448,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateInt(name, value, error, true, validator)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`min 12`)
     })
 
@@ -464,7 +464,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateInt(name, value, error, true, validator)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`max 10`)
     })
 
@@ -479,11 +479,11 @@ describe('ValidationService', () => {
       )
 
       const belowError: FieldErrors = {}
-      expect(service.validateInt('value', '9', belowError, true, validator)).to.equal(undefined)
+      expect(service.validateInt('value', '9', belowError, true, validator)).to.be.undefined
       expect(belowError.value.message).to.equal('exclusiveMin 10')
 
       const lowerEdgeError: FieldErrors = {}
-      expect(service.validateInt('value', '10', lowerEdgeError, true, validator)).to.equal(undefined)
+      expect(service.validateInt('value', '10', lowerEdgeError, true, validator)).to.be.undefined
       expect(lowerEdgeError.value.message).to.equal('exclusiveMin 10')
 
       const validError: FieldErrors = {}
@@ -491,11 +491,11 @@ describe('ValidationService', () => {
       expect(validError).to.deep.equal({})
 
       const upperEdgeError: FieldErrors = {}
-      expect(service.validateInt('value', '12', upperEdgeError, true, validator)).to.equal(undefined)
+      expect(service.validateInt('value', '12', upperEdgeError, true, validator)).to.be.undefined
       expect(upperEdgeError.value.message).to.equal('exclusiveMax 12')
 
       const aboveError: FieldErrors = {}
-      expect(service.validateInt('value', '13', aboveError, true, validator)).to.equal(undefined)
+      expect(service.validateInt('value', '13', aboveError, true, validator)).to.be.undefined
       expect(aboveError.value.message).to.equal('exclusiveMax 12')
     })
 
@@ -504,7 +504,7 @@ describe('ValidationService', () => {
       const value: any = '10'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateInt(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid integer number')
       expect(error[name].value).to.equal('10')
     })
@@ -534,7 +534,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateFloat(name, value, error, true)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`invalid float number`)
     })
 
@@ -565,7 +565,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateFloat(name, value, error, true, validator)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`min 12.5`)
     })
 
@@ -581,7 +581,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateFloat(name, value, error, true, validator)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`max 10.5`)
     })
 
@@ -596,11 +596,11 @@ describe('ValidationService', () => {
       )
 
       const belowError: FieldErrors = {}
-      expect(service.validateFloat('value', '10.4', belowError, true, validator)).to.equal(undefined)
+      expect(service.validateFloat('value', '10.4', belowError, true, validator)).to.be.undefined
       expect(belowError.value.message).to.equal('exclusiveMin 10.5')
 
       const lowerEdgeError: FieldErrors = {}
-      expect(service.validateFloat('value', '10.5', lowerEdgeError, true, validator)).to.equal(undefined)
+      expect(service.validateFloat('value', '10.5', lowerEdgeError, true, validator)).to.be.undefined
       expect(lowerEdgeError.value.message).to.equal('exclusiveMin 10.5')
 
       const validError: FieldErrors = {}
@@ -608,11 +608,11 @@ describe('ValidationService', () => {
       expect(validError).to.deep.equal({})
 
       const upperEdgeError: FieldErrors = {}
-      expect(service.validateFloat('value', '12.5', upperEdgeError, true, validator)).to.equal(undefined)
+      expect(service.validateFloat('value', '12.5', upperEdgeError, true, validator)).to.be.undefined
       expect(upperEdgeError.value.message).to.equal('exclusiveMax 12.5')
 
       const aboveError: FieldErrors = {}
-      expect(service.validateFloat('value', '12.6', aboveError, true, validator)).to.equal(undefined)
+      expect(service.validateFloat('value', '12.6', aboveError, true, validator)).to.be.undefined
       expect(aboveError.value.message).to.equal('exclusiveMax 12.5')
     })
 
@@ -621,7 +621,7 @@ describe('ValidationService', () => {
       const value: any = '10.1'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateFloat(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid float number')
       expect(error[name].value).to.equal('10.1')
     })
@@ -637,7 +637,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateBool('name', value, {}, true)
-      expect(result).to.equal(true)
+      expect(result).to.be.true
     })
 
     it('should return false when submitted false', () => {
@@ -649,7 +649,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateBool('name', value, {}, true)
-      expect(result).to.equal(false)
+      expect(result).to.be.false
     })
 
     it('should coerce strings to boolean values if body coercion is enabled', () => {
@@ -661,7 +661,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateBool('name', value, {}, true)
-      expect(result).to.equal(false)
+      expect(result).to.be.false
     })
 
     it('should return an error a non-boolean value is provided and body coercion is disabled', () => {
@@ -669,7 +669,7 @@ describe('ValidationService', () => {
       const value = 'false'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateBool(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid boolean value')
       expect(error[name].value).to.equal('false')
     })
@@ -716,7 +716,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, [''])
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; ['']`)
     })
 
@@ -747,7 +747,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`no member`)
     })
 
@@ -763,7 +763,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; ['HELLO','HI']`)
     })
 
@@ -795,7 +795,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [0,1]`)
     })
 
@@ -827,7 +827,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; ['0','1']`)
     })
 
@@ -843,7 +843,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [1,2]`)
     })
 
@@ -859,7 +859,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(false)
+      expect(result).to.be.false
       expect(error).to.deep.equal({})
     })
 
@@ -875,11 +875,11 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(true)
+      expect(result).to.be.true
       expect(error).to.deep.equal({})
     })
 
-    it('does not accept a wrong members of a boolean enum', () => {
+    it('rejects an invalid boolean enum member', () => {
       const name = 'name'
       const value = false
       const error: FieldErrors = {}
@@ -891,11 +891,11 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [true]`)
     })
 
-    it('does not accept a wrong members of a boolean enum', () => {
+    it('rejects an invalid stringified boolean enum member', () => {
       const name = 'name'
       const value = 'false'
       const error: FieldErrors = {}
@@ -907,7 +907,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [true]`)
     })
 
@@ -923,7 +923,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(null)
+      expect(result).to.be.null
       expect(error).to.deep.equal({})
     })
 
@@ -939,7 +939,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(null)
+      expect(result).to.be.null
       expect(error).to.deep.equal({})
     })
 
@@ -955,7 +955,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [0]`)
     })
 
@@ -971,7 +971,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [null]`)
     })
 
@@ -987,7 +987,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [false]`)
     })
 
@@ -1003,7 +1003,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [null]`)
     })
 
@@ -1019,7 +1019,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [false]`)
     })
 
@@ -1035,7 +1035,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [0]`)
     })
 
@@ -1051,7 +1051,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; ['']`)
     })
 
@@ -1067,7 +1067,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [null]`)
     })
 
@@ -1083,7 +1083,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [true]`)
     })
 
@@ -1099,7 +1099,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; [1]`)
     })
 
@@ -1115,7 +1115,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateEnum(name, value, error, enumeration)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`should be one of the following; ['1']`)
     })
   })
@@ -1144,7 +1144,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateString(name, value, error, { minLength: { value: 5 } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`minLength 5`)
     })
 
@@ -1159,7 +1159,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateString(name, value, error, { maxLength: { value: 3 } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`maxLength 3`)
     })
 
@@ -1174,7 +1174,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateString(name, value, error, { pattern: { value: 'a-z' } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`Not match in 'a-z'`)
     })
   })
@@ -1203,7 +1203,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDate(name, value, error, true)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`invalid ISO 8601 date format, i.e. YYYY-MM-DD`)
     })
 
@@ -1218,7 +1218,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDate(name, value, error, true, { minDate: { value: '2017-07-01' } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`minDate '2017-07-01'`)
     })
 
@@ -1233,7 +1233,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDate(name, value, error, true, { maxDate: { value: '2017-05-01' } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`maxDate '2017-05-01'`)
     })
 
@@ -1242,7 +1242,7 @@ describe('ValidationService', () => {
       const value: any = 1234
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateDate(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid ISO 8601 date format, i.e. YYYY-MM-DD')
       expect(error[name].value).to.equal(1234)
     })
@@ -1272,7 +1272,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDateTime(name, value, error, true)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss`)
     })
 
@@ -1287,7 +1287,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDateTime(name, value, error, true, { minDate: { value: '2017-12-31T00:00:00' } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`minDate '2017-12-31T00:00:00'`)
     })
 
@@ -1302,7 +1302,7 @@ describe('ValidationService', () => {
           bodyCoercion: true,
         },
       ).validateDateTime(name, value, error, true, { maxDate: { value: '2017-12-29T00:00:00' } })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`maxDate '2017-12-29T00:00:00'`)
     })
 
@@ -1311,7 +1311,7 @@ describe('ValidationService', () => {
       const value: any = 1234
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateDateTime(name, value, error, true)
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss')
       expect(error[name].value).to.equal(1234)
     })
@@ -1329,11 +1329,11 @@ describe('ValidationService', () => {
       const value = ['A', 10, true]
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateArray(name, value, error, true, { dataType: 'integer' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[`${name}.$0`].message).to.equal('invalid integer number')
       expect(error[`${name}.$0`].value).to.equal('A')
       expect(error[`${name}.$2`].message).to.equal('invalid integer number')
-      expect(error[`${name}.$2`].value).to.equal(true)
+      expect(error[`${name}.$2`].value).to.be.true
     })
 
     it('should invalid array nested value', () => {
@@ -1351,7 +1351,7 @@ describe('ValidationService', () => {
         },
         { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true },
       ).validateArray(name, value, error, true, { ref: 'ExampleModel' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error).to.deep.equal({
         [`${name}.$0.a`]: {
           message: 'invalid string value',
@@ -1372,7 +1372,7 @@ describe('ValidationService', () => {
         { dataType: 'integer' },
         { minItems: { value: 4 } },
       )
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`minItems 4`)
     })
 
@@ -1388,7 +1388,7 @@ describe('ValidationService', () => {
         { dataType: 'integer' },
         { maxItems: { value: 2 } },
       )
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`maxItems 2`)
     })
 
@@ -1397,7 +1397,7 @@ describe('ValidationService', () => {
       const value = [10, 10, 20]
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateArray(name, value, error, true, { dataType: 'integer' }, { uniqueItems: {} })
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal(`required unique array`)
     })
 
@@ -1425,7 +1425,7 @@ describe('ValidationService', () => {
       const value: any = 'some primitive string'
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false }).validateArray(name, value, error, true, { dataType: 'string' })
-      expect(result).to.deep.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid array')
       expect(error[name].value).to.equal('some primitive string')
     })
@@ -1442,7 +1442,7 @@ describe('ValidationService', () => {
       const value = { invalid: true }
       const error: FieldErrors = {}
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateBuffer(name, value, error)
-      expect(result).to.equal(undefined)
+      expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid buffer value')
       expect(error[name].value).to.equal(value)
     })
@@ -1846,7 +1846,7 @@ describe('ValidationService', () => {
 
             // Assert
             expect(errorDictionary, `${name}[${i}] did not return errors`).to.not.deep.equal({})
-            expect(validatedData, `${name}[${i}] returned data`).to.equal(undefined)
+            expect(validatedData, `${name}[${i}] returned data`).to.be.undefined
           }
         }
 

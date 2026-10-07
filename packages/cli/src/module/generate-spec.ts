@@ -60,7 +60,6 @@ export const buildSpec = (
       return new SpecGenerator2(metadata, swaggerConfig).GetSpec()
     case 3:
       return new SpecGenerator3(metadata, swaggerConfig).GetSpec()
-    case 3.1:
     default:
       return new SpecGenerator31(metadata, swaggerConfig).GetSpec()
   }
