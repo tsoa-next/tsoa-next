@@ -1,5 +1,12 @@
 # @tsoa-next/cli
 
+## 8.3.1
+
+### Patch Changes
+
+- Remove a redundant OpenAPI 3.1 dispatch case without changing generated output or public APIs.
+  - @tsoa-next/runtime@8.3.1
+
 ## 8.3.0
 
 ### Minor Changes
