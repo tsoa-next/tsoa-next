@@ -4,15 +4,20 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
+import { minVersion, satisfies } from 'semver'
 import { stringify } from 'yaml'
 import type { Config } from '@tsoa-next/runtime'
 
-const packageVersion = (require('../../../packages/cli/package.json') as { version: string }).version
+const cliPackagePath = require.resolve('../../../packages/cli/package.json')
+const cliPackage = require(cliPackagePath) as { version: string; engines: { node: string } }
+const packageVersion = cliPackage.version
 const binaries = [
   { name: '@tsoa-next/cli', path: resolve(__dirname, '../../../packages/cli/dist/cli.js') },
   { name: 'tsoa-next', path: resolve(__dirname, '../../../packages/tsoa/dist/cli-bin.js') },
 ]
 const commands = ['discover', 'generate', 'check', 'spec', 'routes', 'spec-and-routes']
+const nodeExecutable = process.env.TSOA_CLI_TEST_NODE ?? process.execPath
 
 describe('CLI executables', () => {
   let directory: string
@@ -24,7 +29,14 @@ describe('CLI executables', () => {
 
   afterEach(() => rmSync(directory, { force: true, recursive: true }))
 
-  const run = (binary: string, args: string[]) => spawnSync(process.execPath, [binary, ...args], { cwd: directory, encoding: 'utf8', timeout: 30000 })
+  const run = (binary: string, args: string[]) => spawnSync(nodeExecutable, [binary, ...args], { cwd: directory, encoding: 'utf8', timeout: 30000 })
+
+  it('keeps the parser compatible with the declared minimum Node version', () => {
+    const minimumNodeVersion = minVersion(cliPackage.engines.node)
+    const parserPackage = createRequire(cliPackagePath)('yargs/package.json') as { engines: { node: string } }
+    expect(minimumNodeVersion).to.not.be.null
+    expect(satisfies(minimumNodeVersion?.version ?? '', parserPackage.engines.node)).to.be.true
+  })
 
   for (const binary of binaries) {
     describe(binary.name, () => {
