@@ -1,4 +1,5 @@
 import equals from 'validator/lib/equals'
+import { validateArray, type ValidateArrayOptions } from './arrayValidation'
 import { validateInt, validateFloat, validateDate, validateDateTime, validateString, validateBool } from './primitiveValidation'
 import { getParameterExternalValidatorMetadata } from '../decorators/validate'
 import { Tsoa } from '../metadataGeneration/tsoa'
@@ -36,17 +37,6 @@ type ValidateNestedObjectLiteralTupleArgs = [
   string?,
   ParameterValidationMetadata?,
 ]
-
-type ValidateArrayOptions = {
-  name: string
-  value: unknown
-  fieldErrors: FieldErrors
-  isBodyParam: boolean
-  schema?: TsoaRoute.PropertySchema
-  validators?: ArrayValidator
-  parent: string
-  metadata?: ParameterValidationMetadata
-}
 
 type ValidateArrayTupleArgs = [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema?, ArrayValidator?, string?, ParameterValidationMetadata?]
 
@@ -500,50 +490,7 @@ export class ValidationService {
    */
   public validateArray(...args: ValidateArrayTupleArgs): unknown[] | undefined
   public validateArray(...args: [ValidateArrayOptions] | ValidateArrayTupleArgs): unknown[] | undefined {
-    const options = this.normalizeValidateArrayArgs(args)
-    const {
-      name,
-      value: resolvedValue,
-      fieldErrors: resolvedFieldErrors,
-      isBodyParam: resolvedIsBodyParam,
-      schema: resolvedSchema,
-      validators: resolvedValidators,
-      parent: resolvedParent = '',
-      metadata: resolvedMetadata,
-    } = options
-    if ((resolvedIsBodyParam && this.config.bodyCoercion === false && !Array.isArray(resolvedValue)) || !resolvedSchema || resolvedValue === undefined) {
-      const message = resolvedValidators?.isArray?.errorMsg || `invalid array`
-      resolvedFieldErrors[resolvedParent + name] = {
-        message,
-        value: resolvedValue,
-      }
-      return
-    }
-
-    let arrayValue: unknown[]
-    const previousErrors = Object.keys(resolvedFieldErrors).length
-    const childParent = this.buildChildPath(resolvedParent, name)
-    if (Array.isArray(resolvedValue)) {
-      arrayValue = resolvedValue.map((elementValue, index) => {
-        const validatedElement: unknown = this.ValidateParam(resolvedSchema, elementValue, `$${index}`, resolvedFieldErrors, resolvedIsBodyParam, childParent, resolvedMetadata)
-        return validatedElement
-      })
-    } else {
-      const validatedElement: unknown = this.ValidateParam(resolvedSchema, resolvedValue, '$0', resolvedFieldErrors, resolvedIsBodyParam, childParent, resolvedMetadata)
-      arrayValue = [validatedElement]
-    }
-
-    if (Object.keys(resolvedFieldErrors).length > previousErrors) {
-      return
-    }
-
-    const validatorError = this.getArrayValidatorError(resolvedValidators, arrayValue, resolvedValue)
-    if (validatorError) {
-      resolvedFieldErrors[resolvedParent + name] = validatorError
-      return
-    }
-
-    return arrayValue
+    return validateArray(this.normalizeValidateArrayArgs(args), this, this.config)
   }
 
   private normalizeValidateArrayArgs(args: [ValidateArrayOptions] | ValidateArrayTupleArgs): ValidateArrayOptions {
@@ -553,42 +500,6 @@ export class ValidationService {
     }
 
     return args[0]
-  }
-
-  private getArrayValidatorError(validators: ArrayValidator | undefined, arrayValue: unknown[], originalValue: unknown) {
-    if (!validators) {
-      return undefined
-    }
-
-    if (validators.minItems?.value && validators.minItems.value > arrayValue.length) {
-      return {
-        message: validators.minItems.errorMsg || `minItems ${validators.minItems.value}`,
-        value: originalValue,
-      }
-    }
-
-    if (validators.maxItems?.value && validators.maxItems.value < arrayValue.length) {
-      return {
-        message: validators.maxItems.errorMsg || `maxItems ${validators.maxItems.value}`,
-        value: originalValue,
-      }
-    }
-
-    if (validators.uniqueItems && this.hasDuplicateArrayItems(arrayValue)) {
-      return {
-        message: validators.uniqueItems.errorMsg || `required unique array`,
-        value: originalValue,
-      }
-    }
-
-    return undefined
-  }
-
-  private hasDuplicateArrayItems(arrayValue: unknown[]): boolean {
-    return arrayValue.some((elem, index, arr) => {
-      const indexOf = arr.indexOf(elem)
-      return indexOf > -1 && indexOf !== index
-    })
   }
 
   private buildIssueFieldPath(baseFieldPath: string, issuePath: string): string {

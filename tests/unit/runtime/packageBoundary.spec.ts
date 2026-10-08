@@ -187,3 +187,69 @@ describe('Package boundary', () => {
     expect(specString).to.contain('"/GetTest"')
   })
 })
+
+describe('OpenAPI emitter loading', () => {
+  const coordinator = '@tsoa-next/cli/module/generate-spec'
+  const emitters = {
+    '2': '@tsoa-next/cli/swagger/specGenerator2',
+    '3': '@tsoa-next/cli/swagger/specGenerator3',
+    '31': '@tsoa-next/cli/swagger/specGenerator31',
+  }
+  const reloadCoordinator = () => {
+    clearModule(coordinator)
+    for (const emitter of Object.values(emitters)) {
+      clearModule(emitter)
+    }
+    return require(coordinator) as typeof import('@tsoa-next/cli/module/generate-spec')
+  }
+  const emitterName = (id: string) => /(?:^|[\\/])specGenerator(2|3|31)$/.exec(id)?.[1]
+
+  it('imports the coordinator without loading an emitter', () => {
+    return withBlockedRequires(
+      id => emitterName(id) !== undefined,
+      () => {
+        const module = reloadCoordinator()
+        expect(module.buildSpec).to.be.a('function')
+        expect(module.generateSpec).to.be.a('function')
+        for (const emitter of Object.values(emitters)) {
+          expect(require.cache[require.resolve(emitter)]).to.be.undefined
+        }
+      },
+    )
+  })
+
+  const selections = [
+    { selection: 2, version: '2.0', required: ['2'] },
+    { selection: 3, version: '3.0.0', required: ['3'] },
+    // OpenAPI 3.1 inherits its shared implementation from the OpenAPI 3 generator.
+    { selection: 3.1, version: '3.1.0', required: ['3', '31'] },
+    { selection: undefined, version: '2.0', required: ['2'] },
+    { selection: 99, version: '3.1.0', required: ['3', '31'] },
+  ]
+  for (const { selection, version, required } of selections) {
+    it(`synchronously builds version ${version} for selection ${String(selection)} with only its required emitters`, () => {
+      return withBlockedRequires(
+        id => {
+          const emitter = emitterName(id)
+          return emitter !== undefined && !required.includes(emitter)
+        },
+        () => {
+          const { buildSpec } = reloadCoordinator()
+          const config = { ...getDefaultExtendedOptions(), specVersion: selection as import('@tsoa-next/cli').ExtendedSpecConfig['specVersion'] }
+          const spec = buildSpec(config, undefined, undefined, { controllers: [], referenceTypeMap: {} })
+          expect(spec).not.to.be.instanceOf(Promise)
+          expect(spec).to.have.property(version === '2.0' ? 'swagger' : 'openapi', version)
+          expect(spec.info.title).to.equal(config.name)
+          expect(spec).to.have.property('paths').that.deep.equals({})
+          for (const [name, emitter] of Object.entries(emitters)) {
+            if (required.includes(name)) {
+              expect(require.cache[require.resolve(emitter)]).not.to.be.undefined
+            } else {
+              expect(require.cache[require.resolve(emitter)]).to.be.undefined
+            }
+          }
+        },
+      )
+    })
+  }
+})

@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
-import { TsoaRoute, FieldErrors, ValidateParam, ValidationService } from '@tsoa-next/runtime'
+import { TsoaRoute, FieldErrors, ValidateParam, ValidationService, ParameterValidationMetadata } from '@tsoa-next/runtime'
 import { TypeAliasDate, TypeAliasDateTime, TypeAliasModel1, TypeAliasModel2 } from 'fixtures/testModel'
 
 describe('ValidationService', () => {
@@ -1362,6 +1362,68 @@ describe('ValidationService', () => {
   })
 
   describe('Array validate', () => {
+    it('preserves both overloads, element override dispatch, defaults and metadata in iteration order', () => {
+      class RecordingService extends ValidationService {
+        public readonly calls: Array<{ name: string | undefined; parent: string | undefined; metadata: ParameterValidationMetadata | undefined }> = []
+        public override ValidateParam<TValue>(
+          property: TsoaRoute.PropertySchema,
+          value: TValue,
+          name: string | undefined,
+          errors: FieldErrors,
+          isBodyParam: boolean,
+          parent?: string,
+          metadata?: ParameterValidationMetadata,
+        ): TValue {
+          this.calls.push({ name, parent, metadata })
+          return super.ValidateParam(property, value, name, errors, isBodyParam, parent, metadata)
+        }
+      }
+      const service = new RecordingService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const metadata = { methodName: 'arrayMethod', parameterIndex: 0 }
+      const schema: TsoaRoute.PropertySchema = { dataType: 'integer', default: 2 }
+      const value = ['1', undefined]
+      const errors: FieldErrors = {}
+      expect(service.validateArray({ name: 'items', value, fieldErrors: errors, isBodyParam: true, schema, parent: 'payload.', metadata })).to.deep.equal([1, 2])
+      expect(service.validateArray('items', value, errors, true, schema, undefined, 'payload.', metadata)).to.deep.equal([1, 2])
+      expect(service.calls.map(call => call.name)).to.deep.equal(['$0', '$1', '$0', '$1'])
+      for (const call of service.calls) {
+        expect(call.parent).to.equal('payload.items.')
+        expect(call.metadata).to.equal(metadata)
+      }
+      expect(value).to.deep.equal(['1', undefined])
+      expect(errors).to.deep.equal({})
+    })
+
+    it('reports element errors before touching unused array constraints or non-body coercion configuration', () => {
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          get bodyCoercion(): boolean {
+            throw new Error('Unused body coercion read')
+          },
+        },
+      )
+      const errors: FieldErrors = {}
+      const validators = {
+        get minItems(): { value: number } {
+          throw new Error('Unused array constraint read')
+        },
+      }
+      expect(service.validateArray('items', ['bad', '2'], errors, false, { dataType: 'integer' }, validators, 'payload.')).to.be.undefined
+      expect(errors).to.deep.equal({ 'payload.items.$0': { message: 'invalid integer number', value: 'bad' } })
+    })
+
+    it('checks uniqueness after coercion while retaining the original array in errors', () => {
+      const service = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const errors: FieldErrors = {}
+      const value = ['1', 1]
+      expect(service.validateArray('items', value, errors, false, { dataType: 'integer' }, { uniqueItems: {} }, 'payload.')).to.be.undefined
+      expect(errors['payload.items'].message).to.equal('required unique array')
+      expect(errors['payload.items'].value).to.equal(value)
+      expect(value).to.deep.equal(['1', 1])
+    })
+
     it('should array value', () => {
       const value = ['A', 'B', 'C']
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateArray('name', value, {}, true, { dataType: 'string' })

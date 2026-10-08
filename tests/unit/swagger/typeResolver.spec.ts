@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import * as ts from 'typescript'
 import { MetadataGenerator } from '../../../packages/cli/src/metadataGeneration/metadataGenerator'
 import { GenerateMetadataError } from '../../../packages/cli/src/metadataGeneration/exceptions'
+import { formatDefaultString } from '../../../packages/cli/src/metadataGeneration/default-value'
 import { TypeResolver } from '../../../packages/cli/src/metadataGeneration/typeResolver'
 
 describe('TypeResolver', () => {
@@ -44,13 +45,14 @@ describe('TypeResolver', () => {
       const trailingEscapedDefault = "'value\\"
       const formattedTrailingDefault = '"value' + '\\'
 
-      expect((TypeResolver as any).formatDefaultString(String.raw`'value \"quoted\"' // comment`)).to.equal(`${String.raw`"value \"quoted\""`} `)
-      expect((TypeResolver as any).formatDefaultString(trailingEscapedDefault)).to.equal(formattedTrailingDefault)
+      expect(formatDefaultString(String.raw`'value \"quoted\"' // comment`)).to.equal(`${String.raw`"value \"quoted\""`} `)
+      expect(formatDefaultString(trailingEscapedDefault)).to.equal(formattedTrailingDefault)
     })
 
     it('parses and rejects default tags consistently', () => {
       expect(TypeResolver.getDefault(getDefaultProperty('@default "value"'))).to.equal('value')
       expect(TypeResolver.getDefault(getDefaultProperty('@default undefined'))).to.be.undefined
+      expect(TypeResolver.getDefault(getDefaultProperty('No default annotation'))).to.be.undefined
       expect(() => TypeResolver.getDefault(getDefaultProperty('@default {"unterminated": }'))).to.throw(GenerateMetadataError, 'JSON could not parse default str')
     })
 
@@ -293,6 +295,25 @@ describe('TypeResolver', () => {
         public get(): SharedModel { throw new Error('not executed') }
       }
     `
+
+    it('only parses malformed defaults when their owning model is needed', async () => {
+      const unusedModel = `
+        export interface UnusedModel {
+          /** @default {'broken': } */
+          value: string
+        }
+      `
+      await withTempSource({ 'entry.ts': controllerSource('string') + unusedModel }, async ({ entryFile }) => {
+        const metadata = new MetadataGenerator(entryFile, getTempCompilerOptions()).Generate()
+        expect(metadata.referenceTypeMap).to.have.property('SharedModel')
+        expect(metadata.referenceTypeMap).not.to.have.property('UnusedModel')
+        await fs.writeFile(entryFile, controllerSource('UnusedModel') + unusedModel, 'utf8')
+        expect(() => new MetadataGenerator(entryFile, getTempCompilerOptions()).Generate()).to.throw(
+          GenerateMetadataError,
+          `JSON could not parse default str: "{'broken': }", preformatted: "{"broken": }"`,
+        )
+      })
+    })
 
     it('isolates reference types and recursive callbacks across independently constructed generations', async () => {
       await withTempSource({ 'entry.ts': controllerSource('string'), 'other.ts': controllerSource('number') }, async ({ entryFile, root }) => {
