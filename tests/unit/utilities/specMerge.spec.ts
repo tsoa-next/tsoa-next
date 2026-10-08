@@ -185,7 +185,7 @@ describe('configured spec merge compatibility across versions', () => {
     it(`${version} defaults a supplied overlay to immediate and leaves unused merge configuration alone`, () => {
       const withoutOverlay = getDefaultExtendedOptions()
       generate(withoutOverlay)
-      expect(withoutOverlay.specMerging).to.equal(undefined)
+      expect(withoutOverlay.specMerging).to.be.undefined
       const overlay = { info: { title: 'Replacement' } }
       const config: ExtendedSpecConfig = { ...getDefaultExtendedOptions(), spec: overlay }
       expect(generate(config).info).to.equal(overlay.info)
