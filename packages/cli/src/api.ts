@@ -425,7 +425,19 @@ export interface ExtendedRoutesConfig extends RoutesConfig {
 }
 
 /** Validates and enriches the `routes` section of a tsoa config object. */
-export const validateRoutesConfig = async (config: Config): Promise<ExtendedRoutesConfig> => {
+export const validateRoutesConfig = async (config: Config): Promise<ExtendedRoutesConfig> => normalizeRoutesConfig(config, true)
+
+const getRuntimeSpecConfig = async (config: Config): Promise<RuntimeSpecConfigSnapshot | undefined> =>
+  config.spec && config.entryFile
+    ? {
+        compilerOptions: config.compilerOptions,
+        defaultNumberType: config.defaultNumberType,
+        ignore: config.ignore,
+        spec: { ...(await validateSpecConfig(config)) },
+      }
+    : undefined
+
+const normalizeRoutesConfig = async (config: Config, includeRuntimeSpecConfig: boolean): Promise<ExtendedRoutesConfig> => {
   assertEntryPointConfiguration(config)
   await assertExistingEntryFile(config.entryFile, `EntryFile not found: ${config.entryFile} - Please check your tsoa config.`)
   const routes = config.routes
@@ -446,17 +458,7 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   }
 
   const noImplicitAdditionalProperties = determineNoImplicitAdditionalSetting(config.noImplicitAdditionalProperties)
-  const runtimeSpecConfig =
-    config.spec && config.entryFile
-      ? {
-          compilerOptions: config.compilerOptions,
-          defaultNumberType: config.defaultNumberType,
-          ignore: config.ignore,
-          spec: {
-            ...(await validateSpecConfig(config)),
-          },
-        }
-      : undefined
+  const runtimeSpecConfig = includeRuntimeSpecConfig ? await getRuntimeSpecConfig(config) : undefined
 
   const bodyCoercion = routes.bodyCoercion ?? true
 
@@ -521,10 +523,16 @@ export async function generateSpecFromArgs(args: SwaggerArgs) {
 export async function generateRoutesFromArgs(args: ConfigArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
-  const routesConfig = await validateRoutesConfig(config)
+  const routesConfig = await normalizeRoutesConfig(config, false)
   applyBasePathArg(routesConfig, args)
 
-  await generateRoutes(routesConfig, compilerOptions, config.ignore)
+  const metadata = new MetadataGenerator(routesConfig.entryFile, compilerOptions, config.ignore, routesConfig.controllerPathGlobs, routesConfig.rootSecurity).Generate()
+  const consumesSpecConfig = metadata.controllers.some(controller => controller.hasSpecPaths === true) || Boolean(routesConfig.middlewareTemplate) || routesConfig.routeGenerator !== undefined
+  if (consumesSpecConfig) {
+    routesConfig.runtimeSpecConfig = await getRuntimeSpecConfig(config)
+  }
+
+  await generateRoutes(routesConfig, compilerOptions, config.ignore, metadata)
 }
 
 /** Loads config and generates both routes and the OpenAPI spec from a shared metadata snapshot. */

@@ -31,6 +31,8 @@ tsoa discover
 tsoa discover "packages/*"
 ```
 
+The CLI resolves configuration for the requested output. `tsoa spec` does not require route integrations. `tsoa routes` validates specification settings when selected controllers expose `@SpecPath`, or when a custom template or route generator needs the existing specification context. Built-in routes without specification serving can proceed independently of unused specification output settings. Commands generating both outputs validate both requirements.
+
 ### Options
 
 #### OpenAPI Specification (OAS) generation

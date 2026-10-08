@@ -16,8 +16,12 @@ import { EnumTransformer } from './transformer/enumTransformer'
 import { PropertyTransformer } from './transformer/propertyTransformer'
 import { ReferenceTransformer } from './transformer/referenceTransformer'
 
-const localReferenceTypeCache: { [typeName: string]: Tsoa.ReferenceType } = {}
-const inProgressTypes: { [typeName: string]: Array<(realType: Tsoa.ReferenceType) => void> } = {}
+type ReferenceTypeCache = {
+  referenceTypes: Tsoa.ReferenceTypeMap
+  inProgressTypes: Record<string, Array<(realType: Tsoa.ReferenceType) => void>>
+}
+
+let referenceTypeCaches = new WeakMap<MetadataGenerator, ReferenceTypeCache>()
 
 type UsableDeclaration = ts.InterfaceDeclaration | ts.ClassDeclaration | ts.PropertySignature | ts.TypeAliasDeclaration | ts.EnumMember
 type UsableDeclarationWithoutPropertySignature = Exclude<UsableDeclaration, ts.PropertySignature>
@@ -207,14 +211,18 @@ export class TypeResolver {
     public readonly referencer?: ts.Type,
   ) {}
 
+  /** Explicitly resets reference caches; normal generation owns an independent cache. */
   public static clearCache() {
-    Object.keys(localReferenceTypeCache).forEach(key => {
-      delete localReferenceTypeCache[key]
-    })
+    referenceTypeCaches = new WeakMap<MetadataGenerator, ReferenceTypeCache>()
+  }
 
-    Object.keys(inProgressTypes).forEach(key => {
-      delete inProgressTypes[key]
-    })
+  private get referenceTypeCache(): ReferenceTypeCache {
+    let cache = referenceTypeCaches.get(this.current)
+    if (!cache) {
+      cache = { referenceTypes: {}, inProgressTypes: {} }
+      referenceTypeCaches.set(this.current, cache)
+    }
+    return cache
   }
 
   public resolve(): Tsoa.Type {
@@ -1490,16 +1498,16 @@ export class TypeResolver {
 
   private resolveReferenceType(node: ts.TypeReferenceType, type: ts.EntityName, name: string, refTypeName: string): Tsoa.ReferenceType {
     try {
-      const existingType = localReferenceTypeCache[name]
+      const existingType = this.referenceTypeCache.referenceTypes[name]
       if (existingType) {
         return existingType
       }
 
-      if (inProgressTypes[name]) {
+      if (this.referenceTypeCache.inProgressTypes[name]) {
         return this.createCircularDependencyResolver(name, refTypeName)
       }
 
-      inProgressTypes[name] = []
+      this.referenceTypeCache.inProgressTypes[name] = []
 
       const declarations = this.getModelTypeDeclarations(type)
       if (!declarations.length) {
@@ -1510,7 +1518,7 @@ export class TypeResolver {
       this.addToLocalReferenceTypeCache(name, referenceType)
       return referenceType
     } catch (error) {
-      delete inProgressTypes[name]
+      delete this.referenceTypeCache.inProgressTypes[name]
       throw error
     }
   }
@@ -1539,14 +1547,14 @@ export class TypeResolver {
   }
 
   private addToLocalReferenceTypeCache(name: string, refType: Tsoa.ReferenceType) {
-    if (inProgressTypes[name]) {
-      for (const fn of inProgressTypes[name]) {
+    if (this.referenceTypeCache.inProgressTypes[name]) {
+      for (const fn of this.referenceTypeCache.inProgressTypes[name]) {
         fn(refType)
       }
     }
-    localReferenceTypeCache[name] = refType
+    this.referenceTypeCache.referenceTypes[name] = refType
 
-    delete inProgressTypes[name]
+    delete this.referenceTypeCache.inProgressTypes[name]
   }
 
   private getModelReference(modelType: ts.InterfaceDeclaration | ts.ClassDeclaration, refTypeName: string) {
@@ -1651,7 +1659,7 @@ export class TypeResolver {
       refName: refTypeName,
     } as Tsoa.ReferenceType
 
-    inProgressTypes[refName].push(realReferenceType => {
+    this.referenceTypeCache.inProgressTypes[refName].push(realReferenceType => {
       Object.assign(referenceType, realReferenceType)
     })
     return referenceType

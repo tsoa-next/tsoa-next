@@ -6,7 +6,6 @@ import { importClassesFromDirectories } from '../utils/importClassesFromDirector
 import { assertValidateDecoratorTargets } from '../utils/validateDecoratorUtils'
 import { ControllerGenerator } from './controllerGenerator'
 import { GenerateMetadataError } from './exceptions'
-import { TypeResolver } from './typeResolver'
 
 export class MetadataGenerator {
   public readonly controllerNodes = new Array<ClassDeclaration>()
@@ -25,7 +24,6 @@ export class MetadataGenerator {
     public readonly defaultNumberType: NonNullable<Config['defaultNumberType']> = 'double',
     esm = false,
   ) {
-    TypeResolver.clearCache()
     this.program = controllers ? this.setProgramToDynamicControllersFiles(controllers, esm) : createProgram([entryFile], compilerOptions || {})
     this.typeChecker = this.program.getTypeChecker()
   }

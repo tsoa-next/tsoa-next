@@ -96,6 +96,151 @@ describe('CLI executables', () => {
     return { config, configPath, specPath: join(directory, 'spec', 'swagger.json'), routesPath: join(directory, 'routes', 'routes.ts') }
   }
 
+  for (const args of [['--help'], ['--version'], ['discover']]) {
+    it(`executes ${args.join(' ')} while generation dependencies are unavailable`, () => {
+      createFixture()
+      const preload = join(directory, 'block-generation.cjs')
+      writeFileSync(
+        preload,
+        `const Module = require('node:module')
+const original = Module.prototype.require
+Module.prototype.require = function (id) {
+  if (id === 'typescript' || id === 'yaml' || id === './api') {
+    throw new Error('blocked generation dependency: ' + id)
+  }
+  return original.call(this, id)
+}
+`,
+      )
+      for (const binary of binaries) {
+        const result = spawnSync(nodeExecutable, ['--require', preload, binary.path, ...args], { cwd: directory, encoding: 'utf8', timeout: 30000 })
+        expect(result.error).to.be.undefined
+        expect(result.status, result.stderr).to.equal(0)
+        expect(result.stdout).to.contain(args[0] === '--version' ? packageVersion : args[0] === 'discover' ? 'tsoa.json' : 'tsoa')
+        expect(result.stderr).to.equal('')
+      }
+    })
+  }
+
+  it('generates a spec independently of unavailable route integrations', () => {
+    const { config, configPath, specPath, routesPath } = createFixture()
+    config.routes = {
+      ...config.routes,
+      authenticationModule: join(directory, 'missing-authentication.ts'),
+      iocModule: join(directory, 'missing-ioc.ts'),
+      middlewareTemplate: join(directory, 'missing-template.hbs'),
+    }
+    writeFileSync(configPath, JSON.stringify({ ...config, routes: { ...config.routes, routeGenerator: join(directory, 'missing-generator.cjs') } }))
+    const spec = run(binaries[1].path, ['spec'])
+    expect(spec.status, spec.stderr).to.equal(0)
+    expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
+    expect(existsSync(routesPath)).to.be.false
+
+    const routes = run(binaries[1].path, ['routes'])
+    expect(routes.status).to.equal(1)
+    expect(routes.stderr).to.contain('No authenticationModule file found')
+    expect(routes.stderr).to.contain('missing-authentication.ts')
+    expect(existsSync(routesPath)).to.be.false
+  })
+
+  it('reports a missing selected route template when emission reaches it', () => {
+    const { config, configPath, routesPath } = createFixture()
+    config.routes.middlewareTemplate = join(directory, 'missing-template.hbs')
+    writeFileSync(configPath, JSON.stringify(config))
+    const result = run(binaries[1].path, ['routes'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain('ENOENT')
+    expect(result.stderr).to.contain('missing-template.hbs')
+    expect(existsSync(routesPath)).to.be.false
+  })
+
+  it('generates built-in routes without validating unused spec output settings', () => {
+    const { config, configPath, routesPath } = createFixture()
+    config.spec.outputDirectory = ''
+    writeFileSync(configPath, JSON.stringify(config))
+    const result = run(binaries[1].path, ['routes'])
+    expect(result.status, result.stderr).to.equal(0)
+    expect(readFileSync(routesPath, 'utf8')).to.contain('ExampleController')
+    expect(existsSync(join(directory, 'spec'))).to.be.false
+  })
+
+  for (const command of ['spec', 'spec-and-routes']) {
+    it(`validates required spec output settings for ${command}`, () => {
+      const { config, configPath, routesPath } = createFixture()
+      config.spec.outputDirectory = ''
+      writeFileSync(configPath, JSON.stringify(config))
+      const result = run(binaries[1].path, [command])
+      expect(result.status).to.equal(1)
+      expect(result.stderr).to.contain('Missing outputDirectory')
+      expect(existsSync(routesPath)).to.be.false
+    })
+  }
+
+  it('validates a required specification snapshot when routes expose SpecPath', () => {
+    const { config, configPath, routesPath } = createFixture()
+    const runtimePath = resolve(__dirname, '../../../packages/runtime/dist/index')
+    writeFileSync(
+      config.entryFile,
+      `import { Get, Route, SpecPath } from ${JSON.stringify(runtimePath)}\n@Route('example')\n@SpecPath()\nexport class ExampleController {\n @Get()\n public get(): string { return 'ok' }\n}\n`,
+    )
+    config.spec.outputDirectory = ''
+    writeFileSync(configPath, JSON.stringify(config))
+    const result = run(binaries[1].path, ['routes'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain('Missing outputDirectory')
+    expect(existsSync(routesPath)).to.be.false
+
+    config.spec.outputDirectory = join(directory, 'spec')
+    writeFileSync(configPath, JSON.stringify(config))
+    const generated = run(binaries[1].path, ['routes'])
+    expect(generated.status, generated.stderr).to.equal(0)
+    expect(readFileSync(routesPath, 'utf8')).to.contain('createEmbeddedSpecGenerator')
+    expect(readFileSync(routesPath, 'utf8')).to.contain('3.1.0')
+    expect(existsSync(config.spec.outputDirectory)).to.be.false
+  })
+
+  it('preserves specification context for selected custom templates', () => {
+    const { config, configPath, routesPath } = createFixture()
+    const templatePath = join(directory, 'custom.hbs')
+    writeFileSync(templatePath, '{{{json runtimeSpecConfig}}}')
+    config.routes.middlewareTemplate = templatePath
+    config.spec.name = 'Custom specification'
+    writeFileSync(configPath, JSON.stringify(config))
+    const generated = run(binaries[1].path, ['routes'])
+    expect(generated.status, generated.stderr).to.equal(0)
+    const context = JSON.parse(readFileSync(routesPath, 'utf8')) as { spec: { name: string }; metadata: { controllers: unknown[] } }
+    expect(context.spec.name).to.equal('Custom specification')
+    expect(context.metadata.controllers).to.have.length(1)
+
+    config.spec.outputDirectory = ''
+    writeFileSync(configPath, JSON.stringify(config))
+    const invalid = run(binaries[1].path, ['routes'])
+    expect(invalid.status).to.equal(1)
+    expect(invalid.stderr).to.contain('Missing outputDirectory')
+  })
+
+  it('preserves specification options passed to a selected custom generator', () => {
+    const { config, configPath, routesPath } = createFixture()
+    const generatorPath = join(directory, 'custom-generator.cjs')
+    writeFileSync(
+      generatorPath,
+      `const fs = require('node:fs')
+module.exports = class CustomGenerator {
+  constructor(metadata, options) { this.options = options }
+  async GenerateCustomRoutes() {
+    fs.writeFileSync(this.options.routesDir + '/routes.ts', JSON.stringify(this.options.runtimeSpecConfig))
+  }
+}
+`,
+    )
+    config.spec.name = 'Generator specification'
+    writeFileSync(configPath, JSON.stringify({ ...config, routes: { ...config.routes, routeGenerator: generatorPath } }))
+    const generated = run(binaries[1].path, ['routes'])
+    expect(generated.status, generated.stderr).to.equal(0)
+    const snapshot = JSON.parse(readFileSync(routesPath, 'utf8')) as { spec: { name: string } }
+    expect(snapshot.spec.name).to.equal('Generator specification')
+  })
+
   const succeed = (args: string[]) => {
     const result = run(binaries[1].path, args)
     expect(result.status, result.stderr).to.equal(0)

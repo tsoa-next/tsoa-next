@@ -284,6 +284,66 @@ describe('TypeResolver', () => {
       return match
     }
 
+    const controllerSource = (propertyType: string) => `
+      import { Get, Route } from '@tsoa-next/runtime'
+      export interface SharedModel { value: ${propertyType}; next?: SharedModel }
+      @Route('example')
+      export class ExampleController {
+        @Get()
+        public get(): SharedModel { throw new Error('not executed') }
+      }
+    `
+
+    it('isolates reference types and recursive callbacks across independently constructed generations', async () => {
+      await withTempSource({ 'entry.ts': controllerSource('string'), 'other.ts': controllerSource('number') }, async ({ entryFile, root }) => {
+        const first = new MetadataGenerator(entryFile, getTempCompilerOptions())
+        const second = new MetadataGenerator(join(root, 'other.ts'), getTempCompilerOptions())
+        const firstModel = first.Generate().referenceTypeMap.SharedModel
+        const secondModel = second.Generate().referenceTypeMap.SharedModel
+        expect(firstModel.dataType).to.equal('refObject')
+        expect(secondModel.dataType).to.equal('refObject')
+        if (firstModel.dataType !== 'refObject' || secondModel.dataType !== 'refObject') throw new Error('Expected object models')
+        expect(firstModel.properties.find(property => property.name === 'value')?.type).to.deep.equal({ dataType: 'string' })
+        expect(secondModel.properties.find(property => property.name === 'value')?.type).to.deep.equal({ dataType: 'double' })
+        const firstNext = firstModel.properties.find(property => property.name === 'next')?.type
+        const secondNext = secondModel.properties.find(property => property.name === 'next')?.type
+        expect(firstNext).to.have.property('refName', 'SharedModel')
+        expect(secondNext).to.have.property('refName', 'SharedModel')
+        expect(firstNext).to.have.property('properties', firstModel.properties)
+        expect(secondNext).to.have.property('properties', secondModel.properties)
+        expect(firstNext).to.not.equal(secondNext)
+      })
+    })
+
+    it('keeps an existing owner cache intact when a different generation is constructed', async () => {
+      const first = await createResolverHarness({ 'entry.ts': 'export interface SharedModel { value: string }\nexport type Result = SharedModel' })
+      const firstAlias = findFirstNode(first.sourceFile, (node): node is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(node))
+      const resolver = new TypeResolver(firstAlias.type, first.metadata)
+      const resolved = resolver.resolve()
+      const second = await createResolverHarness({ 'entry.ts': 'export interface SharedModel { value: number }\nexport type Result = SharedModel' })
+      const secondAlias = findFirstNode(second.sourceFile, (node): node is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(node))
+      const secondResolved = new TypeResolver(secondAlias.type, second.metadata).resolve()
+      expect(resolver.resolve()).to.equal(resolved)
+      expect(secondResolved).to.not.equal(resolved)
+
+      TypeResolver.clearCache()
+      const afterExplicitReset = resolver.resolve()
+      expect(afterExplicitReset).to.not.equal(resolved)
+      expect(afterExplicitReset).to.deep.equal(resolved)
+    })
+
+    it('recovers with a corrected generation after a reference-type resolution failure', async () => {
+      await withTempSource({ 'entry.ts': controllerSource('symbol') }, async ({ entryFile }) => {
+        expect(() => new MetadataGenerator(entryFile, getTempCompilerOptions()).Generate()).to.throw(GenerateMetadataError, 'Unknown type: SymbolKeyword')
+        await fs.writeFile(entryFile, controllerSource('string'), 'utf8')
+        const corrected = new MetadataGenerator(entryFile, getTempCompilerOptions()).Generate().referenceTypeMap.SharedModel
+        expect(corrected.dataType).to.equal('refObject')
+        if (corrected.dataType !== 'refObject') throw new Error('Expected corrected object model')
+        expect(corrected.properties.find(property => property.name === 'value')?.type).to.deep.equal({ dataType: 'string' })
+        expect(corrected.properties.find(property => property.name === 'next')?.type).to.have.property('refName', 'SharedModel')
+      })
+    })
+
     it('resolves ExpressionWithTypeArguments nodes through the type checker without throwing', async () => {
       const { metadata, root } = await createResolverHarness({
         'models.ts': `
