@@ -70,8 +70,7 @@ describe('CLI executables', () => {
     })
   }
 
-  it('generates, discovers, and checks real outputs through the CLI', function () {
-    this.timeout(60000)
+  const createFixture = () => {
     const entryFile = join(directory, 'controller.ts')
     const runtimePath = resolve(__dirname, '../../../packages/runtime/dist/index')
     writeFileSync(entryFile, `import { Get, Route } from ${JSON.stringify(runtimePath)}\n@Route('example')\nexport class ExampleController {\n @Get()\n public get(): string { return 'ok' }\n}\n`)
@@ -82,22 +81,27 @@ describe('CLI executables', () => {
     }
     const configPath = join(directory, 'tsoa.json')
     writeFileSync(configPath, JSON.stringify(config))
-    const binary = binaries[1].path
-    const specPath = join(directory, 'spec', 'swagger.json')
-    const routesPath = join(directory, 'routes', 'routes.ts')
-    const succeed = (args: string[]) => {
-      const result = run(binary, args)
-      expect(result.status, result.stderr).to.equal(0)
-      return result
-    }
+    return { config, configPath, specPath: join(directory, 'spec', 'swagger.json'), routesPath: join(directory, 'routes', 'routes.ts') }
+  }
 
+  const succeed = (args: string[]) => {
+    const result = run(binaries[1].path, args)
+    expect(result.status, result.stderr).to.equal(0)
+    return result
+  }
+
+  it('discovers configs and checks missing outputs without creating directories', () => {
+    createFixture()
     expect(succeed(['discover']).stdout).to.equal('tsoa.json\n')
-    const missing = run(binary, ['check'])
-    expect(missing.status).to.equal(1)
-    expect(missing.stderr).to.contain('Generated outputs are out of date')
+    const result = run(binaries[1].path, ['check'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain('Generated outputs are out of date')
     expect(existsSync(join(directory, 'spec'))).to.be.false
     expect(existsSync(join(directory, 'routes'))).to.be.false
+  })
 
+  it('generates real outputs and leaves current files untouched', () => {
+    const { specPath, routesPath } = createFixture()
     succeed(['generate'])
     expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
     expect(readFileSync(routesPath, 'utf8')).to.contain('ExampleController')
@@ -107,49 +111,64 @@ describe('CLI executables', () => {
     succeed(['generate'])
     expect(statSync(specPath).mtimeMs).to.equal(specModified)
     expect(statSync(routesPath).mtimeMs).to.equal(routesModified)
+  })
 
+  it('reports stale output paths without changing the files', () => {
+    const { routesPath } = createFixture()
+    succeed(['generate'])
     writeFileSync(routesPath, 'stale routes')
-    const stale = run(binary, ['check'])
-    expect(stale.status).to.equal(1)
-    expect(stale.stderr).to.contain(routesPath)
+    const result = run(binaries[1].path, ['check'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain(routesPath)
     expect(readFileSync(routesPath, 'utf8')).to.equal('stale routes')
+  })
+
+  it('generates discovered routes with the base path override', () => {
+    const { routesPath } = createFixture()
     succeed(['routes', '--discover', '.', '--basePath', '/v2'])
     expect(readFileSync(routesPath, 'utf8')).to.contain('/v2/example')
+  })
 
+  it('uses the last configuration option and preserves format override precedence', () => {
+    const { configPath, specPath, routesPath } = createFixture()
     succeed(['spec', '-c', 'missing.json', '--configuration', configPath, '--host', 'api.example.com', '--yaml'])
     expect(readFileSync(join(directory, 'spec', 'swagger.yaml'), 'utf8')).to.contain('api.example.com')
+    expect(existsSync(routesPath)).to.be.false
     succeed(['spec-and-routes', '-c', configPath, '--yaml', '--json'])
-    succeed(['check'])
+    expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
+    expect(readFileSync(routesPath, 'utf8')).to.contain('ExampleController')
+  })
 
-    for (const specVersion of [2, 3, 3.1] as const) {
+  for (const specVersion of [2, 3, 3.1] as const) {
+    it(`selects OpenAPI ${specVersion} from the config`, () => {
+      const { config, configPath, specPath } = createFixture()
       config.spec.specVersion = specVersion
       writeFileSync(configPath, JSON.stringify(config))
       succeed(['spec', '-c', configPath])
       const spec = JSON.parse(readFileSync(specPath, 'utf8')) as { swagger?: string; openapi?: string }
       expect(spec.swagger ?? spec.openapi).to.equal(specVersion === 2 ? '2.0' : `${specVersion === 3 ? '3.0' : '3.1'}.0`)
-    }
+    })
+  }
 
-    writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: 'consumer', version: '0.0.9', type: 'commonjs' }))
-    const configFormats = [
-      { name: 'tsoa.yaml', content: stringify(config) },
-      { name: 'tsoa.yml', content: stringify(config) },
-      { name: 'tsoa.config.js', content: `module.exports = ${JSON.stringify(config)}` },
-      { name: 'tsoa.config.cjs', content: `module.exports = ${JSON.stringify(config)}` },
-    ]
-    for (const { name, content } of configFormats) {
-      const path = join(directory, name)
-      writeFileSync(path, content)
+  for (const name of ['tsoa.yaml', 'tsoa.yml', 'tsoa.config.js', 'tsoa.config.cjs']) {
+    it(`discovers and generates specs from ${name}`, () => {
+      const { config, specPath } = createFixture()
+      writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: 'consumer', version: '0.0.9', type: 'commonjs' }))
+      const content = name.endsWith('.js') || name.endsWith('.cjs') ? `module.exports = ${JSON.stringify(config)}` : stringify(config)
+      writeFileSync(join(directory, name), content)
       expect(succeed(['discover', name]).stdout).to.equal(`${name}\n`)
       succeed(['spec', '-c', name])
       expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
-      rmSync(path)
-    }
+    })
+  }
 
-    writeFileSync(configPath, JSON.stringify({ ...config, routes: { ...config.routes, routeGenerator: './custom-generator.js' } }))
-    for (const command of ['generate', 'check']) {
-      const result = run(binary, [command])
+  for (const command of ['generate', 'check']) {
+    it(`rejects custom route generators for ${command}`, () => {
+      const { config, configPath } = createFixture()
+      writeFileSync(configPath, JSON.stringify({ ...config, routes: { ...config.routes, routeGenerator: './custom-generator.js' } }))
+      const result = run(binaries[1].path, [command])
       expect(result.status).to.equal(1)
       expect(result.stderr).to.contain('Change-aware generation is not supported with routes.routeGenerator')
-    }
-  })
+    })
+  }
 })
