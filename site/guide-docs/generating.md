@@ -6,12 +6,17 @@ Relevant API reference: [`Config`](../reference/tsoa-next/interfaces/Config.md),
 
 ### Basic Commands
 
+Use `tsoa --version` to print the installed CLI version, and `tsoa --help` or `tsoa <command> --help` to view available commands and options. Invalid commands, unsupported options, and missing option values exit with an error. When an option is repeated, its last value is used.
+
 ```bash
 # generate OAS
 tsoa spec
 
 # generate routes
 tsoa routes
+
+# generate both with an explicit config
+tsoa spec-and-routes -c tsoa.json
 
 # discover configs and update only stale route and OpenAPI outputs
 tsoa generate
@@ -38,6 +43,8 @@ Options:
    --discover  discover tsoa config files using a path or glob before running the command       [string]
    --host  API host                                                                             [string]
    --basePath  Base API path                                                                    [string]
+   --yaml  Write the OpenAPI spec as YAML                                                      [boolean]
+   --json  Write the OpenAPI spec as JSON (takes precedence over --yaml)                       [boolean]
 ```
 
 #### Route generation
