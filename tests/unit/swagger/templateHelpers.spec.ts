@@ -34,6 +34,50 @@ describe('ValidationService', () => {
     })
   })
 
+  describe('scalar validation extension compatibility', () => {
+    it('retains the public type-check hook for numeric and date helpers', () => {
+      class PermissiveValidationService extends ValidationService {
+        public override hasCorrectJsType(): boolean {
+          return true
+        }
+      }
+      const service = new PermissiveValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false })
+      const errors: FieldErrors = {}
+      expect(service.validateInt('integer', '42', errors, true)).to.equal(42)
+      expect(service.validateFloat('float', '4.2', errors, true)).to.equal(4.2)
+      expect(service.validateDate('date', { toString: () => '2026-10-08' }, errors, true)?.toISOString()).to.equal('2026-10-08T00:00:00.000Z')
+      expect(service.validateDateTime('datetime', { toString: () => '2026-10-08T12:00:00Z' }, errors, true)?.toISOString()).to.equal('2026-10-08T12:00:00.000Z')
+      expect(errors).to.deep.equal({})
+    })
+
+    it('does not read coercion configuration for an already-boolean input', () => {
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          get bodyCoercion(): boolean {
+            throw new Error('Unused coercion configuration was read')
+          },
+        },
+      )
+      const errors: FieldErrors = {}
+      expect(service.validateBool('boolean', true, errors, true)).to.equal(true)
+      expect(service.validateBool('boolean', false, errors, true)).to.equal(false)
+      expect(errors).to.deep.equal({})
+    })
+
+    it('keeps scalar error precedence and raw values at the caller-provided field path', () => {
+      const service = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false })
+      const errors: FieldErrors = {}
+      service.validateInt('number', '1', errors, false, { minimum: { value: 5 }, exclusiveMinimum: { value: 10 } }, 'payload.')
+      service.validateString('text', 'x', errors, { minLength: { value: 3 }, pattern: { value: '^z$' } }, 'payload.')
+      expect(errors).to.deep.equal({
+        'payload.number': { message: 'min 5', value: '1' },
+        'payload.text': { message: 'minLength 3', value: 'x' },
+      })
+    })
+  })
+
   describe('Model validate', () => {
     it('should validate a model with declared properties', () => {
       const modelDefinition: TsoaRoute.ModelSchema = {

@@ -1,10 +1,12 @@
 import { expect } from 'chai'
+import * as handlebars from 'handlebars'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import 'mocha'
 import { Tsoa } from '@tsoa-next/runtime'
 import { generateRoutes, getRouteGeneratorImportAttempts } from '@tsoa-next/cli/module/generate-routes'
+import { checkRenderedTemplateSyntax } from '../../../packages/cli/src/routeGeneration/templateCheck'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 
 function withTempWorkingDirectory<T>(prefix: string, run: (tempDir: string) => T): T {
@@ -89,7 +91,56 @@ describe('RouteGenerator', () => {
     })
   })
 
+  it('checks a Windows-style virtual output path without reading or writing it', () => {
+    const outputPath = String.raw`C:\application\routes\routes.ts`
+    expect(() => checkRenderedTemplateSyntax('export const valid = true;', 'custom.hbs', outputPath)).to.not.throw()
+    expect(() => checkRenderedTemplateSyntax('export const invalid = ;', 'custom.hbs', outputPath)).to.throw(`Generated output ${outputPath}:1:`)
+  })
+
   describe('.buildContent', () => {
+    it('keeps built-in helpers local during a reentrant custom helper render', () => {
+      const options = { bodyCoercion: true, entryFile: 'entry.ts', routesDir: '.', noImplicitAdditionalProperties: 'ignore' as const }
+      const metadata: Tsoa.Metadata = { controllers: [], referenceTypeMap: {} }
+      const first = new DefaultRouteGenerator(metadata, options)
+      const second = new DefaultRouteGenerator(metadata, { ...options, noImplicitAdditionalProperties: 'throw-on-extras' })
+      handlebars.registerHelper('nestedRouteRender', () => second.buildContent('{{additionalPropsHelper false}}'))
+      const helpersBefore = { ...handlebars.helpers }
+      try {
+        expect(first.buildContent('{{additionalPropsHelper false}}|{{nestedRouteRender}}|{{additionalPropsHelper false}}')).to.equal('true|false|true')
+        expect(handlebars.helpers).to.deep.equal(helpersBefore)
+      } finally {
+        handlebars.unregisterHelper('nestedRouteRender')
+      }
+    })
+
+    it('preserves registered custom helpers, partials and decorators without mutating their registries', () => {
+      const generator = new DefaultRouteGenerator(
+        { controllers: [], referenceTypeMap: {} },
+        {
+          bodyCoercion: true,
+          entryFile: 'entry.ts',
+          routesDir: '.',
+          noImplicitAdditionalProperties: 'ignore',
+        },
+      )
+      handlebars.registerHelper('routeCustomHelper', () => 'custom')
+      handlebars.registerPartial('routeCustomPartial', '{{routeCustomHelper}}partial')
+      handlebars.registerDecorator('routeCustomDecorator', (fn: handlebars.TemplateDelegate) => (context: unknown, options?: handlebars.RuntimeOptions) => `${fn(context, options)}|decorated`)
+      const helpersBefore = { ...handlebars.helpers }
+      const partialsBefore = { ...handlebars.partials }
+      const decoratorsBefore = { ...handlebars.decorators }
+      try {
+        expect(generator.buildContent('{{*routeCustomDecorator}}{{routeCustomHelper}}|{{>routeCustomPartial}}')).to.equal('custom|custompartial|decorated')
+        expect(handlebars.helpers).to.deep.equal(helpersBefore)
+        expect(handlebars.partials).to.deep.equal(partialsBefore)
+        expect(handlebars.decorators).to.deep.equal(decoratorsBefore)
+      } finally {
+        handlebars.unregisterHelper('routeCustomHelper')
+        handlebars.unregisterPartial('routeCustomPartial')
+        handlebars.unregisterDecorator('routeCustomDecorator')
+      }
+    })
+
     it('strips .ts from the end of module paths but not from the middle', () => {
       const generator = new DefaultRouteGenerator(
         {

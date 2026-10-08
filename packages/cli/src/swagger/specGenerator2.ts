@@ -1,13 +1,10 @@
-import { merge as deepMerge } from 'ts-deepmerge'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 
 import { SpecGenerator } from './specGenerator'
 import type { ExtendedSpecConfig } from '../api'
 import { isVoidType } from '../utils/isVoidType'
 import { convertColonPathParams, normalisePath } from '../utils/pathUtils'
-import { recursiveMerge } from '../utils/specMerge'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from '../utils/swaggerUtils'
-import { UnspecifiedObject } from '../utils/unspecifiedObject'
 
 export class SpecGenerator2 extends SpecGenerator {
   protected buildAdditionalProperties(type: Tsoa.Type) {
@@ -69,16 +66,7 @@ export class SpecGenerator2 extends SpecGenerator {
       spec.info.contact = this.config.contact
     }
 
-    if (this.config.spec) {
-      this.config.specMerging = this.config.specMerging || 'immediate'
-      const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
-        immediate: Object.assign,
-        recursive: recursiveMerge,
-        deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
-      }
-
-      spec = mergeFuncs[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as unknown as UnspecifiedObject) as unknown as Swagger.Spec2
-    }
+    spec = this.applyConfiguredSpecMerge(spec)
     if (this.config.schemes) {
       spec.schemes = this.config.schemes
     }

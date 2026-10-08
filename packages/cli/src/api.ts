@@ -522,6 +522,11 @@ export async function generateSpecFromArgs(args: SwaggerArgs) {
 /** Loads config and generates only the route output. */
 export async function generateRoutesFromArgs(args: ConfigArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
+  const { routesConfig, compilerOptions, metadata } = await prepareRoutesConfig(config, configBaseDir, args)
+  await generateRoutes(routesConfig, compilerOptions, config.ignore, metadata)
+}
+
+const prepareRoutesConfig = async (config: Config, configBaseDir: string, args: ConfigArgs) => {
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
   const routesConfig = await normalizeRoutesConfig(config, false)
   applyBasePathArg(routesConfig, args)
@@ -532,7 +537,28 @@ export async function generateRoutesFromArgs(args: ConfigArgs) {
     routesConfig.runtimeSpecConfig = await getRuntimeSpecConfig(config)
   }
 
-  await generateRoutes(routesConfig, compilerOptions, config.ignore, metadata)
+  return { routesConfig, compilerOptions, metadata }
+}
+
+/** Checks the selected custom template without writing generated artifacts. CLI-only entry point. */
+export async function checkTemplateFromArgs(args: Pick<ConfigArgs, 'configuration'>) {
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
+  const templatePath = config.routes?.middlewareTemplate
+  if (!templatePath) {
+    throw new Error('Missing routes.middlewareTemplate: configure the custom route template to check.')
+  }
+  const { readRouteTemplate, checkRenderedTemplateSyntax } = await import('./routeGeneration/templateCheck')
+  const template = await readRouteTemplate(templatePath)
+  const { routesConfig, metadata } = await prepareRoutesConfig(config, configBaseDir, args)
+  const { DefaultRouteGenerator } = await import('./routeGeneration/defaultRouteGenerator')
+  let content: string
+  try {
+    content = new DefaultRouteGenerator(metadata, routesConfig).buildContent(template)
+  } catch (cause) {
+    throw new Error(`Cannot render route template ${templatePath}: ${cause instanceof Error ? cause.message : String(cause)}`, { cause })
+  }
+  checkRenderedTemplateSyntax(content, templatePath, resolve(routesConfig.routesDir, routesConfig.routesFileName || 'routes.ts'))
+  console.log(`Template check passed: ${templatePath}`)
 }
 
 /** Loads config and generates both routes and the OpenAPI spec from a shared metadata snapshot. */

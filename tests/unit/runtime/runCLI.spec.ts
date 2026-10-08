@@ -646,6 +646,92 @@ describe('runCLI', () => {
     expect(thrownError?.message).to.equal("No tsoa config files found for '/mock'.")
   })
 
+  it('reports discovered failures before an independent task completes', async () => {
+    const os = require('node:os') as typeof import('node:os')
+    const originalParallelism = os.availableParallelism
+    const originalConsoleError = console.error
+    const diagnostics: string[] = []
+    let releaseIndependent!: () => void
+    let markIndependentStarted!: () => void
+    let markFailureStarted!: () => void
+    const independentGate = new Promise<void>(resolve => {
+      releaseIndependent = resolve
+    })
+    const independentStarted = new Promise<void>(resolve => {
+      markIndependentStarted = resolve
+    })
+    const failureStarted = new Promise<void>(resolve => {
+      markFailureStarted = resolve
+    })
+    let independentFinished = false
+    const failure = Object.assign(new Error('EntryFile not found: /mock/bad/controller.ts - please check your tsoa config.'), {
+      cause: new Error('ENOENT: /mock/bad/controller.ts'),
+    })
+    os.availableParallelism = () => 2
+    console.error = (output: string) => {
+      diagnostics.push(output)
+    }
+    let execution: Promise<unknown> | undefined
+    try {
+      const runCLI = loadRunCLI(
+        {
+          async generateSpecFromArgs(args) {
+            if (args.configuration === '/mock/bad/tsoa.json') {
+              await independentStarted
+              markFailureStarted()
+              throw failure
+            }
+            markIndependentStarted()
+            await independentGate
+            independentFinished = true
+          },
+          async generateRoutesFromArgs() {
+            throw new Error('routes command should not run')
+          },
+          async generateSpecAndRoutes() {
+            throw new Error('combined command should not run')
+          },
+        },
+        {
+          async discoverConfigs() {
+            return {
+              effectiveRoot: '/mock',
+              matches: ['bad', 'good'].map(name => ({ absolutePath: `/mock/${name}/tsoa.json`, displayPath: `${name}/tsoa.json`, sortKey: name })),
+              mode: 'path',
+            }
+          },
+        },
+      )
+      process.argv = ['node', 'tsoa', 'spec', '--discover', '/mock']
+      execution = runCLI().then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      await failureStarted
+      // Drain queued failure continuations while the independent task remains explicitly gated.
+      await new Promise<void>(resolve => setImmediate(resolve))
+      const output = diagnostics.join('\n')
+      expect(independentFinished).to.be.false
+      expect(output).to.contain('[bad/tsoa.json] Failed spec:')
+      expect(output).to.contain('EntryFile not found: /mock/bad/controller.ts')
+      expect(output).to.contain('please check your tsoa config')
+      expect(output).to.contain('ENOENT: /mock/bad/controller.ts')
+      expect(output).to.contain('[bad/tsoa.json] Next action:')
+      expect(output).to.contain('rerun tsoa spec with --configuration set to "/mock/bad/tsoa.json"')
+      expect(output).to.not.contain('[good/tsoa.json] Failed')
+      releaseIndependent()
+      const result = await execution
+      expect(independentFinished).to.be.true
+      expect(result).to.be.instanceOf(Error)
+      expect((result as Error).message).to.equal(`Failed spec for discovered config files:\n- bad/tsoa.json: ${failure.message}`)
+    } finally {
+      releaseIndependent()
+      await execution
+      console.error = originalConsoleError
+      os.availableParallelism = originalParallelism
+    }
+  })
+
   it('aggregates failures from discovered generation runs', async () => {
     const runCLI = loadRunCLI(
       {

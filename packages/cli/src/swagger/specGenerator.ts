@@ -1,7 +1,16 @@
+import { merge as deepMerge } from 'ts-deepmerge'
+import { recursiveMerge } from '../utils/specMerge'
+import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import type { ExtendedSpecConfig } from '../api'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
 import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
+
+const specMergeStrategies: { [key: string]: (spec: UnspecifiedObject, overlay: UnspecifiedObject) => UnspecifiedObject } = {
+  immediate: Object.assign,
+  recursive: recursiveMerge,
+  deepmerge: (spec, overlay) => deepMerge(spec, overlay),
+}
 
 const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
   if (value === null || value instanceof Date) {
@@ -32,6 +41,15 @@ export abstract class SpecGenerator {
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
   ) {}
+
+  protected applyConfiguredSpecMerge<TSpec extends Swagger.Spec>(spec: TSpec): TSpec {
+    if (!this.config.spec) {
+      return spec
+    }
+
+    this.config.specMerging = this.config.specMerging || 'immediate'
+    return specMergeStrategies[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as TSpec
+  }
 
   protected buildAdditionalProperties(type: Tsoa.Type) {
     return this.getSwaggerType(type)

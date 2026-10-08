@@ -1,10 +1,7 @@
 import { Swagger, Tsoa, assertNever } from '@tsoa-next/runtime'
-import { merge as deepMerge } from 'ts-deepmerge'
 
 import type { ExtendedSpecConfig } from '../api'
 import { isVoidType } from '../utils/isVoidType'
-import { recursiveMerge } from '../utils/specMerge'
-import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import { convertColonPathParams, normalisePath } from './../utils/pathUtils'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from './../utils/swaggerUtils'
 import { SpecGenerator } from './specGenerator'
@@ -28,7 +25,7 @@ export class SpecGenerator3 extends SpecGenerator {
   }
 
   public GetSpec(): Swagger.Spec3 {
-    let spec: Swagger.Spec30 = {
+    const spec: Swagger.Spec30 = {
       openapi: '3.0.0',
       components: this.buildComponents(),
       info: this.buildInfo(),
@@ -37,18 +34,7 @@ export class SpecGenerator3 extends SpecGenerator {
       tags: this.config.tags,
     }
 
-    if (this.config.spec) {
-      this.config.specMerging = this.config.specMerging || 'immediate'
-      const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
-        immediate: Object.assign,
-        recursive: recursiveMerge,
-        deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
-      }
-
-      spec = mergeFuncs[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as Swagger.Spec30
-    }
-
-    return spec
+    return this.applyConfiguredSpecMerge(spec)
   }
 
   protected buildInfo() {

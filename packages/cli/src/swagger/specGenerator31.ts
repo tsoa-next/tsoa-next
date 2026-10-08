@@ -1,9 +1,6 @@
 import { Swagger, Tsoa } from '@tsoa-next/runtime'
-import { merge as deepMerge } from 'ts-deepmerge'
 
 import type { ExtendedSpecConfig } from '../api'
-import { recursiveMerge } from '../utils/specMerge'
-import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import { SpecGenerator3 } from './specGenerator3'
 
 /**
@@ -27,7 +24,7 @@ export class SpecGenerator31 extends SpecGenerator3 {
   // Override with OpenAPI 3.1 specific return type
   // The base class returns Swagger.Spec30, but this generator produces Swagger.Spec31
   public override GetSpec(): Swagger.Spec31 {
-    let spec: Swagger.Spec31 = {
+    const spec: Swagger.Spec31 = {
       openapi: '3.1.0',
       components: this.buildComponents() as Swagger.Components31,
       info: this.buildInfo(),
@@ -36,18 +33,7 @@ export class SpecGenerator31 extends SpecGenerator3 {
       tags: this.config.tags,
     }
 
-    if (this.config.spec) {
-      this.config.specMerging = this.config.specMerging || 'immediate'
-      const mergeFuncs: { [key: string]: (spec: UnspecifiedObject, merge: UnspecifiedObject) => UnspecifiedObject } = {
-        immediate: Object.assign,
-        recursive: recursiveMerge,
-        deepmerge: (spec: UnspecifiedObject, merge: UnspecifiedObject): UnspecifiedObject => deepMerge(spec, merge),
-      }
-
-      spec = mergeFuncs[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as Swagger.Spec31
-    }
-
-    return spec
+    return this.applyConfiguredSpecMerge(spec)
   }
 
   /**
