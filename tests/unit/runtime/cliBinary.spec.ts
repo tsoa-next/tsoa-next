@@ -256,7 +256,7 @@ module.exports = class CustomGenerator {
       expect(result.stderr).to.contain('Missing outputDirectory')
       expect(result.stderr).to.contain('[tsoa.json] Next action:')
       expect(result.stderr).to.contain(command === 'spec' ? '--configuration set to' : 'path argument set to')
-      expect(result.stderr).to.contain(configPath)
+      expect(result.stderr).to.contain(JSON.stringify(configPath))
       expect(result.stderr).to.contain(`Failed ${command} for discovered config files:`)
     }
   })
