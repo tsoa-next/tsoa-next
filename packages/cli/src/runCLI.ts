@@ -8,12 +8,14 @@ import type yargs from 'yargs'
 import type { hideBin as hideBinImport } from 'yargs/helpers'
 import type { ArgumentsCamelCase, Options } from 'yargs'
 
+const { version } = require('../package.json') as { version: string }
 const outputPrefixStorage = new AsyncLocalStorage<string | undefined>()
 
 const configurationArgs = {
   alias: 'c',
   describe: 'tsoa configuration file; default is tsoa.json in the working directory',
   required: false,
+  requiresArg: true,
   string: true,
 } satisfies Options
 
@@ -27,12 +29,14 @@ const discoverArgs = {
 const hostArgs = {
   describe: 'API host',
   required: false,
+  requiresArg: true,
   string: true,
 } satisfies Options
 
 const basePathArgs = {
   describe: 'Base API path',
   required: false,
+  requiresArg: true,
   string: true,
 } satisfies Options
 
@@ -198,7 +202,7 @@ const runTasksWithConcurrency = async <T>(limit: number, tasks: Array<() => Prom
       nextTaskIndex += 1
 
       try {
-        const value = await tasks[currentTaskIndex]()
+        const value = await tasks[currentTaskIndex]() // NOSONAR: each worker must await its task to enforce the discovery concurrency limit.
         results[currentTaskIndex] = {
           status: 'fulfilled',
           value,
@@ -365,6 +369,9 @@ export async function runCLI() {
 
   return cli
     .scriptName('tsoa')
+    .version(version)
+    .strict()
+    .parserConfiguration({ 'duplicate-arguments-array': false })
     .usage('Usage: $0 <command> [options]')
     .command(
       'discover [pathOrGlob]',

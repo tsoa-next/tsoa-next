@@ -271,6 +271,50 @@ describe('runCLI', () => {
     expect(calls.every(call => call.host === 'api.example.com')).to.equal(true)
   })
 
+  it('limits concurrent generation while processing every discovered config', async () => {
+    const os = require('node:os') as typeof import('node:os')
+    const originalParallelism = os.availableParallelism
+    os.availableParallelism = () => 2
+    const calls: string[] = []
+    let active = 0
+    let maximumActive = 0
+    try {
+      const runCLI = loadRunCLI(
+        {
+          async generateSpecFromArgs(args) {
+            calls.push(String(args.configuration))
+            active += 1
+            maximumActive = Math.max(maximumActive, active)
+            await new Promise<void>(resolve => setImmediate(resolve))
+            active -= 1
+          },
+          async generateRoutesFromArgs() {
+            throw new Error('routes command should not run')
+          },
+          async generateSpecAndRoutes() {
+            throw new Error('spec-and-routes command should not run')
+          },
+        },
+        {
+          async discoverConfigs() {
+            return {
+              effectiveRoot: '/mock',
+              matches: ['a', 'b', 'c', 'd'].map(name => ({ absolutePath: `/mock/${name}/tsoa.json`, displayPath: `${name}/tsoa.json`, sortKey: name })),
+              mode: 'path',
+            }
+          },
+        },
+      )
+      process.argv = ['node', 'tsoa', 'spec', '--discover', '/mock']
+      await captureStdout(runCLI)
+      expect(calls.sort()).to.deep.equal(['/mock/a/tsoa.json', '/mock/b/tsoa.json', '/mock/c/tsoa.json', '/mock/d/tsoa.json'])
+      expect(maximumActive).to.equal(2)
+      expect(active).to.equal(0)
+    } finally {
+      os.availableParallelism = originalParallelism
+    }
+  })
+
   it('dispatches one routes run per discovered config', async () => {
     const calls: Array<Parameters<CLIExports['generateRoutesFromArgs']>[0]> = []
     const runCLI = loadRunCLI(

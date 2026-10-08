@@ -1,0 +1,186 @@
+import { expect } from 'chai'
+import 'mocha'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
+import { minVersion, satisfies } from 'semver'
+import { stringify } from 'yaml'
+import type { Config } from '@tsoa-next/runtime'
+
+const cliPackagePath = require.resolve('../../../packages/cli/package.json')
+const cliPackage = require(cliPackagePath) as { version: string; engines: { node: string } }
+const packageVersion = cliPackage.version
+const binaries = [
+  { name: '@tsoa-next/cli', path: resolve(__dirname, '../../../packages/cli/dist/cli.js') },
+  { name: 'tsoa-next', path: resolve(__dirname, '../../../packages/tsoa/dist/cli-bin.js') },
+]
+const commands = ['discover', 'generate', 'check', 'spec', 'routes', 'spec-and-routes']
+const nodeExecutable = process.env.TSOA_CLI_TEST_NODE ?? process.execPath
+
+describe('CLI executables', () => {
+  let directory: string
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'tsoa-cli-binary-'))
+    writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: 'consumer', version: '0.0.9', type: 'module' }))
+  })
+
+  afterEach(() => rmSync(directory, { force: true, recursive: true }))
+
+  const run = (binary: string, args: string[]) => spawnSync(nodeExecutable, [binary, ...args], { cwd: directory, encoding: 'utf8', timeout: 30000 })
+
+  it('keeps the parser compatible with the declared minimum Node version', () => {
+    const minimumNodeVersion = minVersion(cliPackage.engines.node)
+    const parserPackage = createRequire(cliPackagePath)('yargs/package.json') as { engines: { node: string } }
+    expect(minimumNodeVersion).to.not.be.null
+    expect(satisfies(minimumNodeVersion?.version ?? '', parserPackage.engines.node)).to.be.true
+  })
+
+  for (const binary of binaries) {
+    describe(binary.name, () => {
+      it('reports the installed CLI version independently of the consumer package', () => {
+        const result = run(binary.path, ['--version'])
+        expect(result.error).to.be.undefined
+        expect(result.status).to.equal(0)
+        expect(result.stdout).to.equal(`${packageVersion}\n`)
+        expect(result.stderr).to.equal('')
+      })
+
+      for (const args of [['--help'], ['-h'], ...commands.map(command => [command, '--help'])]) {
+        it(`shows help for ${args.join(' ')} without a config`, () => {
+          const result = run(binary.path, args)
+          expect(result.status).to.equal(0)
+          expect(result.stdout).to.contain('tsoa')
+          expect(result.stdout).to.contain('--help')
+          expect(result.stderr).to.equal('')
+        })
+      }
+
+      const invalidArguments = [
+        { args: [], message: 'Must provide a valid command.' },
+        { args: ['not-a-command'], message: 'Unknown argument' },
+        { args: ['spec', '--typo'], message: 'Unknown argument' },
+        { args: ['routes', '--host', 'api.example.com'], message: 'Unknown argument' },
+        { args: ['discover', '.', 'extra'], message: 'Unknown argument' },
+        { args: ['spec', 'extra'], message: 'Unknown argument' },
+        ...['--configuration', '-c', '--discover', '--host', '--basePath'].map(option => ({ args: ['spec', option], message: 'Not enough arguments following' })),
+        { args: ['spec', '-c', 'tsoa.json', '--discover', '.'], message: 'cannot be used together' },
+        { args: ['discover'], message: 'No tsoa config files found' },
+        { args: ['spec'], message: 'tsoa.json' },
+      ]
+      for (const { args, message } of invalidArguments) {
+        it(`fails with a diagnostic for ${args.join(' ') || 'no command'}`, () => {
+          const result = run(binary.path, args)
+          expect(result.status).to.equal(1)
+          expect(result.stderr).to.contain(message)
+          expect(existsSync(join(directory, 'spec'))).to.be.false
+          expect(existsSync(join(directory, 'routes'))).to.be.false
+        })
+      }
+    })
+  }
+
+  const createFixture = () => {
+    const entryFile = join(directory, 'controller.ts')
+    const runtimePath = resolve(__dirname, '../../../packages/runtime/dist/index')
+    writeFileSync(entryFile, `import { Get, Route } from ${JSON.stringify(runtimePath)}\n@Route('example')\nexport class ExampleController {\n @Get()\n public get(): string { return 'ok' }\n}\n`)
+    const config: Config = {
+      entryFile,
+      spec: { outputDirectory: join(directory, 'spec'), specVersion: 3.1 },
+      routes: { routesDir: join(directory, 'routes') },
+    }
+    const configPath = join(directory, 'tsoa.json')
+    writeFileSync(configPath, JSON.stringify(config))
+    return { config, configPath, specPath: join(directory, 'spec', 'swagger.json'), routesPath: join(directory, 'routes', 'routes.ts') }
+  }
+
+  const succeed = (args: string[]) => {
+    const result = run(binaries[1].path, args)
+    expect(result.status, result.stderr).to.equal(0)
+    return result
+  }
+
+  it('discovers configs and checks missing outputs without creating directories', () => {
+    createFixture()
+    expect(succeed(['discover']).stdout).to.equal('tsoa.json\n')
+    const result = run(binaries[1].path, ['check'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain('Generated outputs are out of date')
+    expect(existsSync(join(directory, 'spec'))).to.be.false
+    expect(existsSync(join(directory, 'routes'))).to.be.false
+  })
+
+  it('generates real outputs and leaves current files untouched', () => {
+    const { specPath, routesPath } = createFixture()
+    succeed(['generate'])
+    expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
+    expect(readFileSync(routesPath, 'utf8')).to.contain('ExampleController')
+    const specModified = statSync(specPath).mtimeMs
+    const routesModified = statSync(routesPath).mtimeMs
+    succeed(['check'])
+    succeed(['generate'])
+    expect(statSync(specPath).mtimeMs).to.equal(specModified)
+    expect(statSync(routesPath).mtimeMs).to.equal(routesModified)
+  })
+
+  it('reports stale output paths without changing the files', () => {
+    const { routesPath } = createFixture()
+    succeed(['generate'])
+    writeFileSync(routesPath, 'stale routes')
+    const result = run(binaries[1].path, ['check'])
+    expect(result.status).to.equal(1)
+    expect(result.stderr).to.contain(routesPath)
+    expect(readFileSync(routesPath, 'utf8')).to.equal('stale routes')
+  })
+
+  it('generates discovered routes with the base path override', () => {
+    const { routesPath } = createFixture()
+    succeed(['routes', '--discover', '.', '--basePath', '/v2'])
+    expect(readFileSync(routesPath, 'utf8')).to.contain('/v2/example')
+  })
+
+  it('uses the last configuration option and preserves format override precedence', () => {
+    const { configPath, specPath, routesPath } = createFixture()
+    succeed(['spec', '-c', 'missing.json', '--configuration', configPath, '--host', 'api.example.com', '--yaml'])
+    expect(readFileSync(join(directory, 'spec', 'swagger.yaml'), 'utf8')).to.contain('api.example.com')
+    expect(existsSync(routesPath)).to.be.false
+    succeed(['spec-and-routes', '-c', configPath, '--yaml', '--json'])
+    expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
+    expect(readFileSync(routesPath, 'utf8')).to.contain('ExampleController')
+  })
+
+  for (const specVersion of [2, 3, 3.1] as const) {
+    it(`selects OpenAPI ${specVersion} from the config`, () => {
+      const { config, configPath, specPath } = createFixture()
+      config.spec.specVersion = specVersion
+      writeFileSync(configPath, JSON.stringify(config))
+      succeed(['spec', '-c', configPath])
+      const spec = JSON.parse(readFileSync(specPath, 'utf8')) as { swagger?: string; openapi?: string }
+      expect(spec.swagger ?? spec.openapi).to.equal(specVersion === 2 ? '2.0' : `${specVersion === 3 ? '3.0' : '3.1'}.0`)
+    })
+  }
+
+  for (const name of ['tsoa.yaml', 'tsoa.yml', 'tsoa.config.js', 'tsoa.config.cjs']) {
+    it(`discovers and generates specs from ${name}`, () => {
+      const { config, specPath } = createFixture()
+      writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: 'consumer', version: '0.0.9', type: 'commonjs' }))
+      const content = name.endsWith('.js') || name.endsWith('.cjs') ? `module.exports = ${JSON.stringify(config)}` : stringify(config)
+      writeFileSync(join(directory, name), content)
+      expect(succeed(['discover', name]).stdout).to.equal(`${name}\n`)
+      succeed(['spec', '-c', name])
+      expect(readFileSync(specPath, 'utf8')).to.contain('"openapi": "3.1.0"')
+    })
+  }
+
+  for (const command of ['generate', 'check']) {
+    it(`rejects custom route generators for ${command}`, () => {
+      const { config, configPath } = createFixture()
+      writeFileSync(configPath, JSON.stringify({ ...config, routes: { ...config.routes, routeGenerator: './custom-generator.js' } }))
+      const result = run(binaries[1].path, [command])
+      expect(result.status).to.equal(1)
+      expect(result.stderr).to.contain('Change-aware generation is not supported with routes.routeGenerator')
+    })
+  }
+})
