@@ -1,5 +1,14 @@
 # @tsoa-next/cli
 
+## 8.3.2
+
+### Patch Changes
+
+- 5463018: Report the installed version from the CLI package, reject invalid commands and options, require values for string options, and consistently use the last value for repeated options.
+
+  Restore CLI startup compatibility with the declared Node 22.0 minimum by using a compatible parser dependency.
+  - @tsoa-next/runtime@8.3.2
+
 ## 8.3.1
 
 ### Patch Changes
