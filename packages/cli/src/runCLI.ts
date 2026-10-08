@@ -202,7 +202,7 @@ const runTasksWithConcurrency = async <T>(limit: number, tasks: Array<() => Prom
       nextTaskIndex += 1
 
       try {
-        const value = await tasks[currentTaskIndex]()
+        const value = await tasks[currentTaskIndex]() // NOSONAR: each worker must await its task to enforce the discovery concurrency limit.
         results[currentTaskIndex] = {
           status: 'fulfilled',
           value,
