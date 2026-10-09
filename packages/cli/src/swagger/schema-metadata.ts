@@ -1,5 +1,8 @@
 import type { Tsoa } from '@tsoa-next/runtime'
-import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
+
+export function shouldIncludeValidatorInSchema(key: string): key is Tsoa.SchemaValidatorKey {
+  return !key.startsWith('is') && key !== 'minDate' && key !== 'maxDate'
+}
 
 export function getPropertySchemaType(type: Tsoa.Type): Tsoa.Type {
   const unwrapBrandedAlias = (current: Tsoa.Type): Tsoa.Type => {

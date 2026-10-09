@@ -201,6 +201,8 @@ describe('OpenAPI emitter loading', () => {
   }
   const reloadCoordinator = () => {
     clearModule(coordinator)
+    clearModule('@tsoa-next/cli/swagger/specGenerator')
+    clearModule('@tsoa-next/cli/swagger/schema-metadata')
     for (const emitter of Object.values(emitters)) {
       clearModule(emitter)
     }
@@ -235,16 +237,39 @@ describe('OpenAPI emitter loading', () => {
       return withBlockedRequires(
         id => {
           const emitter = emitterName(id)
-          return id.endsWith('/metadataGeneration/metadataGenerator') || (emitter !== undefined && !required.includes(emitter))
+          return id === 'typescript' || id.endsWith('/metadataGeneration/metadataGenerator') || (emitter !== undefined && !required.includes(emitter))
         },
         () => {
           const { buildSpec } = reloadCoordinator()
           const config = { ...getDefaultExtendedOptions(), specVersion: selection as import('@tsoa-next/cli').ExtendedSpecConfig['specVersion'] }
-          const spec = buildSpec(config, undefined, undefined, { controllers: [], referenceTypeMap: {} })
+          const metadata: Tsoa.Metadata = {
+            controllers: [],
+            referenceTypeMap: {
+              Selected: {
+                dataType: 'refObject',
+                refName: 'Selected',
+                deprecated: false,
+                properties: [
+                  {
+                    name: 'value',
+                    type: { dataType: 'refAlias', refName: 'Branded', type: { dataType: 'intersection', types: [{ dataType: 'string' }] }, validators: {}, deprecated: false },
+                    required: true,
+                    default: 'selected',
+                    deprecated: false,
+                    validators: { minLength: { value: 1 }, isString: { value: true } },
+                  },
+                ],
+              },
+            },
+          }
+          const spec = buildSpec(config, undefined, undefined, metadata)
           expect(spec).not.to.be.instanceOf(Promise)
           expect(spec).to.have.property(version === '2.0' ? 'swagger' : 'openapi', version)
           expect(spec.info.title).to.equal(config.name)
           expect(spec).to.have.property('paths').that.deep.equals({})
+          expect(spec).to.have.nested.property(`${version === '2.0' ? 'definitions' : 'components.schemas'}.Selected.properties.value.minLength`, 1)
+          expect(spec).to.have.nested.property(`${version === '2.0' ? 'definitions' : 'components.schemas'}.Selected.properties.value.default`, 'selected')
+          expect(spec).to.have.nested.property(`${version === '2.0' ? 'definitions' : 'components.schemas'}.Selected.properties.value.type`, 'string')
           for (const [name, emitter] of Object.entries(emitters)) {
             if (required.includes(name)) {
               expect(require.cache[require.resolve(emitter)]).not.to.be.undefined
@@ -513,6 +538,159 @@ describe('Selected API compiler dependencies', () => {
       const metadata = await api.generateSpecAndRoutes({ configuration: config })
       expect(metadata.controllers.map(controller => controller.name)).to.deep.equal(['GetTestController'])
       expect(readFileSync(join(directory, 'spec', 'swagger.json'), 'utf8')).to.contain('"swagger": "2.0"')
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+})
+
+describe('Selected config and route renderer dependencies', () => {
+  const metadata: Tsoa.Metadata = { controllers: [], referenceTypeMap: {} }
+  const reloadAPI = () => {
+    clearModule('@tsoa-next/cli/api')
+    clearModule('@tsoa-next/cli/module/generate-routes')
+    return require('@tsoa-next/cli/api') as typeof import('@tsoa-next/cli/api')
+  }
+  const createConfig = (directory: string): Config => {
+    const entryFile = join(directory, 'entry.ts')
+    const tsconfig = join(directory, 'tsconfig.json')
+    writeFileSync(entryFile, 'export const entry = true\n')
+    writeFileSync(tsconfig, JSON.stringify({ files: [entryFile] }))
+    return { entryFile, tsconfig, spec: { outputDirectory: join(directory, 'spec') }, routes: { routesDir: join(directory, 'routes') } }
+  }
+
+  it('loads JSON and object configurations without the YAML parser', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-config-json-'))
+    try {
+      const config = createConfig(directory)
+      const file = join(directory, 'tsoa.json')
+      writeFileSync(file, JSON.stringify(config))
+      await withBlockedRequires(
+        id => id === 'yaml',
+        async () => {
+          const api = reloadAPI()
+          expect(await api.generateSpecAndRoutes({ configuration: file }, metadata)).to.equal(metadata)
+          expect(await api.generateSpecAndRoutes({ configuration: config }, metadata)).to.equal(metadata)
+          expect(readFileSync(join(directory, 'spec', 'swagger.json'), 'utf8')).to.contain('"swagger": "2.0"')
+          expect(readFileSync(join(directory, 'routes', 'routes.ts'), 'utf8')).to.contain('RegisterRoutes')
+        },
+      )
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('loads YAML only after the selected file is read and allows an explicit retry for both extensions', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-config-yaml-'))
+    try {
+      const config = createConfig(directory)
+      let api: ReturnType<typeof reloadAPI> | undefined
+      for (const extension of ['yaml', 'yml']) {
+        const file = join(directory, `tsoa.${extension}`)
+        // JSON is valid YAML and retains Windows paths without YAML escaping assumptions.
+        writeFileSync(file, JSON.stringify(config))
+        await withBlockedRequires(
+          id => id === 'yaml',
+          async () => {
+            api = reloadAPI()
+            let failure: unknown
+            try {
+              await api.generateSpecAndRoutes({ configuration: file }, metadata)
+            } catch (error) {
+              failure = error
+            }
+            expect(failure).to.be.instanceOf(Error)
+            expect((failure as Error).message).to.equal(`Unhandled error encountered loading '${file}': unexpected CLI dependency load: yaml`)
+          },
+        )
+        expect(await api!.generateSpecAndRoutes({ configuration: file }, metadata)).to.equal(metadata)
+      }
+      let yamlLoads = 0
+      await withBlockedRequires(
+        id => {
+          if (id === 'yaml') {
+            yamlLoads++
+            return true
+          }
+          return false
+        },
+        async () => {
+          let failure: unknown
+          try {
+            await reloadAPI().generateSpecAndRoutes({ configuration: join(directory, 'missing.yaml') }, metadata)
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.contain('ENOENT')
+          expect(yamlLoads).to.equal(0)
+        },
+      )
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('selects standalone custom constructors and modules without loading the built-in renderer', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-custom-renderer-'))
+    try {
+      await withBlockedRequires(
+        id => id.endsWith('/defaultRouteGenerator') || id === 'handlebars' || id === 'yaml',
+        async () => {
+          clearModule('@tsoa-next/cli/module/generate-routes')
+          const { generateRoutes } = require('@tsoa-next/cli/module/generate-routes') as typeof import('@tsoa-next/cli/module/generate-routes')
+          const { AbstractRouteGenerator } = require('@tsoa-next/cli/routeGeneration/routeGenerator') as typeof import('@tsoa-next/cli/routeGeneration/routeGenerator')
+          const seen: unknown[] = []
+          class CustomGenerator extends AbstractRouteGenerator<import('@tsoa-next/cli/api').ExtendedRoutesConfig> {
+            public async GenerateCustomRoutes() {
+              seen.push(this.metadata, this.options, this)
+              writeFileSync(join(this.options.routesDir, 'custom.ts'), 'export const custom = true\n')
+            }
+          }
+          const config = { entryFile: 'unused.ts', routesDir: directory, bodyCoercion: true, noImplicitAdditionalProperties: 'ignore' as const, routeGenerator: CustomGenerator }
+          expect(await generateRoutes(config, undefined, undefined, metadata)).to.equal(metadata)
+          expect(seen[0]).to.equal(metadata)
+          expect(seen[1]).to.equal(config)
+          expect(seen[2]).to.be.instanceOf(CustomGenerator)
+          expect(config).not.to.have.property('middleware')
+          const customModule = join(directory, 'generator.cjs')
+          writeFileSync(
+            customModule,
+            'module.exports = class { constructor(metadata, config) { this.metadata = metadata; this.config = config } async GenerateCustomRoutes() { require("node:fs").writeFileSync(require("node:path").join(this.config.routesDir, "module.ts"), JSON.stringify(Object.keys(this.metadata.referenceTypeMap))) } }',
+          )
+          expect(await generateRoutes({ ...config, routeGenerator: customModule }, undefined, undefined, metadata)).to.equal(metadata)
+          expect(readFileSync(join(directory, 'module.ts'), 'utf8')).to.equal('[]')
+        },
+      )
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('requires the selected built-in renderer after applying middleware defaults and allows an explicit retry', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-required-renderer-'))
+    const config: import('@tsoa-next/cli/api').ExtendedRoutesConfig = { entryFile: 'unused.ts', routesDir: directory, bodyCoercion: true, noImplicitAdditionalProperties: 'ignore' }
+    try {
+      clearModule('@tsoa-next/cli/module/generate-routes')
+      let generate: typeof import('@tsoa-next/cli/module/generate-routes').generateRoutes | undefined
+      await withBlockedRequires(
+        id => id.endsWith('/defaultRouteGenerator'),
+        async () => {
+          generate = (require('@tsoa-next/cli/module/generate-routes') as typeof import('@tsoa-next/cli/module/generate-routes')).generateRoutes
+          let failure: unknown
+          try {
+            await generate(config, undefined, undefined, metadata)
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.equal('unexpected CLI dependency load: ../routeGeneration/defaultRouteGenerator')
+          expect(config.middleware).to.equal('express')
+          expect(readdirSync(directory)).to.deep.equal([])
+        },
+      )
+      expect(await generate!(config, undefined, undefined, metadata)).to.equal(metadata)
+      expect(readFileSync(join(directory, 'routes.ts'), 'utf8')).to.contain('RegisterRoutes')
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }

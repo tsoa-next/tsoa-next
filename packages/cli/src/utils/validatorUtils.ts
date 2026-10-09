@@ -223,6 +223,4 @@ function removeSurroundingQuotes(str: string) {
   return str
 }
 
-export function shouldIncludeValidatorInSchema(key: string): key is Tsoa.SchemaValidatorKey {
-  return !key.startsWith('is') && key !== 'minDate' && key !== 'maxDate'
-}
+export { shouldIncludeValidatorInSchema } from '../swagger/schema-metadata'

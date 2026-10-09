@@ -3,9 +3,21 @@ import 'mocha'
 import type { Tsoa } from '@tsoa-next/runtime'
 import { SpecGenerator31 } from '@tsoa-next/cli/swagger/specGenerator31'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
-import { getPropertySchemaType, hasUndefined, isRequiredWithoutDefault } from '../../../packages/cli/src/swagger/schema-metadata'
+import { getPropertySchemaType, hasUndefined, isRequiredWithoutDefault, shouldIncludeValidatorInSchema } from '../../../packages/cli/src/swagger/schema-metadata'
+import { shouldIncludeValidatorInSchema as legacyShouldIncludeValidatorInSchema } from '../../../packages/cli/src/utils/validatorUtils'
 
 describe('Shared schema metadata', () => {
+  it('preserves the legacy predicate and exact prefix/date exclusion semantics', () => {
+    expect(legacyShouldIncludeValidatorInSchema).to.equal(shouldIncludeValidatorInSchema)
+    for (const key of ['is', 'isString', 'isCustom', 'minDate', 'maxDate']) {
+      expect(shouldIncludeValidatorInSchema(key)).to.be.false
+      expect(legacyShouldIncludeValidatorInSchema(key)).to.be.false
+    }
+    for (const key of ['', 'minimum', 'exclusiveMaximum', 'custom', 'IsString', 'minDateTime', 'maxDateTime']) {
+      expect(shouldIncludeValidatorInSchema(key)).to.be.true
+      expect(legacyShouldIncludeValidatorInSchema(key)).to.be.true
+    }
+  })
   it('projects supported validators in order before invoking the version hook with its original receiver', () => {
     const calls: string[] = []
     const validators: Tsoa.Validators = {}

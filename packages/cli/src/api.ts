@@ -1,4 +1,3 @@
-import { parse as parseYAML } from 'yaml'
 import { Config, RoutesConfig, RuntimeSpecConfigSnapshot, SpecConfig, Tsoa } from '@tsoa-next/runtime'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
@@ -136,7 +135,9 @@ type ConfigWithContext = {
 const parseConfigContents = async (configFullPath: string, extension: string, configPath: string): Promise<Config> => {
   if (isYamlExtension(extension)) {
     const configRaw = await fsReadFile(configFullPath)
-    return parseConfigValue(parseYAML(configRaw.toString('utf8')))
+    const configText = configRaw.toString('utf8')
+    const { parse: parseYAML } = require('yaml') as typeof import('yaml')
+    return parseConfigValue(parseYAML(configText))
   }
 
   if (isJsExtension(extension)) {

@@ -1,7 +1,6 @@
 import * as ts from 'typescript'
 import type { ExtendedRoutesConfig, RouteGeneratorModule } from '../api'
 import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
-import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
 import { existsSync } from 'node:fs'
@@ -101,5 +100,6 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
     routesConfig.middleware = 'express'
   }
 
+  const { DefaultRouteGenerator } = require('../routeGeneration/defaultRouteGenerator') as typeof import('../routeGeneration/defaultRouteGenerator')
   return new DefaultRouteGenerator(metadata, routesConfig)
 }
