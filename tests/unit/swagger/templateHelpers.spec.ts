@@ -1668,7 +1668,7 @@ describe('ValidationService', () => {
         },
       }
       const errors: FieldErrors = {}
-      expect(service.validateUnion('item', '42', errors, false, { subSchemas: [{ dataType: 'integer' }, unused] })).to.equal(42)
+      expect(service.validateUnion<unknown>('item', '42', errors, false, { subSchemas: [{ dataType: 'integer' }, unused] })).to.equal(42)
       expect(errors).to.deep.equal({})
     })
 
