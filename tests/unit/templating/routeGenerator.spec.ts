@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import * as handlebars from 'handlebars'
+import * as ts from 'typescript'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -345,6 +346,50 @@ describe('RouteGenerator', () => {
       expect(() => generator.context()).to.throw(failure)
       expect(calls).to.deep.equal(['path:/Controller', 'parameter'])
     })
+  })
+
+  it('compiles generated single and multiple Hapi uploads with strict payload typing', async () => {
+    const directory = mkdtempSync(join(__dirname, 'hapi-upload-'))
+    try {
+      const controllerPath = join(directory, 'controller.ts')
+      writeFileSync(controllerPath, 'export class UploadController { single(file: unknown): void {} multiple(files: unknown[]): void {} }')
+      const methods: Tsoa.Method[] = ['single', 'multiple'].map((name, parameterIndex) => ({
+        name,
+        method: 'post',
+        path: name,
+        parameters: [
+          {
+            name: 'file',
+            parameterName: 'file',
+            parameterIndex: 0,
+            in: 'formData',
+            type: parameterIndex === 0 ? { dataType: 'file' } : { dataType: 'array', elementType: { dataType: 'file' } },
+            required: true,
+            validators: {},
+            deprecated: false,
+          },
+        ],
+        type: { dataType: 'void' },
+        responses: [],
+        security: [],
+        extensions: [],
+        isHidden: false,
+      }))
+      const metadata: Tsoa.Metadata = { controllers: [{ name: 'UploadController', path: 'uploads', location: controllerPath, methods }], referenceTypeMap: {} }
+      await generateRoutes({ entryFile: controllerPath, routesDir: directory, middleware: 'hapi', bodyCoercion: true, noImplicitAdditionalProperties: 'ignore' }, {}, undefined, metadata)
+      const program = ts.createProgram([join(directory, 'routes.ts')], {
+        strict: true,
+        noEmit: true,
+        skipLibCheck: true,
+        esModuleInterop: true,
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2021,
+      })
+      const diagnostics = ts.getPreEmitDiagnostics(program)
+      expect(diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).to.deep.equal([])
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
   describe('.buildContent', () => {
