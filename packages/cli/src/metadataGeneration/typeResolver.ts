@@ -1,4 +1,4 @@
-import { assertNever, Tsoa } from '@tsoa-next/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import { getDecorators, isDecorator } from './../utils/decoratorUtils'
 import { getJSDocTagNames, isExistJSDocTag, symbolDisplayPartsToString } from './../utils/jsDocUtils'
@@ -9,6 +9,9 @@ import { resolveContextualTypeArgument, getDeclarationTypeParameters, normalizeT
 import { isIoTsBrandMarker, getIoTsUtilityType, type IoTsUtilityType } from './io-ts-recognition'
 import { getEntityNameText, getFallbackReferenceName, getDeclarationBasedRefTypeName, sanitizeInlineTypeName, normalizeReferenceName } from './reference-name'
 import { resolveInlineObject } from './inline-object'
+import { appendInheritedProperties } from './inherited-properties'
+import { resolveToJSONReturnType, withDefinedReferenceMetadata } from './model-reference'
+import { isUsableDeclaration, selectModelDeclarations, type UsableDeclarationWithoutPropertySignature } from './declaration-selection'
 import { resolveIndexedAccessKeywordType, resolveIndexedAccessLiteralType, matchesKeyedIndexedAccess, resolveKeyedIndexedAccessType } from './indexed-access-type'
 import { resolveKeyOfTypeOperator } from './key-of-type'
 import { resolveMappedType } from './mapped-type'
@@ -32,7 +35,6 @@ type ReferenceTypeCache = {
 let referenceTypeCaches = new WeakMap<MetadataGenerator, ReferenceTypeCache>()
 
 type UsableDeclaration = ts.InterfaceDeclaration | ts.ClassDeclaration | ts.PropertySignature | ts.TypeAliasDeclaration | ts.EnumMember
-type UsableDeclarationWithoutPropertySignature = Exclude<UsableDeclaration, ts.PropertySignature>
 export interface Context {
   [name: string]: {
     type: ts.TypeNode
@@ -411,22 +413,6 @@ export class TypeResolver {
     return getIoTsUtilityType(typeName, typeChecker)
   }
 
-  private getDesignatedModels<T extends ts.Node>(nodes: T[], typeName: string): T[] {
-    /**
-     * Model is marked with '@tsoaModel', indicating that it should be the 'canonical' model used
-     */
-    const designatedNodes = nodes.filter(enumNode => {
-      return isExistJSDocTag(enumNode, tag => tag.tagName.text === 'tsoaModel')
-    })
-    if (designatedNodes.length === 0) {
-      return nodes
-    }
-
-    throwUnless(designatedNodes.length === 1, new GenerateMetadataError(`Multiple models for ${typeName} marked with '@tsoaModel'; '@tsoaModel' should only be applied to one model.`))
-
-    return designatedNodes
-  }
-
   private hasFlag(type: ts.Type | ts.Symbol | ts.Declaration, flag: ts.TypeFlags | ts.NodeFlags | ts.SymbolFlags) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
     return (type.flags & flag) === flag
@@ -787,22 +773,9 @@ export class TypeResolver {
       isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
     const title = this.getNodeTitle(modelType)
 
-    // Handle toJSON methods
-    throwUnless(modelType.name, new GenerateMetadataError("Can't get Symbol from anonymous class", modelType))
-
-    const type = this.current.typeChecker.getTypeAtLocation(modelType.name)
-    const toJSONDeclaration = this.current.typeChecker.getPropertyOfType(type, 'toJSON')?.valueDeclaration
-    if (toJSONDeclaration && (ts.isMethodDeclaration(toJSONDeclaration) || ts.isMethodSignature(toJSONDeclaration))) {
-      let nodeType = toJSONDeclaration.type
-      if (!nodeType) {
-        const signature = this.current.typeChecker.getSignatureFromDeclaration(toJSONDeclaration)
-        const implicitType = this.current.typeChecker.getReturnTypeOfSignature(signature!)
-        nodeType = this.current.typeChecker.typeToTypeNode(implicitType, undefined, ts.NodeBuilderFlags.NoTruncation)
-      }
-      if (!nodeType) {
-        throw new GenerateMetadataError(`Could not resolve the return type for ${refTypeName}.`, toJSONDeclaration)
-      }
-      return this.withDefinedReferenceMetadata(
+    const nodeType = resolveToJSONReturnType(modelType, this.current, refTypeName)
+    if (nodeType) {
+      return withDefinedReferenceMetadata(
         {
           refName: refTypeName,
           dataType: 'refAlias',
@@ -819,7 +792,7 @@ export class TypeResolver {
     const additionalProperties = this.getModelAdditionalProperties(modelType)
     const inheritedProperties = this.getModelInheritedProperties(modelType) || []
 
-    const referenceType = this.withDefinedReferenceMetadata<Tsoa.ReferenceType & { properties: Tsoa.Property[] }>(
+    const referenceType = withDefinedReferenceMetadata<Tsoa.ReferenceType & { properties: Tsoa.Property[] }>(
       {
         additionalProperties,
         dataType: 'refObject',
@@ -832,18 +805,6 @@ export class TypeResolver {
     )
 
     referenceType.properties = referenceType.properties.concat(properties)
-
-    return referenceType
-  }
-
-  private withDefinedReferenceMetadata<TReferenceType extends Tsoa.ReferenceType>(referenceType: TReferenceType, metadata: { example: unknown; title: string | undefined }): TReferenceType {
-    if (metadata.example !== undefined) {
-      referenceType.example = metadata.example
-    }
-
-    if (metadata.title !== undefined) {
-      referenceType.title = metadata.title
-    }
 
     return referenceType
   }
@@ -864,19 +825,6 @@ export class TypeResolver {
       Object.assign(referenceType, realReferenceType)
     })
     return referenceType
-  }
-
-  private nodeIsUsable(node: ts.Node): node is UsableDeclarationWithoutPropertySignature {
-    switch (node.kind) {
-      case ts.SyntaxKind.InterfaceDeclaration:
-      case ts.SyntaxKind.ClassDeclaration:
-      case ts.SyntaxKind.TypeAliasDeclaration:
-      case ts.SyntaxKind.EnumDeclaration:
-      case ts.SyntaxKind.EnumMember:
-        return true
-      default:
-        return false
-    }
   }
 
   private getModelTypeDeclarations(type: ts.EntityName): UsableDeclarationWithoutPropertySignature[] {
@@ -902,25 +850,7 @@ export class TypeResolver {
       typeName = symbol.escapedName as string
     }
 
-    let modelTypes = declarations.filter((node): node is UsableDeclarationWithoutPropertySignature => {
-      return this.nodeIsUsable(node) && node.name?.getText() === typeName
-    })
-
-    // If no usable model types found, return empty array instead of throwing
-    if (modelTypes.length === 0) {
-      return []
-    }
-
-    if (modelTypes.length > 1) {
-      // remove types that are from typescript e.g. 'Account'
-      modelTypes = modelTypes.filter(modelType => {
-        return modelType.getSourceFile().fileName.replaceAll('\\', '/').toLowerCase().indexOf('node_modules/typescript') <= -1
-      })
-
-      modelTypes = this.getDesignatedModels(modelTypes, typeName)
-    }
-
-    return modelTypes
+    return selectModelDeclarations(declarations, typeName)
   }
 
   private getReferenceTypeFromTypeChecker(node: ts.TypeReferenceType, name: string, refTypeName: string): Tsoa.ReferenceType | undefined {
@@ -970,7 +900,7 @@ export class TypeResolver {
     const targetSymbol = this.hasFlag(symbol, ts.SymbolFlags.Alias) ? this.current.typeChecker.getAliasedSymbol(symbol) : symbol
     const declarations = targetSymbol?.getDeclarations?.() || []
 
-    return declarations.filter((node): node is UsableDeclarationWithoutPropertySignature => this.nodeIsUsable(node))
+    return declarations.filter((node): node is UsableDeclarationWithoutPropertySignature => isUsableDeclaration(node))
   }
 
   private isEquivalentReferenceTypeNode(originalNode: ts.TypeReferenceType, resolvedNode: ts.TypeNode, originalName: string): boolean {
@@ -1069,35 +999,6 @@ export class TypeResolver {
     return extendedTypeChecker.getPromisedTypeOfPromise?.(this.referencer)
   }
 
-  private getReferenceAliasProperties(referenceType: Tsoa.RefAliasType): Tsoa.Property[] {
-    let type: Tsoa.Type = referenceType
-    while (type.dataType === 'refAlias') {
-      type = type.type
-    }
-
-    if (type.dataType === 'refObject' || type.dataType === 'nestedObjectLiteral') {
-      return type.properties
-    }
-
-    return []
-  }
-
-  private appendInheritedProperties(properties: Tsoa.Property[], referenceType: Tsoa.ReferenceType | undefined): Tsoa.Property[] {
-    if (!referenceType || referenceType.dataType === 'refEnum') {
-      return properties
-    }
-
-    if (referenceType.dataType === 'refAlias') {
-      return [...properties, ...this.getReferenceAliasProperties(referenceType)]
-    }
-
-    if (referenceType.dataType === 'refObject') {
-      return [...properties, ...(referenceType.properties ?? [])]
-    }
-
-    return assertNever(referenceType)
-  }
-
   private getInheritedReferenceType(typeNode: ts.ExpressionWithTypeArguments): Tsoa.ReferenceType | undefined {
     if (!ts.isIdentifier(typeNode.expression) && !ts.isQualifiedName(typeNode.expression)) {
       return undefined
@@ -1132,7 +1033,7 @@ export class TypeResolver {
       }
 
       for (const t of clause.types) {
-        properties = this.appendInheritedProperties(properties, this.getInheritedReferenceType(t))
+        properties = appendInheritedProperties(properties, this.getInheritedReferenceType(t))
       }
     }
 

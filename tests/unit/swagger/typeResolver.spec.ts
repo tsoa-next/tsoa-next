@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import * as ts from 'typescript'
 import type { Tsoa } from '@tsoa-next/runtime'
+import { appendInheritedProperties } from '../../../packages/cli/src/metadataGeneration/inherited-properties'
+import { resolveToJSONReturnType, withDefinedReferenceMetadata } from '../../../packages/cli/src/metadataGeneration/model-reference'
+import { isUsableDeclaration, selectModelDeclarations } from '../../../packages/cli/src/metadataGeneration/declaration-selection'
 import { resolveContextualTypeArgument } from '../../../packages/cli/src/metadataGeneration/generic-context'
 import { getIoTsUtilityType, getIoTsUtilityTypeFromSymbol, symbolComesFromModule } from '../../../packages/cli/src/metadataGeneration/io-ts-recognition'
 import { getDeclarationBasedRefTypeName } from '../../../packages/cli/src/metadataGeneration/reference-name'
@@ -917,6 +920,128 @@ describe('TypeResolver', () => {
       expect(resolveKeyOfIndexType(indexedType, keyOfNode, {} as MetadataGenerator, {}, undefined, TypeResolver)).to.be.undefined
     })
 
+    it('preserves explicit and inferred toJSON return nodes and avoids unused inference reads', () => {
+      const sourceFile = ts.createSourceFile(
+        'model.ts',
+        'class Explicit { toJSON(): string { return "ok" } } class Inferred { toJSON() { return "ok" } }',
+        ts.ScriptTarget.ES2021,
+        true,
+        ts.ScriptKind.TS,
+      )
+      const models = sourceFile.statements.filter(ts.isClassDeclaration)
+      const methods = models.map(model => model.members.find(ts.isMethodDeclaration)!)
+      const signature = {} as ts.Signature
+      const implicitType = {} as ts.Type
+      const inferredNode = ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+      const calls: string[] = []
+      let selected = methods[0]
+      const current = {
+        typeChecker: {
+          getTypeAtLocation: () => ({}),
+          getPropertyOfType: () => ({ valueDeclaration: selected }),
+          getSignatureFromDeclaration: (declaration: ts.SignatureDeclaration) => {
+            expect(declaration).to.equal(methods[1])
+            calls.push('signature')
+            return signature
+          },
+          getReturnTypeOfSignature: (input: ts.Signature) => {
+            expect(input).to.equal(signature)
+            calls.push('return')
+            return implicitType
+          },
+          typeToTypeNode: (input: ts.Type, enclosing: ts.Node | undefined, flags: ts.NodeBuilderFlags) => {
+            expect(input).to.equal(implicitType)
+            expect(enclosing).to.be.undefined
+            expect(flags).to.equal(ts.NodeBuilderFlags.NoTruncation)
+            calls.push('node')
+            return inferredNode
+          },
+        },
+      } as unknown as MetadataGenerator
+      expect(resolveToJSONReturnType(models[0], current, 'Explicit')).to.equal(methods[0].type)
+      expect(calls).to.deep.equal([])
+      selected = methods[1]
+      expect(resolveToJSONReturnType(models[1], current, 'Inferred')).to.equal(inferredNode)
+      expect(calls).to.deep.equal(['signature', 'return', 'node'])
+    })
+
+    it('preserves toJSON annotation dispatch and default child context without visiting ordinary properties', () => {
+      const sourceFile = ts.createSourceFile('model.ts', 'class Model { toJSON(): string { return "ok" } }', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const model = sourceFile.statements.find(ts.isClassDeclaration)!
+      const method = model.members.find(ts.isMethodDeclaration)!
+      const calls: string[] = []
+      const current = { typeChecker: { getTypeAtLocation: () => ({}), getPropertyOfType: () => ({ valueDeclaration: method }) } } as unknown as MetadataGenerator
+      const modelResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current, model, { T: { type: method.type!, name: 'Parent' } }, {} as ts.Type)
+      modelResolver.getNodeExample = function (node) {
+        expect(this).to.equal(modelResolver)
+        expect(node).to.equal(model)
+        calls.push('example')
+        return false
+      }
+      modelResolver.getNodeDescription = function () {
+        expect(this).to.equal(modelResolver)
+        calls.push('description')
+        return 'Description'
+      }
+      modelResolver.getNodeTitle = function () {
+        expect(this).to.equal(modelResolver)
+        calls.push('title')
+        return ''
+      }
+      ;(modelResolver as any).getModelAdditionalProperties = () => {
+        throw new Error('Unused ordinary property traversal')
+      }
+      ;(modelResolver as any).getModelInheritedProperties = () => {
+        throw new Error('Unused inherited traversal')
+      }
+      const originalResolve = Object.getOwnPropertyDescriptor(TypeResolver.prototype, 'resolve')!
+      TypeResolver.prototype.resolve = function () {
+        expect(this).to.not.equal(modelResolver)
+        expect(this.current).to.equal(current)
+        expect(this.context).to.deep.equal({})
+        expect(this.referencer).to.be.undefined
+        expect((this as any).parentNode).to.be.undefined
+        calls.push('child')
+        return { dataType: 'string' }
+      }
+      try {
+        expect((modelResolver as any).getModelReference(model, 'Model')).to.deep.equal({
+          refName: 'Model',
+          dataType: 'refAlias',
+          description: 'Description',
+          type: { dataType: 'string' },
+          validators: {},
+          deprecated: false,
+          example: false,
+          title: '',
+        })
+        expect(calls).to.deep.equal(['example', 'description', 'title', 'child'])
+      } finally {
+        Object.defineProperty(TypeResolver.prototype, 'resolve', originalResolve)
+      }
+    })
+
+    it('preserves anonymous-class diagnostics before checker reads and defined metadata values', () => {
+      const sourceFile = ts.createSourceFile('model.ts', 'export default class {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const model = sourceFile.statements.find(ts.isClassDeclaration)!
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          throw new Error('Unused checker')
+        },
+      } as MetadataGenerator
+      expect(() => resolveToJSONReturnType(model, current, 'Anonymous')).to.throw(GenerateMetadataError, "Can't get Symbol from anonymous class")
+      for (const example of [undefined, null, false, 0]) {
+        const reference: Tsoa.RefObjectType = { dataType: 'refObject', refName: 'Model', properties: [], deprecated: false }
+        expect(withDefinedReferenceMetadata(reference, { example, title: undefined })).to.equal(reference)
+        expect(reference).to.not.have.own.property('title')
+        if (example === undefined) {
+          expect(reference).to.not.have.own.property('example')
+        } else {
+          expect(reference).to.have.own.property('example', example)
+        }
+      }
+    })
+
     it('fails clearly when TypeScript cannot represent an inferred toJSON return type', () => {
       const sourceFile = ts.createSourceFile('model.ts', `class Model { toJSON() { return { value: 'ok' } } }`, ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
       const model = sourceFile.statements.find(ts.isClassDeclaration)
@@ -944,6 +1069,80 @@ describe('TypeResolver', () => {
       ;(modelResolver as any).getNodeTitle = () => undefined
 
       expect(() => (modelResolver as any).getModelReference(model, 'Model')).to.throw(GenerateMetadataError, 'Could not resolve the return type for Model.')
+    })
+  })
+
+  describe('declaration selection', () => {
+    it('filters only requested usable declarations before reading unrelated candidate metadata', () => {
+      const sourceFile = ts.createSourceFile(
+        'models.ts',
+        'interface Selected {} class Other {} type Alias = string; enum Choice { Member } const unsupported = 1',
+        ts.ScriptTarget.ES2021,
+        true,
+        ts.ScriptKind.TS,
+      )
+      const selected = sourceFile.statements.find(ts.isInterfaceDeclaration)!
+      const other = sourceFile.statements.find(ts.isClassDeclaration)!
+      const alias = sourceFile.statements.find(ts.isTypeAliasDeclaration)!
+      const enumeration = sourceFile.statements.find(ts.isEnumDeclaration)!
+      const unsupported = sourceFile.statements.find(ts.isVariableStatement)!.declarationList.declarations[0]
+      Object.defineProperty(other, 'jsDoc', {
+        get() {
+          throw new Error('Unused unrelated annotation')
+        },
+      })
+      Object.defineProperty(other, 'getSourceFile', {
+        value() {
+          throw new Error('Unused unrelated source')
+        },
+      })
+      expect(selectModelDeclarations([other, unsupported, selected], 'Selected')).to.deep.equal([selected])
+      expect(selectModelDeclarations([other, unsupported], 'Missing')).to.deep.equal([])
+      expect(isUsableDeclaration(alias)).to.be.true
+      expect(isUsableDeclaration(enumeration)).to.be.true
+      expect(isUsableDeclaration(enumeration.members[0])).to.be.true
+      expect(isUsableDeclaration(unsupported)).to.be.false
+      expect(selectModelDeclarations([alias], 'Alias')).to.deep.equal([alias])
+      expect(selectModelDeclarations([enumeration.members[0]], 'Member')).to.deep.equal([enumeration.members[0]])
+    })
+
+    it('preserves requested candidate order, designated precedence and conditional TypeScript source filtering', () => {
+      const firstFile = ts.createSourceFile('first.ts', 'interface Model {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const secondFile = ts.createSourceFile('second.ts', 'interface Model {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const designatedFile = ts.createSourceFile('designated.ts', '/** @tsoaModel */\ninterface Model {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const libraryFile = ts.createSourceFile('C:\\project\\node_modules\\TypeScript\\lib\\lib.d.ts', '/** @tsoaModel */\ninterface Model {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const first = firstFile.statements.find(ts.isInterfaceDeclaration)!
+      const second = secondFile.statements.find(ts.isInterfaceDeclaration)!
+      const designated = designatedFile.statements.find(ts.isInterfaceDeclaration)!
+      const library = libraryFile.statements.find(ts.isInterfaceDeclaration)!
+      expect(selectModelDeclarations([second, first], 'Model')).to.deep.equal([second, first])
+      expect(selectModelDeclarations([first, library, designated, second], 'Model')).to.deep.equal([designated])
+      expect(selectModelDeclarations([library], 'Model')).to.deep.equal([library])
+    })
+
+    it('reports duplicate designated models only for the selected reference before checker fallback', () => {
+      const sourceFile = ts.createSourceFile(
+        'models.ts',
+        '/** @tsoaModel */\ninterface Model {}\n/** @tsoaModel */\ninterface Model {}\ninterface Selected {}',
+        ts.ScriptTarget.ES2021,
+        true,
+        ts.ScriptKind.TS,
+      )
+      const declarations = sourceFile.statements.filter(ts.isInterfaceDeclaration)
+      const current = {
+        typeChecker: {
+          getSymbolAtLocation: (node: ts.Identifier) => ({ flags: 0, escapedName: node.text, getDeclarations: () => declarations }),
+          getTypeFromTypeNode: () => {
+            throw new Error('Unused checker fallback')
+          },
+        },
+      } as unknown as MetadataGenerator
+      const selectionResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current)
+      expect((selectionResolver as any).getModelTypeDeclarations(ts.factory.createIdentifier('Selected'))).to.deep.equal([declarations[2]])
+      expect(() => (selectionResolver as any).getModelTypeDeclarations(ts.factory.createIdentifier('Model'))).to.throw(
+        GenerateMetadataError,
+        "Multiple models for Model marked with '@tsoaModel'; '@tsoaModel' should only be applied to one model.",
+      )
     })
   })
 
@@ -1399,6 +1598,73 @@ describe('TypeResolver', () => {
         ...refObject,
         refName: 'Renamed',
       })
+    })
+
+    it('preserves inherited property order, duplicates and identity without mutating inputs', () => {
+      const first: Tsoa.Property = { name: 'duplicate', type: { dataType: 'string' }, required: true, validators: {}, deprecated: false }
+      const second: Tsoa.Property = { ...first, type: { dataType: 'double' } }
+      const properties = [first]
+      const base: Tsoa.RefObjectType = { dataType: 'refObject', refName: 'Base', properties: [second, first], deprecated: false }
+      const alias: Tsoa.RefAliasType = {
+        dataType: 'refAlias',
+        refName: 'Outer',
+        validators: {},
+        deprecated: false,
+        type: { dataType: 'refAlias', refName: 'Inner', validators: {}, deprecated: false, type: base },
+      }
+
+      const combined = appendInheritedProperties(properties, alias)
+      expect(combined).to.deep.equal([first, second, first])
+      expect(combined).to.not.equal(properties)
+      expect(combined[0]).to.equal(first)
+      expect(combined[1]).to.equal(second)
+      expect(combined[2]).to.equal(first)
+      expect(properties).to.deep.equal([first])
+      expect(base.properties).to.deep.equal([second, first])
+    })
+
+    it('preserves inherited alias terminal semantics and enum passthrough identity', () => {
+      const property: Tsoa.Property = { name: 'value', type: { dataType: 'string' }, required: false, validators: {}, deprecated: false }
+      const properties = [property]
+      const enumeration: Tsoa.RefEnumType = { dataType: 'refEnum', refName: 'Choice', enums: ['a'], deprecated: false }
+      expect(appendInheritedProperties(properties, undefined)).to.equal(properties)
+      expect(appendInheritedProperties(properties, enumeration)).to.equal(properties)
+      const terminals: Tsoa.Type[] = [
+        { dataType: 'nestedObjectLiteral', properties: [property] },
+        { dataType: 'union', types: [{ dataType: 'nestedObjectLiteral', properties: [property] }] },
+        { dataType: 'intersection', types: [{ dataType: 'nestedObjectLiteral', properties: [property] }] },
+        enumeration,
+        { dataType: 'string' },
+      ]
+      for (const terminal of terminals) {
+        const alias: Tsoa.RefAliasType = { dataType: 'refAlias', refName: 'Alias', type: terminal, validators: {}, deprecated: false }
+        const combined = appendInheritedProperties(properties, alias)
+        expect(combined).to.deep.equal(terminal.dataType === 'nestedObjectLiteral' ? [property, property] : [property])
+        expect(combined).to.not.equal(properties)
+      }
+    })
+
+    it('visits inherited references in order and stops before later references on failure', () => {
+      const sourceFile = ts.createSourceFile('inheritance.ts', 'interface Child extends First, Broken, Later {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const child = findFirstNode(sourceFile, ts.isInterfaceDeclaration)
+      const inheritedResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
+      const context = inheritedResolver.context
+      const visited: string[] = []
+      const failure = new Error('Required inherited reference failed')
+      ;(inheritedResolver as any).getReferenceType = function (node: ts.ExpressionWithTypeArguments, addToRefTypeMap: boolean) {
+        expect(this).to.equal(inheritedResolver)
+        expect(addToRefTypeMap).to.be.false
+        const name = node.expression.getText()
+        visited.push(name)
+        if (name === 'Broken') {
+          throw failure
+        }
+        return { dataType: 'refObject', refName: name, properties: [], deprecated: false }
+      }
+
+      expect(() => (inheritedResolver as any).getModelInheritedProperties(child)).to.throw(failure)
+      expect(visited).to.deep.equal(['First', 'Broken'])
+      expect(inheritedResolver.context).to.equal(context)
     })
 
     it('skips inherited references that still raise metadata errors', () => {
