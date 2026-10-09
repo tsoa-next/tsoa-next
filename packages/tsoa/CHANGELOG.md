@@ -1,5 +1,14 @@
 # tsoa-next
 
+## 8.3.3
+
+### Patch Changes
+
+- 1be4078: Resolve generation dependencies when selected operations need them, preserve configuration and validation behavior, and improve CLI diagnostics and custom-template checking. Separate compiler, schema, route and runtime validation responsibilities while retaining public compatibility.
+- Updated dependencies [1be4078]
+  - @tsoa-next/cli@8.3.3
+  - @tsoa-next/runtime@8.3.3
+
 ## 8.3.2
 
 ### Patch Changes
