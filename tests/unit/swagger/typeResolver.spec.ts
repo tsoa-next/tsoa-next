@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import * as ts from 'typescript'
 import type { Tsoa } from '@tsoa-next/runtime'
+import { resolveContextualTypeArgument } from '../../../packages/cli/src/metadataGeneration/generic-context'
+import { getIoTsUtilityType, getIoTsUtilityTypeFromSymbol, symbolComesFromModule } from '../../../packages/cli/src/metadataGeneration/io-ts-recognition'
+import { getDeclarationBasedRefTypeName } from '../../../packages/cli/src/metadataGeneration/reference-name'
 import { resolveKeyOfTypeOperator, resolveKeyOfIndexType, resolveFallbackKeyOfType } from '../../../packages/cli/src/metadataGeneration/key-of-type'
 import { resolveMappedType } from '../../../packages/cli/src/metadataGeneration/mapped-type'
 import { resolveTupleTypeNode } from '../../../packages/cli/src/metadataGeneration/structural-type'
@@ -444,6 +447,349 @@ describe('TypeResolver', () => {
     })
   })
 
+  describe('inline-object resolution boundaries', () => {
+    it('resolves properties in source order, returns reversed metadata and keeps public hook receivers', () => {
+      const source = ts.createSourceFile(
+        'inline.ts',
+        `type Inline = {
+        /** @default "initial"
+         * @minLength 2
+         */
+        first?: string
+        second: string
+        [key: string]: string
+      }`,
+        ts.ScriptTarget.ES2021,
+        true,
+      )
+      const declaration = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!declaration || !ts.isTypeLiteralNode(declaration.type)) throw new Error('Expected inline object')
+      const events: string[] = []
+      for (const member of declaration.type.members) {
+        if (ts.isPropertySignature(member)) {
+          const type = member.type
+          Object.defineProperty(member, 'type', {
+            get: () => {
+              events.push(`type:${member.name.getText()}`)
+              return type
+            },
+          })
+        } else if (ts.isIndexSignatureDeclaration(member)) {
+          const parameters = member.parameters
+          Object.defineProperty(member, 'parameters', {
+            get: () => {
+              events.push('index')
+              return parameters
+            },
+          })
+        }
+      }
+      const hook = (receiver: TypeResolver, node: ts.Node, name: string) => {
+        expect(receiver).to.equal(inlineResolver)
+        const property = node as ts.PropertySignature
+        events.push(`${name}:${property.name.getText()}`)
+        return property.name.getText()
+      }
+      class InlineResolver extends TypeResolver {
+        public override getNodeExample(node: ts.Node) {
+          return hook(this, node, 'example')
+        }
+        public override getNodeDescription(node: ts.PropertySignature) {
+          return hook(this, node, 'description')
+        }
+        public override getNodeFormat(node: ts.Node) {
+          return hook(this, node, 'format')
+        }
+        public override getPropertyName(node: ts.PropertySignature) {
+          return `named-${hook(this, node, 'name')}`
+        }
+        public override getNodeTitle(node: ts.Node) {
+          return hook(this, node, 'title')
+        }
+        public override getNodeExtension(node: ts.Node) {
+          return [{ key: 'x-order' as const, value: hook(this, node, 'extensions') }]
+        }
+      }
+      const inlineResolver = new InlineResolver(declaration.type, {} as MetadataGenerator)
+      const result = inlineResolver.resolve()
+      if (result.dataType !== 'nestedObjectLiteral') throw new Error('Expected inline object result')
+      expect(result.properties.map(property => property.name)).to.deep.equal(['named-second', 'named-first'])
+      expect(result.properties[0].required).to.be.true
+      expect(result.properties[1]).to.include({ required: false, default: 'initial', example: 'first', description: 'first', format: 'first', title: 'first' })
+      expect(result.properties[1].validators).to.have.property('minLength').that.has.property('value', 2)
+      expect(result.properties[1].extensions).to.deep.equal([{ key: 'x-order', value: 'first' }])
+      expect(result.additionalProperties).to.deep.equal({ dataType: 'string' })
+      expect(events).to.deep.equal([
+        'example:first',
+        'description:first',
+        'format:first',
+        'name:first',
+        'type:first',
+        'title:first',
+        'extensions:first',
+        'example:second',
+        'description:second',
+        'format:second',
+        'name:second',
+        'type:second',
+        'title:second',
+        'extensions:second',
+        'index',
+      ])
+    })
+
+    it('rejects a numeric indexer before reading the unused value type', () => {
+      const index = ts.factory.createIndexSignature(
+        undefined,
+        [ts.factory.createParameterDeclaration(undefined, undefined, 'key', undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword))],
+        ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+      )
+      Object.defineProperty(index, 'type', {
+        get: () => {
+          throw new Error('Unused index value type read')
+        },
+      })
+      const node = ts.factory.createTypeLiteralNode([index])
+      expect(() => new TypeResolver(node, { defaultNumberType: 'double' } as MetadataGenerator).resolve()).to.throw(GenerateMetadataError, 'Only string indexers are supported.')
+    })
+
+    it('reports an encountered property type failure before later metadata or indexers', () => {
+      const property = ts.factory.createPropertySignature(undefined, 'value', undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword))
+      const index = ts.factory.createIndexSignature(undefined, [], ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      Object.defineProperty(index, 'parameters', {
+        get: () => {
+          throw new Error('Unused indexer reached')
+        },
+      })
+      class FailingInlineResolver extends TypeResolver {
+        public override getNodeExample() {
+          return undefined
+        }
+        public override getNodeDescription() {
+          return undefined
+        }
+        public override getNodeFormat() {
+          return undefined
+        }
+        public override getNodeTitle(): string {
+          throw new Error('Unused title reached')
+        }
+        public override getNodeExtension(): Tsoa.Extension[] {
+          throw new Error('Unused extension reached')
+        }
+      }
+      expect(() => new FailingInlineResolver(ts.factory.createTypeLiteralNode([property, index]), {} as MetadataGenerator).resolve()).to.throw(GenerateMetadataError, 'Unknown type: SymbolKeyword')
+    })
+  })
+
+  describe('reference-name selection boundaries', () => {
+    it('uses selected declaration namespaces and enum names rather than the importing alias', () => {
+      const source = ts.createSourceFile(
+        'names.ts',
+        `namespace First { export interface Model {} export enum Status { Ready } }
+        namespace Second { export interface Model {} }
+        declare global { interface GlobalModel {} }
+        function local() { interface LocalModel {} }`,
+        ts.ScriptTarget.ES2021,
+        true,
+      )
+      const interfaces: ts.InterfaceDeclaration[] = []
+      const enumMembers: ts.EnumMember[] = []
+      const visit = (node: ts.Node) => {
+        if (ts.isInterfaceDeclaration(node)) interfaces.push(node)
+        if (ts.isEnumMember(node)) enumMembers.push(node)
+        ts.forEachChild(node, visit)
+      }
+      visit(source)
+      const alias = ts.factory.createQualifiedName(ts.factory.createIdentifier('Imported'), 'Alias')
+      expect(interfaces.map(declaration => getDeclarationBasedRefTypeName(alias, [declaration]))).to.deep.equal(['First.Model', 'Second.Model', 'GlobalModel', 'LocalModel'])
+      expect(getDeclarationBasedRefTypeName(alias, enumMembers)).to.equal('First.Status.Ready')
+    })
+
+    it('uses an existing contextual name without looking up unused declarations or uniqueness data', () => {
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          throw new Error('Unused declaration checker read')
+        },
+        CheckModelUnicity: () => {
+          throw new Error('Unused uniqueness data read')
+        },
+      } as unknown as MetadataGenerator
+      const context: Context = { 'Imported.Alias': { name: 'SelectedModel', type: ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) } }
+      const nameResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current, undefined, context)
+      const type = ts.factory.createQualifiedName(ts.factory.createIdentifier('Imported'), 'Alias')
+      expect((nameResolver as any).calcRefTypeName(type)).to.equal('SelectedModel')
+    })
+
+    it('preserves the source diagnostic for unsupported declaration ancestry', () => {
+      const source = ts.createSourceFile('names.ts', 'interface Model {} class Unexpected {} type Selected = Alias', ts.ScriptTarget.ES2021, true)
+      const parent = source.statements.find(ts.isClassDeclaration)
+      const alias = source.statements.find(ts.isTypeAliasDeclaration)
+      const declaration = source.statements.find(ts.isInterfaceDeclaration)
+      if (!parent || !alias || !declaration || !ts.isTypeReferenceNode(alias.type)) throw new Error('Expected naming fixture')
+      Object.defineProperty(declaration, 'parent', { value: parent })
+      const typeName = alias.type.typeName
+      expect(() => getDeclarationBasedRefTypeName(typeName, [declaration])).to.throw(GenerateMetadataError, `This node kind is unknown: ${ts.SyntaxKind.ClassDeclaration}\nAt: names.ts:1:1.`)
+    })
+  })
+
+  describe('io-ts recognition boundaries', () => {
+    it('does not inspect unrelated names and preserves local utility lookalikes', () => {
+      const unusedChecker = {
+        getSymbolAtLocation: () => {
+          throw new Error('Unused symbol lookup')
+        },
+      } as unknown as ts.TypeChecker
+      expect(getIoTsUtilityType(ts.factory.createIdentifier('Ordinary'), unusedChecker)).to.be.undefined
+      const source = ts.createSourceFile('ordinary.ts', 'interface TypeOf { value: string }', ts.ScriptTarget.ES2021, true)
+      const declaration = source.statements.find(ts.isInterfaceDeclaration)
+      if (!declaration) throw new Error('Expected local TypeOf fixture')
+      const symbol = { flags: ts.SymbolFlags.Interface, declarations: [declaration], getName: () => 'TypeOf' } as unknown as ts.Symbol
+      const checker = {
+        getSymbolAtLocation: () => symbol,
+        getAliasedSymbol: () => {
+          throw new Error('Unused alias lookup')
+        },
+      } as unknown as ts.TypeChecker
+      expect(getIoTsUtilityType(ts.factory.createIdentifier('TypeOf'), checker)).to.be.undefined
+    })
+
+    it('recognizes chained aliases and Windows provenance while terminating alias cycles', () => {
+      const declaration = { parent: undefined, getSourceFile: () => ({ fileName: String.raw`C:\project\node_modules\io-ts\index.d.ts` }) } as unknown as ts.Declaration
+      const target = { flags: 0, declarations: [declaration], getName: () => 'TypeOf' } as unknown as ts.Symbol
+      const first = { flags: ts.SymbolFlags.Alias, declarations: [], getName: () => 'FirstAlias' } as unknown as ts.Symbol
+      const second = { flags: ts.SymbolFlags.Alias, declarations: [], getName: () => 'SecondAlias' } as unknown as ts.Symbol
+      const checker = { getAliasedSymbol: (symbol: ts.Symbol) => (symbol === first ? second : target) } as unknown as ts.TypeChecker
+      expect(getIoTsUtilityTypeFromSymbol(first, checker)).to.equal('TypeOf')
+      const cyclicChecker = { getAliasedSymbol: (symbol: ts.Symbol) => (symbol === first ? second : first) } as unknown as ts.TypeChecker
+      expect(getIoTsUtilityTypeFromSymbol(first, cyclicChecker)).to.be.undefined
+      expect(symbolComesFromModule(first, cyclicChecker, 'io-ts')).to.be.false
+    })
+
+    it('reuses recognition only within its checker and propagates fresh-session lookup failures', () => {
+      let unavailable = false
+      const failure = new Error('Selected symbol declarations unavailable')
+      const declaration = { parent: undefined, getSourceFile: () => ({ fileName: '/project/node_modules/io-ts/index.d.ts' }) } as unknown as ts.Declaration
+      const symbol = {
+        flags: 0,
+        getName: () => 'Brand',
+        get declarations() {
+          if (unavailable) throw failure
+          return [declaration]
+        },
+      } as unknown as ts.Symbol
+      const checker = {} as ts.TypeChecker
+      expect(getIoTsUtilityTypeFromSymbol(symbol, checker)).to.equal('Brand')
+      unavailable = true
+      expect(getIoTsUtilityTypeFromSymbol(symbol, checker)).to.equal('Brand')
+      expect(() => getIoTsUtilityTypeFromSymbol(symbol, {} as ts.TypeChecker)).to.throw(failure)
+    })
+  })
+
+  describe('generic context binding boundaries', () => {
+    it('preserves forwarded identity and synthetic default alias arguments without unused checker reads', () => {
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          throw new Error('Unused generic checker read')
+        },
+      } as MetadataGenerator
+      const forwarded = { name: 'Selected', type: ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), resolvedType: {} as ts.Type }
+      const parameter = ts.factory.createTypeParameterDeclaration(undefined, 'Value')
+      Object.defineProperty(parameter, 'default', {
+        get: () => {
+          throw new Error('Unused parameter default read')
+        },
+      })
+      const reference = ts.factory.createTypeReferenceNode('Model', [ts.factory.createTypeReferenceNode('T')])
+      expect(resolveContextualTypeArgument(reference, parameter, 0, { T: forwarded }, current, undefined)).to.equal(forwarded)
+      const defaultType = ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+      const defaultParameter = ts.factory.createTypeParameterDeclaration(undefined, 'Value', undefined, defaultType)
+      const resolvedType = {} as ts.Type
+      const referencer = {
+        aliasTypeArguments: [resolvedType],
+        get typeArguments(): readonly ts.Type[] {
+          throw new Error('Unused fallback arguments read')
+        },
+      } as unknown as ts.Type
+      const result = resolveContextualTypeArgument(ts.factory.createTypeReferenceNode('Model'), defaultParameter, 0, {}, current, referencer)
+      expect(result.type).to.equal(defaultType)
+      expect(result.resolvedType).to.equal(resolvedType)
+    })
+
+    function genericFixture() {
+      const source = ts.createSourceFile('generic.ts', 'interface Model<T, U = number> {} type Selected = Model<string>', ts.ScriptTarget.ES2021, true)
+      const declaration = source.statements.find(ts.isInterfaceDeclaration)
+      const alias = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!declaration?.typeParameters || !alias || !ts.isTypeReferenceNode(alias.type)) throw new Error('Expected generic fixture')
+      const symbol = { flags: ts.SymbolFlags.Interface, escapedName: 'Model', getDeclarations: () => [declaration] } as unknown as ts.Symbol
+      return { declaration, reference: alias.type, symbol }
+    }
+
+    it('binds parsed arguments and defaults in order with exact resolved-type identity', () => {
+      const { declaration, reference, symbol } = genericFixture()
+      const firstType = {} as ts.Type
+      const secondType = {} as ts.Type
+      const reads: ts.TypeNode[] = []
+      const checker = {
+        getSymbolAtLocation: () => symbol,
+        getTypeFromTypeNode: (node: ts.TypeNode) => {
+          reads.push(node)
+          return reads.length === 1 ? firstType : secondType
+        },
+      } as unknown as ts.TypeChecker
+      const current = { typeChecker: checker } as MetadataGenerator
+      const contextResolver = new TypeResolver(reference, current)
+      const bound = (contextResolver as any).typeArgumentsToContext(reference, reference.typeName) as Context
+      expect(reads).to.deep.equal([reference.typeArguments?.[0], declaration.typeParameters?.[1].default])
+      expect(bound.T.type).to.equal(reference.typeArguments?.[0])
+      expect(bound.T.resolvedType).to.equal(firstType)
+      expect(bound.U.type).to.equal(declaration.typeParameters?.[1].default)
+      expect(bound.U.resolvedType).to.equal(secondType)
+      expect(bound.T.name).to.equal('string')
+      expect(bound.U.name).to.equal('number')
+    })
+
+    it('reports a missing argument before reading a later default or resolved type', () => {
+      const { declaration, symbol } = genericFixture()
+      const parameters = declaration.typeParameters
+      if (!parameters) throw new Error('Expected generic parameters')
+      Object.defineProperty(parameters[1], 'default', {
+        get: () => {
+          throw new Error('Unused later default read')
+        },
+      })
+      const reference = ts.factory.createTypeReferenceNode('Model')
+      const checker = {
+        getSymbolAtLocation: () => symbol,
+        getTypeFromTypeNode: () => {
+          throw new Error('Unused argument type read')
+        },
+      } as unknown as ts.TypeChecker
+      const contextResolver = new TypeResolver(reference, { typeChecker: checker } as MetadataGenerator)
+      expect(() => (contextResolver as any).typeArgumentsToContext(reference, reference.typeName)).to.throw(GenerateMetadataError, 'Could not find a value for type parameter T')
+    })
+
+    it('restores the owning context after both handled and propagated inheritance failures', () => {
+      const original: Context = { T: { name: 'Original', type: ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) } }
+      const checker = { getSymbolAtLocation: () => undefined } as unknown as ts.TypeChecker
+      const contextResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), { typeChecker: checker } as MetadataGenerator, undefined, original)
+      const inherited = ts.factory.createExpressionWithTypeArguments(ts.factory.createIdentifier('Base'), undefined)
+      let failure: Error = new GenerateMetadataError('Required inherited type unavailable')
+      ;(contextResolver as any).getReferenceType = function (node: ts.Node, addToRefTypeMap: boolean) {
+        expect(this).to.equal(contextResolver)
+        expect(node).to.equal(inherited)
+        expect(addToRefTypeMap).to.be.false
+        expect(this.context).to.deep.equal({})
+        throw failure
+      }
+      expect((contextResolver as any).getInheritedReferenceType(inherited)).to.be.undefined
+      expect((contextResolver as any).context).to.equal(original)
+      failure = new Error('Unexpected inherited failure')
+      expect(() => (contextResolver as any).getInheritedReferenceType(inherited)).to.throw(failure)
+      expect((contextResolver as any).context).to.equal(original)
+    })
+  })
+
   describe('direct helper coverage', () => {
     it('formats default strings with comments and escapes', () => {
       const trailingEscapedDefault = "'value\\"
@@ -501,8 +847,8 @@ describe('TypeResolver', () => {
         getName: () => 'AliasTypeOf',
       }
 
-      expect((ioTsResolver as any).getIoTsUtilityTypeFromSymbol(aliasSymbol, { getAliasedSymbol: () => resolvedSymbol })).to.equal('TypeOf')
-      expect((ioTsResolver as any).symbolComesFromModule(aliasSymbol, { getAliasedSymbol: () => resolvedSymbol }, 'io-ts')).to.equal(true)
+      expect(getIoTsUtilityTypeFromSymbol(aliasSymbol as unknown as ts.Symbol, { getAliasedSymbol: () => resolvedSymbol } as unknown as ts.TypeChecker)).to.equal('TypeOf')
+      expect(symbolComesFromModule(aliasSymbol as unknown as ts.Symbol, { getAliasedSymbol: () => resolvedSymbol } as unknown as ts.TypeChecker, 'io-ts')).to.be.true
     })
 
     it('handles io-ts decoded type fallbacks', () => {
