@@ -1,7 +1,6 @@
 import { parse as parseYAML } from 'yaml'
 import { Config, RoutesConfig, RuntimeSpecConfigSnapshot, SpecConfig, Tsoa } from '@tsoa-next/runtime'
-import * as ts from 'typescript'
-import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
+import type * as ts from 'typescript'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
 import { fsExists, fsReadFile, getOutputWriteMode } from './utils/fs'
@@ -199,11 +198,13 @@ const resolveConfig = async (config?: string | Config): Promise<ConfigWithContex
 }
 
 const formatCompilerOptionsErrors = (context: string, errors: readonly ts.Diagnostic[]) => {
+  const ts = require('typescript') as typeof import('typescript')
   const message = errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine)).join(ts.sys.newLine)
   throw new Error(`${context}: ${message}`)
 }
 
 const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, configBaseDir: string, context: string, validateDiagnostics = true): CompilerOptions => {
+  const ts = require('typescript') as typeof import('typescript')
   const parsed = ts.convertCompilerOptionsFromJson(compilerOptions, configBaseDir)
 
   if (validateDiagnostics && parsed.errors.length > 0) {
@@ -215,6 +216,7 @@ const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, co
 
 const resolveTsconfigPath = (config: Config, configBaseDir: string): string | undefined => {
   if (config.tsconfig === undefined) {
+    const ts = require('typescript') as typeof import('typescript')
     return ts.findConfigFile(configBaseDir, fileName => ts.sys.fileExists(fileName), 'tsconfig.json')
   }
 
@@ -228,6 +230,7 @@ const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): Com
     return {}
   }
 
+  const ts = require('typescript') as typeof import('typescript')
   const readResult = ts.readConfigFile(resolvedTsconfigPath, fileName => ts.sys.readFile(fileName))
   if (readResult.error) {
     formatCompilerOptionsErrors(`Failed to read tsconfig at '${resolvedTsconfigPath}'`, [readResult.error])
@@ -531,6 +534,7 @@ const prepareRoutesConfig = async (config: Config, configBaseDir: string, args: 
   const routesConfig = await normalizeRoutesConfig(config, false)
   applyBasePathArg(routesConfig, args)
 
+  const { MetadataGenerator } = require('./metadataGeneration/metadataGenerator') as typeof import('./metadataGeneration/metadataGenerator')
   const metadata = new MetadataGenerator(routesConfig.entryFile, compilerOptions, config.ignore, routesConfig.controllerPathGlobs, routesConfig.rootSecurity).Generate()
   const consumesSpecConfig = metadata.controllers.some(controller => controller.hasSpecPaths === true) || Boolean(routesConfig.middlewareTemplate) || routesConfig.routeGenerator !== undefined
   if (consumesSpecConfig) {
@@ -574,7 +578,10 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
   applySwaggerArgs(swaggerConfig, args)
   applyBasePathArg(routesConfig, args)
 
-  metadata ??= new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, swaggerConfig.rootSecurity, config.defaultNumberType, routesConfig.esm).Generate()
+  if (metadata === undefined || metadata === null) {
+    const { MetadataGenerator } = require('./metadataGeneration/metadataGenerator') as typeof import('./metadataGeneration/metadataGenerator')
+    metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, swaggerConfig.rootSecurity, config.defaultNumberType, routesConfig.esm).Generate()
+  }
 
   await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
   return metadata

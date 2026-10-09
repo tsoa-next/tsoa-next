@@ -1,6 +1,10 @@
 import { expect } from 'chai'
 import 'mocha'
 import Module = require('node:module')
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { Config, Tsoa, Swagger } from '@tsoa-next/runtime'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
 const withBlockedRequires = async <T>(blocked: (id: string) => boolean, run: () => T | Promise<T>): Promise<T> => {
@@ -206,7 +210,7 @@ describe('OpenAPI emitter loading', () => {
 
   it('imports the coordinator without loading an emitter', () => {
     return withBlockedRequires(
-      id => emitterName(id) !== undefined,
+      id => emitterName(id) !== undefined || id.endsWith('/metadataGeneration/metadataGenerator'),
       () => {
         const module = reloadCoordinator()
         expect(module.buildSpec).to.be.a('function')
@@ -231,7 +235,7 @@ describe('OpenAPI emitter loading', () => {
       return withBlockedRequires(
         id => {
           const emitter = emitterName(id)
-          return emitter !== undefined && !required.includes(emitter)
+          return id.endsWith('/metadataGeneration/metadataGenerator') || (emitter !== undefined && !required.includes(emitter))
         },
         () => {
           const { buildSpec } = reloadCoordinator()
@@ -252,4 +256,265 @@ describe('OpenAPI emitter loading', () => {
       )
     })
   }
+})
+
+describe('Generation metadata loading', () => {
+  const loadCoordinators = () => {
+    clearModule('@tsoa-next/cli/module/generate-spec')
+    clearModule('@tsoa-next/cli/module/generate-routes')
+    return {
+      spec: require('@tsoa-next/cli/module/generate-spec') as typeof import('@tsoa-next/cli/module/generate-spec'),
+      routes: require('@tsoa-next/cli/module/generate-routes') as typeof import('@tsoa-next/cli/module/generate-routes'),
+    }
+  }
+  const blocksMetadata = (id: string) => id.endsWith('/metadataGeneration/metadataGenerator')
+
+  it('imports both coordinators without loading compiler analysis', () => {
+    return withBlockedRequires(blocksMetadata, () => {
+      const { spec, routes } = loadCoordinators()
+      expect(spec.buildSpec).to.be.a('function')
+      expect(routes.generateRoutes).to.be.a('function')
+    })
+  })
+
+  it('uses supplied metadata by identity and observes later mutations without loading compiler analysis', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-supplied-metadata-'))
+    const selected: Tsoa.RefEnumType = { dataType: 'refEnum', refName: 'Selected', enums: ['before'], deprecated: false }
+    const metadata: Tsoa.Metadata = { controllers: [], referenceTypeMap: { Selected: selected } }
+    try {
+      await withBlockedRequires(blocksMetadata, async () => {
+        const { spec, routes } = loadCoordinators()
+        const config = getDefaultExtendedOptions(directory, 'missing-unused-controller.ts')
+        expect(await spec.generateSpec(config, undefined, undefined, metadata)).to.equal(metadata)
+        expect(JSON.parse(readFileSync(join(directory, 'swagger.json'), 'utf8')).definitions.Selected.enum).to.deep.equal(['before'])
+        selected.enums = ['after']
+        const updated = spec.buildSpec(config, undefined, undefined, metadata)
+        expect(updated).to.have.nested.property('definitions.Selected.enum').that.deep.equals(['after'])
+        expect(
+          await routes.generateRoutes({ entryFile: config.entryFile, routesDir: directory, bodyCoercion: true, noImplicitAdditionalProperties: 'ignore' }, undefined, undefined, metadata),
+        ).to.equal(metadata)
+        expect(readFileSync(join(directory, 'routes.ts'), 'utf8')).to.contain('"after"')
+      })
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('surfaces required analysis loading failures when each generation entry reaches missing metadata', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-required-metadata-'))
+    try {
+      await withBlockedRequires(blocksMetadata, async () => {
+        const { spec, routes } = loadCoordinators()
+        const config = getDefaultExtendedOptions(directory, 'missing-controller.ts')
+        expect(() => spec.buildSpec(config)).to.throw('unexpected CLI dependency load: ../metadataGeneration/metadataGenerator')
+        for (const generate of [
+          () => spec.generateSpec(config),
+          () => routes.generateRoutes({ entryFile: config.entryFile, routesDir: directory, bodyCoercion: true, noImplicitAdditionalProperties: 'ignore' }),
+        ]) {
+          let failure: unknown
+          try {
+            await generate()
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.equal('unexpected CLI dependency load: ../metadataGeneration/metadataGenerator')
+        }
+        expect(readdirSync(directory)).to.deep.equal([])
+      })
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+})
+
+describe('Selected spec serialization dependencies', () => {
+  const spec: Swagger.Spec2 = { info: { title: 'Example' }, swagger: '2.0', paths: {} }
+  const reloadSerializer = () => {
+    clearModule('@tsoa-next/cli/module/generate-spec')
+    return require('@tsoa-next/cli/module/generate-spec') as typeof import('@tsoa-next/cli/module/generate-spec')
+  }
+
+  it('serializes JSON with YAML unavailable and retries a required YAML load after the dependency becomes available', async () => {
+    let serializer: ReturnType<typeof reloadSerializer> | undefined
+    await withBlockedRequires(
+      id => id === 'yaml',
+      () => {
+        serializer = reloadSerializer()
+        expect(serializer.serializeSpec(spec)).to.equal(JSON.stringify(spec, null, '\t'))
+        expect(() => serializer!.serializeSpec(spec, true)).to.throw('unexpected CLI dependency load: yaml')
+      },
+    )
+    expect(serializer!.serializeSpec(spec, true)).to.equal('info:\n  title: Example\nswagger: "2.0"\npaths: {}\n')
+  })
+
+  it('finishes JSON normalization before loading YAML so original normalization failures take precedence', async () => {
+    let yamlLoads = 0
+    await withBlockedRequires(
+      id => {
+        if (id === 'yaml') {
+          yamlLoads++
+          return true
+        }
+        return false
+      },
+      () => {
+        const { serializeSpec } = reloadSerializer()
+        const failure = new Error('JSON serialization failed')
+        const throwing = {
+          ...spec,
+          toJSON() {
+            throw failure
+          },
+        }
+        expect(() => serializeSpec(throwing, true)).to.throw(failure)
+        const unparseable = { ...spec, toJSON: () => undefined }
+        expect(() => serializeSpec(unparseable, true)).to.throw(SyntaxError)
+        const jsonResult: unknown = serializeSpec(unparseable)
+        expect(jsonResult).to.be.undefined
+        expect(yamlLoads).to.equal(0)
+      },
+    )
+  })
+
+  it('writes JSON without YAML and writes the requested YAML only after a later successful retry', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-selected-yaml-'))
+    const metadata: Tsoa.Metadata = { controllers: [], referenceTypeMap: {} }
+    const config = getDefaultExtendedOptions(directory, 'unused-entry.ts')
+    let generator: ReturnType<typeof reloadSerializer> | undefined
+    try {
+      await withBlockedRequires(
+        id => id === 'yaml',
+        async () => {
+          generator = reloadSerializer()
+          expect(await generator.generateSpec(config, undefined, undefined, metadata)).to.equal(metadata)
+          const before = readFileSync(join(directory, 'swagger.json'), 'utf8')
+          let failure: unknown
+          try {
+            await generator.generateSpec({ ...config, yaml: true }, undefined, undefined, metadata)
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.equal('unexpected CLI dependency load: yaml')
+          expect(readdirSync(directory)).to.deep.equal(['swagger.json'])
+          expect(readFileSync(join(directory, 'swagger.json'), 'utf8')).to.equal(before)
+        },
+      )
+      expect(await generator!.generateSpec({ ...config, yaml: true }, undefined, undefined, metadata)).to.equal(metadata)
+      expect(readFileSync(join(directory, 'swagger.yaml'), 'utf8')).to.contain('swagger: "2.0"')
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+})
+
+describe('Selected API compiler dependencies', () => {
+  const reloadAPI = () => {
+    clearModule('@tsoa-next/cli/api')
+    return require('@tsoa-next/cli/api') as typeof import('@tsoa-next/cli/api')
+  }
+  const blocksMetadata = (id: string) => id.endsWith('/metadataGeneration/metadataGenerator')
+  const createConfig = (directory: string): Config => {
+    const entryFile = join(directory, 'entry.ts')
+    const tsconfig = join(directory, 'tsconfig.json')
+    writeFileSync(entryFile, 'export const entry = true\n')
+    writeFileSync(tsconfig, JSON.stringify({ compilerOptions: { strict: true }, files: [entryFile] }))
+    return { entryFile, tsconfig, spec: { outputDirectory: join(directory, 'spec') }, routes: { routesDir: join(directory, 'routes') } }
+  }
+
+  it('imports the direct API and resolves selected output configs without compiler analysis', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-api-lightweight-'))
+    try {
+      const config = createConfig(directory)
+      await withBlockedRequires(
+        id => id === 'typescript' || blocksMetadata(id),
+        async () => {
+          const api = reloadAPI()
+          expect(api.validateCompilerOptions()).to.deep.equal({})
+          expect(await api.validateSpecConfig(config)).to.have.property('entryFile', config.entryFile)
+          expect(await api.validateRoutesConfig(config)).to.have.property('entryFile', config.entryFile)
+          expect(readdirSync(directory).sort()).to.deep.equal(['entry.ts', 'tsconfig.json'])
+        },
+      )
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('requires compiler operations even with supplied metadata and recovers without loading metadata analysis', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-api-compiler-'))
+    try {
+      const config = createConfig(directory)
+      const metadata: Tsoa.Metadata = { controllers: [], referenceTypeMap: {} }
+      const api = await withBlockedRequires(
+        id => id === 'typescript' || blocksMetadata(id),
+        async () => {
+          const api = reloadAPI()
+          expect(() => api.validateCompilerOptions({ strict: true })).to.throw('unexpected CLI dependency load: typescript')
+          expect(() => api.validateCompilerOptions(config)).to.throw('unexpected CLI dependency load: typescript')
+          expect(() => api.validateCompilerOptions({ ...config, tsconfig: undefined }, directory)).to.throw('unexpected CLI dependency load: typescript')
+          let failure: unknown
+          try {
+            await api.generateSpecAndRoutes({ configuration: config }, metadata)
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.equal('unexpected CLI dependency load: typescript')
+          return api
+        },
+      )
+      await withBlockedRequires(blocksMetadata, async () => {
+        expect(api.validateCompilerOptions({ strict: true })).to.have.property('strict', true)
+        expect(api.validateCompilerOptions(config)).to.have.property('strict', true)
+        for (const [configuration, reason] of [
+          [{ ...config, compilerOptions: { target: 'not-a-target' } }, 'Invalid compilerOptions in tsoa-next config'],
+          [{ ...config, tsconfig: join(directory, 'missing.json') }, 'Failed to read tsconfig'],
+        ] as Array<[Config, string]>) {
+          let failure: unknown
+          try {
+            await api.generateSpecAndRoutes({ configuration }, metadata)
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.contain(reason)
+        }
+        expect(await api.generateSpecAndRoutes({ configuration: config }, metadata)).to.equal(metadata)
+        expect(readFileSync(join(directory, 'spec', 'swagger.json'), 'utf8')).to.contain('"swagger": "2.0"')
+        expect(readFileSync(join(directory, 'routes', 'routes.ts'), 'utf8')).to.contain('RegisterRoutes')
+      })
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('loads required metadata analysis at route preparation and combined generation and supports a later retry', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'tsoa-api-analysis-'))
+    try {
+      const config = createConfig(directory)
+      config.entryFile = join(__dirname, '../../fixtures/controllers/getController.ts')
+      const api = await withBlockedRequires(blocksMetadata, async () => {
+        const api = reloadAPI()
+        for (const generate of [() => api.generateRoutesFromArgs({ configuration: config }), () => api.generateSpecAndRoutes({ configuration: config })]) {
+          let failure: unknown
+          try {
+            await generate()
+          } catch (error) {
+            failure = error
+          }
+          expect(failure).to.be.instanceOf(Error)
+          expect((failure as Error).message).to.equal('unexpected CLI dependency load: ./metadataGeneration/metadataGenerator')
+        }
+        expect(readdirSync(directory).sort()).to.deep.equal(['entry.ts', 'tsconfig.json'])
+        return api
+      })
+      const metadata = await api.generateSpecAndRoutes({ configuration: config })
+      expect(metadata.controllers.map(controller => controller.name)).to.deep.equal(['GetTestController'])
+      expect(readFileSync(join(directory, 'spec', 'swagger.json'), 'utf8')).to.contain('"swagger": "2.0"')
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
 })
