@@ -537,4 +537,107 @@ describe('External validation runtime', () => {
     expect(fieldErrors['body.payload'].message).to.contain("Missing runtime schema metadata for external validator 'zod' on 'body.payload'")
     expect(fieldErrors['body.payload'].message).to.contain('Ensure the controller module is imported so decorators run')
   })
+
+  it('prefers prototype metadata over constructor metadata without executing the unused schema', () => {
+    const controller = { prototype: {} }
+    sourceValidate(
+      'zod',
+      z.string().transform(value => `prototype:${value}`),
+    )(controller.prototype, 'submit', 0)
+    sourceValidate('zod', {
+      safeParse() {
+        throw new Error('constructor schema must remain unused')
+      },
+    })(controller, 'submit', 0)
+    const service = new ValidationService({}, validationConfig)
+    const errors = {}
+    const property: TsoaRoute.PropertySchema = { dataType: 'string', validationStrategy: 'external', externalValidator: { kind: 'zod', strategy: 'external' } }
+
+    const result = service.ValidateParam(property, 'value', 'payload', errors, true, '', { controllerClass: controller, methodName: 'submit', parameterIndex: 0 })
+
+    expect(result).to.equal('prototype:value')
+    expect(errors).to.deep.equal({})
+  })
+
+  it('reports missing metadata and mismatched kinds before reading validation context or schema methods', () => {
+    const controller = {}
+    sourceValidate('zod', {
+      get safeParse() {
+        throw new Error('schema must remain unused')
+      },
+    })(controller, 'submit', 0)
+    const service = new ValidationService(
+      {},
+      {
+        ...validationConfig,
+        get validation(): runtimeSource.AdditionalProps['validation'] {
+          throw new Error('validation context must remain unused')
+        },
+      },
+    )
+    const errors: Record<string, { message: string; value?: unknown }> = {}
+    const rawValue = { invalid: true }
+    const property: TsoaRoute.PropertySchema = { dataType: 'string', validationStrategy: 'external', externalValidator: { kind: 'yup', strategy: 'external' } }
+
+    expect(service.ValidateParam(property, rawValue, 'missing', errors, true, 'body.')).to.be.undefined
+    expect(service.ValidateParam(property, rawValue, 'mismatch', errors, true, 'body.', { controllerClass: controller, methodName: 'submit', parameterIndex: 0 })).to.be.undefined
+    expect(errors['body.missing'].message).to.contain('Ensure the controller module is imported so decorators run')
+    expect(errors['body.mismatch'].message).to.equal("External validator kind mismatch for 'body.mismatch'. Route schema expects 'yup' but runtime metadata provided 'zod'.")
+    expect(errors['body.missing'].value).to.equal(rawValue)
+    expect(errors['body.mismatch'].value).to.equal(rawValue)
+  })
+
+  it('preserves earlier field errors and the first projected issue with the original raw value', () => {
+    const controller = {}
+    sourceValidate('zod', z.string())(controller, 'submit', 0)
+    const service = new ValidationService(
+      {},
+      {
+        ...validationConfig,
+        validation: {
+          errorFormatter: () => ({
+            source: 'zod',
+            summaryMessage: 'fallback summary',
+            issues: [
+              { source: 'zod', code: 'existing', path: 'existing', message: 'later existing' },
+              { source: 'zod', code: 'first', path: 'child.$0', message: 'first child' },
+              { source: 'zod', code: 'second', path: 'child.$0', message: 'second child' },
+              { source: 'zod', code: 'summary', path: '', message: '' },
+            ],
+          }),
+        },
+      },
+    )
+    const original = { message: 'earlier error', value: 'earlier value' }
+    const errors: Record<string, { message: string; value?: unknown }> = { 'body.payload.existing': original }
+    const value = { invalid: true }
+    const property: TsoaRoute.PropertySchema = { dataType: 'string', validationStrategy: 'external', externalValidator: { kind: 'zod', strategy: 'external' } }
+
+    expect(service.ValidateParam(property, value, 'payload', errors, true, 'body.', { controllerClass: controller, methodName: 'submit', parameterIndex: 0 })).to.be.undefined
+
+    expect(Object.keys(errors)).to.deep.equal(['body.payload.existing', 'body.payload.child.$0', 'body.payload'])
+    expect(errors['body.payload.existing']).to.equal(original)
+    expect(errors['body.payload.child.$0']).to.deep.equal({ message: 'first child', value })
+    expect(errors['body.payload.child.$0'].value).to.equal(value)
+    expect(errors['body.payload']).to.deep.equal({ message: 'fallback summary', value })
+  })
+
+  it('uses selected defaults and replaces the base error when the adapter reports no issues', () => {
+    const controller = {}
+    sourceValidate('zod', z.string())(controller, 'submit', 0)
+    const service = new ValidationService(
+      {},
+      {
+        ...validationConfig,
+        validation: { errorFormatter: () => ({ source: 'zod', summaryMessage: 'summary only', issues: [] }) },
+      },
+    )
+    const value = { invalid: true }
+    const property: TsoaRoute.PropertySchema = { dataType: 'string', default: value, validationStrategy: 'external', externalValidator: { kind: 'zod', strategy: 'external' } }
+    const errors: Record<string, { message: string; value?: unknown }> = { payload: { message: 'previous' } }
+
+    expect(service.ValidateParam(property, undefined, 'payload', errors, true, '', { controllerClass: controller, methodName: 'submit', parameterIndex: 0 })).to.be.undefined
+    expect(errors.payload).to.deep.equal({ message: 'summary only', value })
+    expect(errors.payload.value).to.equal(value)
+  })
 })

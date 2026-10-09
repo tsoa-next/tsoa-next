@@ -3,10 +3,9 @@ import { validateUnion, validateIntersection } from './combinedValidation'
 import { validateModel, validateNestedObjectLiteral, type ValidateNestedObjectLiteralOptions } from './objectValidation'
 import { validateArray, type ValidateArrayOptions } from './arrayValidation'
 import { validateInt, validateFloat, validateDate, validateDateTime, validateString, validateBool } from './primitiveValidation'
-import { getParameterExternalValidatorMetadata } from '../decorators/validate'
 import { Tsoa } from '../metadataGeneration/tsoa'
 import { AdditionalProps } from './additionalProps'
-import { validateExternalSchema } from './externalValidation'
+import { validateExternal, type ExternalValidationOwner } from './externalValidationCoordinator'
 import { TsoaRoute } from './tsoa-route'
 import ValidatorKey = Tsoa.ValidatorKey
 
@@ -245,76 +244,7 @@ export class ValidationService {
   }
 
   private validateExternal(name: string, rawValue: unknown, fieldErrors: FieldErrors, property: TsoaRoute.PropertySchema, parent: string, metadata?: ParameterValidationMetadata): unknown {
-    const value = rawValue === undefined && property.default !== undefined ? property.default : rawValue
-    const runtimeMetadata = this.getRuntimeExternalValidatorMetadata(metadata, property)
-    const fieldPath = parent + name
-
-    if (!runtimeMetadata) {
-      fieldErrors[fieldPath] = {
-        message: `Missing runtime schema metadata for external validator '${property.externalValidator?.kind || 'unknown'}' on '${fieldPath || '(anonymous parameter)'}'. Ensure the controller module is imported so decorators run, and ensure custom templates pass controllerClass, methodName, and parameterIndex into validation.`,
-        value,
-      }
-      return undefined
-    }
-
-    const declaredKind = property.externalValidator?.kind
-    const runtimeKind = runtimeMetadata.kind
-
-    if (declaredKind && declaredKind !== runtimeKind) {
-      fieldErrors[fieldPath] = {
-        message: `External validator kind mismatch for '${fieldPath}'. Route schema expects '${declaredKind}' but runtime metadata provided '${runtimeKind}'.`,
-        value,
-      }
-      return undefined
-    }
-
-    const kindToUse = declaredKind || runtimeKind
-    const result = validateExternalSchema(kindToUse, runtimeMetadata.schema, value, this.config.validation ?? {})
-    if (result.ok) {
-      return result.value
-    }
-
-    this.projectExternalFailureToFieldErrors(result.failure, fieldErrors, name, parent, value)
-    return undefined
-  }
-
-  private getRuntimeExternalValidatorMetadata(metadata: ParameterValidationMetadata | undefined, property: TsoaRoute.PropertySchema) {
-    if (!metadata?.controllerClass || metadata.parameterIndex === undefined || !metadata.methodName || !property.externalValidator) {
-      return undefined
-    }
-
-    const controllerTarget = metadata.controllerClass as object & { prototype?: object }
-    const candidateTargets = controllerTarget.prototype ? [controllerTarget.prototype, controllerTarget] : [controllerTarget]
-
-    for (const target of candidateTargets) {
-      const runtimeMetadata = getParameterExternalValidatorMetadata(target, metadata.methodName, metadata.parameterIndex)
-      if (runtimeMetadata) {
-        return runtimeMetadata
-      }
-    }
-
-    return undefined
-  }
-
-  private projectExternalFailureToFieldErrors(failure: Tsoa.ValidationFailure, fieldErrors: FieldErrors, name: string, parent: string, value: unknown) {
-    if (failure.issues.length === 0) {
-      fieldErrors[parent + name] = {
-        message: failure.summaryMessage,
-        value,
-      }
-      return
-    }
-
-    for (const issue of failure.issues) {
-      const baseFieldPath = parent + name
-      const fieldPath = issue.path ? this.buildIssueFieldPath(baseFieldPath, issue.path) : baseFieldPath
-      if (!fieldErrors[fieldPath]) {
-        fieldErrors[fieldPath] = {
-          message: issue.message || failure.summaryMessage,
-          value,
-        }
-      }
-    }
+    return validateExternal(this as unknown as ExternalValidationOwner, name, rawValue, fieldErrors, property, parent, metadata)
   }
 
   public hasCorrectJsType(value: unknown, type: 'object' | 'boolean' | 'number' | 'string', isBodyParam: boolean): boolean {
@@ -415,10 +345,6 @@ export class ValidationService {
     }
 
     return args[0]
-  }
-
-  private buildIssueFieldPath(baseFieldPath: string, issuePath: string): string {
-    return baseFieldPath ? `${baseFieldPath}.${issuePath}` : issuePath
   }
 
   public validateBuffer(name: string, value: unknown, fieldErrors: FieldErrors, parent = ''): Buffer | undefined {
