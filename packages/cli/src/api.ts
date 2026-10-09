@@ -1,13 +1,12 @@
 import { parse as parseYAML } from 'yaml'
 import { Config, RoutesConfig, RuntimeSpecConfigSnapshot, SpecConfig, Tsoa } from '@tsoa-next/runtime'
-import type * as ts from 'typescript'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
 import { fsExists, fsReadFile, getOutputWriteMode } from './utils/fs'
 import { AbstractRouteGenerator } from './routeGeneration/routeGenerator'
 import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { Options as MulterOptions } from 'multer'
-import type { CompilerOptions } from 'typescript'
+import type { CompilerOptions, Diagnostic } from 'typescript'
 
 const workingDir: string = process.cwd()
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
@@ -197,7 +196,7 @@ const resolveConfig = async (config?: string | Config): Promise<ConfigWithContex
   return getConfig(config)
 }
 
-const formatCompilerOptionsErrors = (context: string, errors: readonly ts.Diagnostic[]) => {
+const formatCompilerOptionsErrors = (context: string, errors: readonly Diagnostic[]) => {
   const ts = require('typescript') as typeof import('typescript')
   const message = errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine)).join(ts.sys.newLine)
   throw new Error(`${context}: ${message}`)
