@@ -8,6 +8,7 @@ import type { Tsoa } from '@tsoa-next/runtime'
 import { appendInheritedProperties } from '../../../packages/cli/src/metadataGeneration/inherited-properties'
 import { resolveToJSONReturnType, withDefinedReferenceMetadata } from '../../../packages/cli/src/metadataGeneration/model-reference'
 import { isUsableDeclaration, selectModelDeclarations } from '../../../packages/cli/src/metadataGeneration/declaration-selection'
+import { beginReferenceType, createCircularReference, completeReferenceType, getCachedReferenceType, isReferenceTypeInProgress } from '../../../packages/cli/src/metadataGeneration/reference-cache'
 import { resolveContextualTypeArgument } from '../../../packages/cli/src/metadataGeneration/generic-context'
 import { getIoTsUtilityType, getIoTsUtilityTypeFromSymbol, symbolComesFromModule } from '../../../packages/cli/src/metadataGeneration/io-ts-recognition'
 import { getDeclarationBasedRefTypeName } from '../../../packages/cli/src/metadataGeneration/reference-name'
@@ -1516,6 +1517,66 @@ describe('TypeResolver', () => {
       ;(resolverWithUnresolvedFallback as any).getReferenceTypeFromTypeChecker = () => undefined
 
       expect(() => (resolverWithUnresolvedFallback as any).getReferenceType(originalReference, false)).to.throw(GenerateMetadataError, "Could not find declarations for type 'UnresolvedThing<string>'")
+    })
+
+    it('preserves circular fixup order and writes completion into the current cache after callback reset', () => {
+      const owner = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as MetadataGenerator)
+      beginReferenceType(owner, 'Shared')
+      const first = createCircularReference(owner, 'Shared', 'Shared')
+      const second = createCircularReference(owner, 'Shared', 'Shared')
+      const callbacks: string[] = []
+      Object.defineProperty(first, 'description', {
+        configurable: true,
+        set() {
+          callbacks.push('first')
+          TypeResolver.clearCache()
+        },
+      })
+      Object.defineProperty(second, 'description', {
+        configurable: true,
+        set() {
+          callbacks.push('second')
+        },
+      })
+      const completed: Tsoa.RefObjectType = { dataType: 'refObject', refName: 'Shared', properties: [], deprecated: false, description: 'resolved' }
+
+      completeReferenceType(owner, 'Shared', completed)
+      expect(callbacks).to.deep.equal(['first', 'second'])
+      expect(first).to.have.property('properties', completed.properties)
+      expect(second).to.have.property('properties', completed.properties)
+      expect(getCachedReferenceType(owner, 'Shared')).to.equal(completed)
+      expect(isReferenceTypeInProgress(owner, 'Shared')).to.be.false
+      TypeResolver.clearCache()
+      expect(getCachedReferenceType(owner, 'Shared')).to.be.undefined
+    })
+
+    it('cleans up failed circular fixups so the same resolver can retry with the original reference identity', () => {
+      const node = ts.factory.createTypeReferenceNode('Recoverable', undefined)
+      const current = { AddReferenceType: () => undefined, CheckExpressionUnicity: () => undefined, typeChecker: {} } as unknown as MetadataGenerator
+      const recoveringResolver = new TypeResolver(node, current)
+      const failure = new Error('Required circular fixup failed')
+      const completed: Tsoa.RefObjectType = { dataType: 'refObject', refName: 'Recoverable', properties: [], deprecated: false, description: 'resolved' }
+      let firstAttempt = true
+      ;(recoveringResolver as any).calcTypeReferenceTypeName = () => [node.typeName, 'Recoverable']
+      ;(recoveringResolver as any).typeArgumentsToContext = () => ({})
+      ;(recoveringResolver as any).getModelTypeDeclarations = () => []
+      ;(recoveringResolver as any).getReferenceTypeFromTypeChecker = () => {
+        if (firstAttempt) {
+          firstAttempt = false
+          const circular = createCircularReference(recoveringResolver, 'Recoverable', 'Recoverable')
+          Object.defineProperty(circular, 'description', {
+            set() {
+              throw failure
+            },
+          })
+        }
+        return completed
+      }
+      expect(() => (recoveringResolver as any).getReferenceType(node, false)).to.throw(failure)
+      expect(isReferenceTypeInProgress(recoveringResolver, 'Recoverable')).to.be.false
+      expect(getCachedReferenceType(recoveringResolver, 'Recoverable')).to.be.undefined
+      expect((recoveringResolver as any).getReferenceType(node, false)).to.equal(completed)
+      expect((recoveringResolver as any).getReferenceType(node, false)).to.equal(completed)
     })
 
     it('clears in-progress markers after failed resolution so later lookups do not return circular placeholders', () => {

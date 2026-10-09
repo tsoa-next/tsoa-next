@@ -20,19 +20,21 @@ import { getInitializerValue } from './initializer-value'
 import { getDefaultValue } from './default-value'
 import { resolveArrayTypeNode, resolveRestTypeNode, resolveUnionTypeNode, resolveTupleTypeNode, resolveLiteralTypeNode, resolveIntersectionTypes, getLiteralValue } from './structural-type'
 import { MetadataGenerator } from './metadataGenerator'
+import {
+  clearReferenceTypeCaches,
+  getCachedReferenceType,
+  isReferenceTypeInProgress,
+  beginReferenceType,
+  discardInProgressReferenceType,
+  completeReferenceType,
+  createCircularReference,
+} from './reference-cache'
 
 import { PrimitiveTransformer } from './transformer/primitiveTransformer'
 import { DateTransformer } from './transformer/dateTransformer'
 import { EnumTransformer } from './transformer/enumTransformer'
 import { PropertyTransformer } from './transformer/propertyTransformer'
 import { ReferenceTransformer } from './transformer/referenceTransformer'
-
-type ReferenceTypeCache = {
-  referenceTypes: Tsoa.ReferenceTypeMap
-  inProgressTypes: Record<string, Array<(realType: Tsoa.ReferenceType) => void>>
-}
-
-let referenceTypeCaches = new WeakMap<MetadataGenerator, ReferenceTypeCache>()
 
 type UsableDeclaration = ts.InterfaceDeclaration | ts.ClassDeclaration | ts.PropertySignature | ts.TypeAliasDeclaration | ts.EnumMember
 export interface Context {
@@ -54,16 +56,7 @@ export class TypeResolver {
 
   /** Explicitly resets reference caches; normal generation owns an independent cache. */
   public static clearCache() {
-    referenceTypeCaches = new WeakMap<MetadataGenerator, ReferenceTypeCache>()
-  }
-
-  private get referenceTypeCache(): ReferenceTypeCache {
-    let cache = referenceTypeCaches.get(this.current)
-    if (!cache) {
-      cache = { referenceTypes: {}, inProgressTypes: {} }
-      referenceTypeCaches.set(this.current, cache)
-    }
-    return cache
+    clearReferenceTypeCaches()
   }
 
   public resolve(): Tsoa.Type {
@@ -707,16 +700,16 @@ export class TypeResolver {
 
   private resolveReferenceType(node: ts.TypeReferenceType, type: ts.EntityName, name: string, refTypeName: string): Tsoa.ReferenceType {
     try {
-      const existingType = this.referenceTypeCache.referenceTypes[name]
+      const existingType = getCachedReferenceType(this, name)
       if (existingType) {
         return existingType
       }
 
-      if (this.referenceTypeCache.inProgressTypes[name]) {
+      if (isReferenceTypeInProgress(this, name)) {
         return this.createCircularDependencyResolver(name, refTypeName)
       }
 
-      this.referenceTypeCache.inProgressTypes[name] = []
+      beginReferenceType(this, name)
 
       const declarations = this.getModelTypeDeclarations(type)
       if (!declarations.length) {
@@ -727,7 +720,7 @@ export class TypeResolver {
       this.addToLocalReferenceTypeCache(name, referenceType)
       return referenceType
     } catch (error) {
-      delete this.referenceTypeCache.inProgressTypes[name]
+      discardInProgressReferenceType(this, name)
       throw error
     }
   }
@@ -756,14 +749,7 @@ export class TypeResolver {
   }
 
   private addToLocalReferenceTypeCache(name: string, refType: Tsoa.ReferenceType) {
-    if (this.referenceTypeCache.inProgressTypes[name]) {
-      for (const fn of this.referenceTypeCache.inProgressTypes[name]) {
-        fn(refType)
-      }
-    }
-    this.referenceTypeCache.referenceTypes[name] = refType
-
-    delete this.referenceTypeCache.inProgressTypes[name]
+    completeReferenceType(this, name, refType)
   }
 
   private getModelReference(modelType: ts.InterfaceDeclaration | ts.ClassDeclaration, refTypeName: string) {
@@ -816,15 +802,7 @@ export class TypeResolver {
   }
 
   private createCircularDependencyResolver(refName: string, refTypeName: string) {
-    const referenceType = {
-      dataType: 'refObject',
-      refName: refTypeName,
-    } as Tsoa.ReferenceType
-
-    this.referenceTypeCache.inProgressTypes[refName].push(realReferenceType => {
-      Object.assign(referenceType, realReferenceType)
-    })
-    return referenceType
+    return createCircularReference(this, refName, refTypeName)
   }
 
   private getModelTypeDeclarations(type: ts.EntityName): UsableDeclarationWithoutPropertySignature[] {
