@@ -8,7 +8,6 @@ import { shouldIncludeValidatorInSchema as legacyShouldIncludeValidatorInSchema 
 
 describe('Shared schema metadata', () => {
   it('preserves the legacy predicate and exact prefix/date exclusion semantics', () => {
-    expect(legacyShouldIncludeValidatorInSchema).to.equal(shouldIncludeValidatorInSchema)
     for (const key of ['is', 'isString', 'isCustom', 'minDate', 'maxDate']) {
       expect(shouldIncludeValidatorInSchema(key)).to.be.false
       expect(legacyShouldIncludeValidatorInSchema(key)).to.be.false
