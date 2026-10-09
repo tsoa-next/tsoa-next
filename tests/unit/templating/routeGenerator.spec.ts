@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import 'mocha'
-import { Tsoa } from '@tsoa-next/runtime'
+import { Tsoa, TsoaRoute } from '@tsoa-next/runtime'
 import { generateRoutes, getRouteGeneratorImportAttempts } from '@tsoa-next/cli/module/generate-routes'
 import { checkRenderedTemplateSyntax } from '../../../packages/cli/src/routeGeneration/templateCheck'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
@@ -24,6 +24,119 @@ function withTempWorkingDirectory<T>(prefix: string, run: (tempDir: string) => T
 
 describe('RouteGenerator', () => {
   describe('.buildModels', () => {
+    it('preserves recursive hook receivers, traversal order and live metadata on a reused generator', () => {
+      const validators = { minLength: { value: 1 } }
+      const child: Tsoa.Property = { name: 'child', type: { dataType: 'enum', enums: ['a'] }, default: null, required: false, validators: {}, deprecated: false }
+      const first: Tsoa.Property = {
+        name: 'first',
+        type: {
+          dataType: 'union',
+          types: [
+            { dataType: 'array', elementType: { dataType: 'string' } },
+            { dataType: 'nestedObjectLiteral', properties: [child] },
+          ],
+        },
+        default: 0,
+        required: true,
+        validators,
+        deprecated: false,
+      }
+      const alias: Tsoa.RefAliasType = {
+        dataType: 'refAlias',
+        refName: 'Alias',
+        type: { dataType: 'array', elementType: { dataType: 'refObject', refName: 'First', properties: [], deprecated: false } },
+        default: false,
+        validators,
+        deprecated: false,
+      }
+      const metadata: Tsoa.Metadata = {
+        controllers: [],
+        referenceTypeMap: {
+          First: { dataType: 'refObject', refName: 'First', properties: [first], deprecated: false },
+          Second: { dataType: 'refObject', refName: 'Second', properties: [], deprecated: false },
+          Alias: alias,
+        },
+      }
+      const options = { bodyCoercion: true, entryFile: 'entry.ts', routesDir: '.', noImplicitAdditionalProperties: 'ignore' as 'ignore' | 'throw-on-extras' }
+      const calls: string[] = []
+      const receivers: unknown[] = []
+      class HookGenerator extends DefaultRouteGenerator {
+        protected override buildPropertySchema(source: Tsoa.Property): TsoaRoute.PropertySchema {
+          receivers.push(this)
+          calls.push(source.name)
+          if (source === first) {
+            metadata.referenceTypeMap.Second = { dataType: 'refEnum', refName: 'Second', enums: ['changed'], deprecated: false }
+            options.noImplicitAdditionalProperties = 'throw-on-extras'
+          }
+          return super.buildPropertySchema(source)
+        }
+        protected override buildProperty(type: Tsoa.Type): TsoaRoute.PropertySchema {
+          receivers.push(this)
+          calls.push(type.dataType)
+          return super.buildProperty(type)
+        }
+      }
+      const generator = new HookGenerator(metadata, options)
+      const models = generator.buildModels()
+      expect(Object.keys(models)).to.deep.equal(['First', 'Second', 'Alias'])
+      expect(calls).to.deep.equal(['first', 'union', 'array', 'string', 'nestedObjectLiteral', 'child', 'enum', 'array'])
+      expect(receivers.every(receiver => receiver === generator)).to.be.true
+      expect(models.First).to.deep.equal({
+        dataType: 'refObject',
+        properties: {
+          first: {
+            dataType: 'union',
+            subSchemas: [
+              { dataType: 'array', array: { dataType: 'string' } },
+              { dataType: 'nestedObjectLiteral', nestedProperties: { child: { dataType: 'enum', enums: ['a'], default: null, required: undefined } }, additionalProperties: undefined },
+            ],
+            default: 0,
+            required: true,
+            validators,
+          },
+        },
+        additionalProperties: false,
+      })
+      expect(models.Second).to.deep.equal({ dataType: 'refEnum', enums: ['changed'] })
+      expect(models.Alias).to.deep.equal({ dataType: 'refAlias', type: { dataType: 'array', array: { dataType: 'refObject', ref: 'First' }, validators, default: false } })
+      alias.default = 'updated'
+      expect(generator.buildModels().Alias).to.have.nested.property('type.default', 'updated')
+    })
+
+    it('stops at a reached schema failure before reading later children or models', () => {
+      const laterProperty: Tsoa.Property = { name: 'later', type: { dataType: 'string' }, required: false, validators: {}, deprecated: false }
+      Object.defineProperty(laterProperty, 'type', {
+        get() {
+          throw new Error('Unused later child')
+        },
+      })
+      const metadata: Tsoa.Metadata = {
+        controllers: [],
+        referenceTypeMap: {
+          First: {
+            dataType: 'refObject',
+            refName: 'First',
+            properties: [{ name: 'bad', type: { dataType: 'string' }, required: true, validators: {}, deprecated: false }, laterProperty],
+            deprecated: false,
+          },
+        },
+      }
+      Object.defineProperty(metadata.referenceTypeMap, 'Later', {
+        enumerable: true,
+        get() {
+          throw new Error('Unused later model')
+        },
+      })
+      const failure = new Error('Required schema construction failed')
+      class FailingGenerator extends DefaultRouteGenerator {
+        protected override buildProperty(): TsoaRoute.PropertySchema {
+          throw failure
+        }
+      }
+      const generator = new FailingGenerator(metadata, { bodyCoercion: true, entryFile: 'entry.ts', routesDir: '.', noImplicitAdditionalProperties: 'ignore' })
+      expect(() => generator.buildModels()).to.throw(failure)
+    })
+
     it('should produce models where additionalProperties are not allowed unless explicitly stated', () => {
       // Arrange
       const stringType: Tsoa.Type = {
@@ -95,6 +208,143 @@ describe('RouteGenerator', () => {
     const outputPath = String.raw`C:\application\routes\routes.ts`
     expect(() => checkRenderedTemplateSyntax('export const valid = true;', 'custom.hbs', outputPath)).to.not.throw()
     expect(() => checkRenderedTemplateSyntax('export const invalid = ;', 'custom.hbs', outputPath)).to.throw(`Generated output ${outputPath}:1:`)
+  })
+
+  describe('context preparation', () => {
+    const validators = { minLength: { value: 1 } }
+    const query: Tsoa.Parameter = { parameterName: 'query', name: 'query', parameterIndex: 3, in: 'query', type: { dataType: 'string' }, default: 0, required: true, validators, deprecated: false }
+    const upload: Tsoa.Parameter = {
+      parameterName: 'uploads',
+      name: 'uploads',
+      parameterIndex: 1,
+      in: 'formData',
+      type: { dataType: 'array', elementType: { dataType: 'file' } },
+      required: false,
+      validators: {},
+      deprecated: false,
+    }
+    const method: Tsoa.Method = {
+      name: 'getItems',
+      method: 'get',
+      path: 'items/{id}',
+      parameters: [query, upload],
+      type: { dataType: 'void' },
+      responses: [],
+      security: [{ apiKey: [] }],
+      successStatus: 202,
+      extensions: [],
+      isHidden: false,
+    }
+    const metadata: Tsoa.Metadata = { controllers: [{ name: 'Controller', path: 'Controller', location: 'controller.ts', methods: [method] }], referenceTypeMap: {} }
+
+    it('preserves context hook dispatch, parameter precedence, paths, uploads and security', () => {
+      const calls: string[] = []
+      const receivers: unknown[] = []
+      class ContextGenerator extends DefaultRouteGenerator {
+        public context() {
+          return this.buildContext()
+        }
+        protected override getRelativeImportPath(file: string) {
+          receivers.push(this)
+          calls.push(`import:${file}`)
+          return `hook:${file}`
+        }
+        protected override pathTransformer(path: string) {
+          receivers.push(this)
+          calls.push(`path:${path}`)
+          return super.pathTransformer(path)
+        }
+        protected override buildEmbeddedSpecGeneratorArtifacts(selected: boolean) {
+          receivers.push(this)
+          calls.push(`spec:${selected}`)
+          return super.buildEmbeddedSpecGeneratorArtifacts(selected)
+        }
+        protected override buildParameterSchema(parameter: Tsoa.Parameter) {
+          receivers.push(this)
+          calls.push(`parameter:${parameter.parameterName}`)
+          return super.buildParameterSchema(parameter)
+        }
+        protected override buildProperty(type: Tsoa.Type) {
+          receivers.push(this)
+          calls.push(`property:${type.dataType}`)
+          return type.dataType === 'string' ? { dataType: 'string' as const, default: 'hook' } : super.buildProperty(type)
+        }
+        public override buildModels() {
+          receivers.push(this)
+          calls.push('models')
+          return super.buildModels()
+        }
+      }
+      const generator = new ContextGenerator(metadata, {
+        bodyCoercion: true,
+        entryFile: 'entry.ts',
+        routesDir: '.',
+        basePath: '/api',
+        authenticationModule: 'auth.ts',
+        iocModule: 'ioc.ts',
+        noImplicitAdditionalProperties: 'ignore',
+      })
+      const context = generator.context()
+      expect(calls).to.deep.equal([
+        'import:auth.ts',
+        'import:ioc.ts',
+        'spec:false',
+        'path:/Controller',
+        'parameter:query',
+        'property:string',
+        'parameter:uploads',
+        'property:array',
+        'property:file',
+        'path:/items/{id}',
+        'import:controller.ts',
+        'path:/Controller',
+        'path:/items/{id}',
+        'models',
+      ])
+      expect(receivers.every(receiver => receiver === generator)).to.be.true
+      const action = context.controllers[0].actions[0]
+      expect(Object.keys(action.parameters)).to.deep.equal(['query', 'uploads'])
+      expect(action.parameters.query).to.include({ default: 'hook', parameterIndex: 3, required: true, dataType: 'string' })
+      expect(action.parameters.query.validators).to.equal(validators)
+      expect(action.parameters.uploads.parameterIndex).to.equal(1)
+      expect(action.fullPath).to.equal('/api/Controller/items/:id')
+      expect(action.security).to.equal(method.security)
+      expect(action.successStatus).to.equal(202)
+      expect(action.uploadFileName).to.deep.equal([{ name: 'uploads', maxCount: undefined, multiple: true }])
+      expect(context).to.include({ authenticationModule: 'hook:auth.ts', iocModule: 'hook:ioc.ts', useFileUploads: true, useSecurity: true, useSpecPaths: false })
+      expect(context.existingGetPaths).to.deep.equal(['/api/Controller/items/:id'])
+    })
+
+    it('reports parameter failures before later parameters, method paths and model preparation', () => {
+      const later = { ...upload }
+      Object.defineProperty(later, 'type', {
+        get() {
+          throw new Error('Unused later parameter type')
+        },
+      })
+      const failure = new Error('Required parameter preparation failed')
+      const calls: string[] = []
+      class FailingContextGenerator extends DefaultRouteGenerator {
+        public context() {
+          return this.buildContext()
+        }
+        protected override buildParameterSchema(): TsoaRoute.ParameterSchema {
+          calls.push('parameter')
+          throw failure
+        }
+        protected override pathTransformer(path: string) {
+          calls.push(`path:${path}`)
+          return super.pathTransformer(path)
+        }
+        public override buildModels(): TsoaRoute.Models {
+          throw new Error('Unused models')
+        }
+      }
+      const failingMetadata: Tsoa.Metadata = { ...metadata, controllers: [{ ...metadata.controllers[0], methods: [{ ...method, parameters: [query, later] }] }] }
+      const generator = new FailingContextGenerator(failingMetadata, { bodyCoercion: true, entryFile: 'entry.ts', routesDir: '.', noImplicitAdditionalProperties: 'ignore' })
+      expect(() => generator.context()).to.throw(failure)
+      expect(calls).to.deep.equal(['path:/Controller', 'parameter'])
+    })
   })
 
   describe('.buildContent', () => {
