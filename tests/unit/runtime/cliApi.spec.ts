@@ -122,6 +122,27 @@ describe('CLI API', () => {
     temporaryDirectories.clear()
   })
 
+  it('preserves public route validation snapshots and required spec validation', async () => {
+    const fixture = createYamlFixture()
+    temporaryDirectories.add(fixture.rootDir)
+    const api = loadAPI()
+    const config = getDefaultOptions(fixture.specOutputDirectory, fixture.entryFile)
+    config.routes.routesDir = fixture.routesDir
+    config.spec.name = 'Public validator specification'
+    const routes = await api.validateRoutesConfig(config)
+    expect(routes.runtimeSpecConfig?.spec.name).to.equal('Public validator specification')
+
+    config.spec.outputDirectory = ''
+    let error: unknown
+    try {
+      await api.validateRoutesConfig(config)
+    } catch (caught) {
+      error = caught
+    }
+    expect(error).to.be.instanceOf(Error)
+    expect((error as Error).message).to.contain('Missing outputDirectory')
+  })
+
   it('loads YAML config files for programmatic spec generation', async () => {
     const fixture = createYamlFixture()
     temporaryDirectories.add(fixture.rootDir)
@@ -216,7 +237,7 @@ describe('CLI API', () => {
     expect(routesConfig.basePath).to.equal('/routes')
     expect(compilerOptions).to.deep.equal({})
     expect(ignore).to.equal(undefined)
-    expect(metadata).to.equal(undefined)
+    expect(metadata).to.deep.equal({ controllers: [], referenceTypeMap: {} })
   })
 
   it('generates routes from route-only config objects without requiring spec metadata', async () => {

@@ -716,3 +716,269 @@ describe('Template services', () => {
     })
   })
 })
+
+describe('Request body interpretation', () => {
+  class InspectableService extends ExpressTemplateService {
+    public hasBody(headers: Record<string, unknown>) {
+      return this.requestHasBody(headers)
+    }
+
+    public body(body: unknown, headers: Record<string, unknown>) {
+      return this.normalizeRequestBody(body, headers)
+    }
+
+    public property(body: unknown, headers: Record<string, unknown>, name: string) {
+      return this.getBodyProperty(body, headers, name)
+    }
+  }
+
+  it('preserves content-length coercion and skips unused array elements and transfer encoding', () => {
+    const service = new InspectableService({}, config)
+    for (const [length, expected] of [
+      [undefined, false],
+      [true, false],
+      [{ valueOf: () => 1 }, false],
+      ['', false],
+      [' 2 ', true],
+      ['invalid', false],
+      [0, false],
+      [-1, false],
+      [0.5, true],
+      [['invalid', 0], false],
+      [[0, '1'], true],
+    ] as Array<[unknown, boolean]>) {
+      expect(service.hasBody({ 'content-length': length })).to.equal(expected)
+    }
+    const body = { value: 'present' }
+    const headers = {
+      'content-length': [
+        1,
+        {
+          valueOf() {
+            throw new Error('unused length must not be converted')
+          },
+        },
+      ],
+      get 'transfer-encoding'() {
+        throw new Error('unused encoding must not be read')
+      },
+    }
+    expect(service.body(body, headers)).to.equal(body)
+    expect(service.body(body, { 'content-length': 0, 'transfer-encoding': '' })).to.equal(body)
+    expect(service.body(body, { 'transfer-encoding': null })).to.equal(body)
+    expect(service.body(body, { 'content-length': 0 })).to.be.undefined
+  })
+
+  it('retains protected hook receivers and reads only own property descriptors after the record guard', () => {
+    const calls: string[] = []
+    const receivers: object[] = []
+    class HookService extends InspectableService {
+      protected normalizeRequestBody(body: unknown, headers: Record<string, unknown>) {
+        calls.push('normalize')
+        receivers.push(this)
+        return super.normalizeRequestBody(body, headers)
+      }
+      protected requestHasBody(headers: Record<string, unknown>) {
+        calls.push('length')
+        receivers.push(this)
+        return super.requestHasBody(headers)
+      }
+      protected requestUsesTransferEncoding(headers: Record<string, unknown>) {
+        calls.push('encoding')
+        receivers.push(this)
+        return super.requestUsesTransferEncoding(headers)
+      }
+      protected isRecord(value: unknown): value is Record<string, unknown> {
+        calls.push('record')
+        receivers.push(this)
+        return super.isRecord(value)
+      }
+    }
+    const service = new HookService({}, config)
+    const target = Object.create({
+      get inherited() {
+        throw new Error('inherited value must not be read')
+      },
+    }) as Record<string, unknown>
+    Object.defineProperty(target, 'accessor', {
+      get() {
+        throw new Error('accessor must not execute')
+      },
+    })
+    Object.defineProperty(target, 'value', { value: 42 })
+    const body = new Proxy(target, {
+      getOwnPropertyDescriptor(object, key) {
+        calls.push(`descriptor:${String(key)}`)
+        return Object.getOwnPropertyDescriptor(object, key)
+      },
+    })
+    expect(service.property(body, { 'content-length': '1' }, 'value')).to.equal(42)
+    expect(calls).to.deep.equal(['normalize', 'length', 'record', 'descriptor:value'])
+    expect(receivers.every(receiver => receiver === service)).to.be.true
+    expect(service.property(body, { 'content-length': 1 }, 'accessor')).to.be.undefined
+    expect(service.property(body, { 'content-length': 1 }, 'inherited')).to.be.undefined
+    calls.length = 0
+    expect(service.property(body, {}, 'value')).to.be.undefined
+    expect(calls).to.deep.equal(['normalize', 'length', 'encoding', 'record'])
+    const array = new Proxy([], {
+      getOwnPropertyDescriptor() {
+        throw new Error('array must not be inspected as a record')
+      },
+    })
+    expect(service.property(array, { 'content-length': 1 }, 'value')).to.be.undefined
+  })
+
+  it('reports content-length conversion failures before reading encoding or body descriptors', () => {
+    const service = new InspectableService({}, config)
+    const failure = new Error('invalid content-length conversion')
+    const headers = {
+      'content-length': [
+        {
+          valueOf() {
+            throw failure
+          },
+        },
+      ],
+      get 'transfer-encoding'() {
+        throw new Error('encoding must remain unread')
+      },
+    }
+    const body = new Proxy(
+      {},
+      {
+        getOwnPropertyDescriptor() {
+          throw new Error('body must remain uninspected')
+        },
+      },
+    )
+    expect(() => service.property(body, headers, 'value')).to.throw(failure)
+  })
+
+  it('uses overridden normalization and record checks before reading the selected descriptor', () => {
+    const selected = { value: 'selected' }
+    class SelectedService extends InspectableService {
+      protected normalizeRequestBody() {
+        return selected
+      }
+      protected isRecord(value: unknown): value is Record<string, unknown> {
+        expect(value).to.equal(selected)
+        return false
+      }
+    }
+    const service = new SelectedService({}, config)
+    const unreadHeaders = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('headers must remain unread')
+        },
+      },
+    )
+    expect(service.property(undefined, unreadHeaders, 'value')).to.be.undefined
+  })
+})
+
+describe('Controller action invocation', () => {
+  class InvokingService extends ExpressTemplateService {
+    public invoke(methodName: string, controller: object, args: unknown[]) {
+      return this.buildPromise(methodName, controller, args)
+    }
+  }
+
+  it('dispatches inherited callable methods without evaluating shadowing accessors or instance properties', async () => {
+    const service = new InvokingService({}, config)
+    const first = { first: true }
+    const second = { second: true }
+    const calls: Array<{ receiver: object; args: unknown[] }> = []
+    class Parent {
+      public submit(...args: unknown[]) {
+        calls.push({ receiver: this, args })
+        return args[1]
+      }
+    }
+    class Child extends Parent {}
+    Object.defineProperty(Child.prototype, 'submit', {
+      get() {
+        throw new Error('prototype getter must not execute')
+      },
+    })
+    const controller = new Child()
+    Object.defineProperty(controller, 'submit', {
+      get() {
+        throw new Error('instance getter must not execute')
+      },
+    })
+
+    expect(await service.invoke('submit', controller, [first, second])).to.equal(second)
+    expect(calls).to.have.lengthOf(1)
+    expect(calls[0].receiver).to.equal(controller)
+    expect(calls[0].args).to.deep.equal([first, second])
+    expect(calls[0].args[0]).to.equal(first)
+    expect(calls[0].args[1]).to.equal(second)
+  })
+
+  it('keeps missing and non-callable diagnostics and stops before Object.prototype actions', () => {
+    const service = new InvokingService({}, config)
+    class ControllerWithValue {}
+    Object.defineProperty(ControllerWithValue.prototype, 'submit', { value: 42 })
+    const controller = new ControllerWithValue()
+
+    expect(() => service.invoke('submit', controller, [])).to.throw(TypeError, "Controller method 'submit' is not callable")
+    expect(() => service.invoke('missing', controller, [])).to.throw(TypeError, "Controller method 'missing' is not callable")
+    expect(() => service.invoke('toString', controller, [])).to.throw(TypeError, "Controller method 'toString' is not callable")
+    expect(() => service.invoke('submit', Object.create(null) as object, [])).to.throw(TypeError)
+  })
+
+  it('propagates prototype lookup and synchronous controller failures immediately with original identity', () => {
+    const service = new InvokingService({}, config)
+    const lookupFailure = new Error('prototype lookup failed')
+    const controller = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw lookupFailure
+        },
+      },
+    )
+    expect(() => service.invoke('submit', controller, [])).to.throw(lookupFailure)
+    const actionFailure = new Error('action failed synchronously')
+    class FailingController {
+      public submit() {
+        throw actionFailure
+      }
+    }
+    expect(() => service.invoke('submit', new FailingController(), [])).to.throw(actionFailure)
+  })
+
+  it('preserves promise identity and normalizes thenables without changing resolved or rejected values', async () => {
+    const service = new InvokingService({}, config)
+    const value = { result: true }
+    const fulfilled = Promise.resolve(value)
+    const rejection = new Error('action rejected')
+    const rejected = Promise.reject(rejection)
+    const thenable = {
+      then(resolve: (result: unknown) => void) {
+        resolve(value)
+      },
+    }
+    class AsyncController {
+      public fulfilled() {
+        return fulfilled
+      }
+      public rejected() {
+        return rejected
+      }
+      public thenable() {
+        return thenable
+      }
+    }
+    const controller = new AsyncController()
+    const fulfilledResult = service.invoke('fulfilled', controller, [])
+    const rejectedResult = service.invoke('rejected', controller, [])
+    expect(fulfilledResult).to.equal(fulfilled)
+    expect(rejectedResult).to.equal(rejected)
+    expect(await rejectedResult.catch(error => error)).to.equal(rejection)
+    expect(await fulfilledResult).to.equal(value)
+    expect(await service.invoke('thenable', controller, [])).to.equal(value)
+  })
+})

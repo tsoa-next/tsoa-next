@@ -240,9 +240,16 @@ const executeDiscoveredTask = async <TArguments extends ConfigCommandArguments |
 ) => {
   return await outputPrefixStorage.run(formatDiscoveredCommandPrefix(displayPath), async () => {
     console.log(`Starting ${commandName}`)
-    const result = await execute(api, configurationPath, args)
-    console.log(`Finished ${commandName}`)
-    return result
+    try {
+      const result = await execute(api, configurationPath, args)
+      console.log(`Finished ${commandName}`)
+      return result
+    } catch (error) {
+      console.error(`Failed ${commandName}:`, error)
+      const configurationArgument = commandName === 'generate' || commandName === 'check' ? 'path argument' : '--configuration'
+      console.error(`Next action: correct the reported cause, then rerun tsoa ${commandName} with ${configurationArgument} set to ${JSON.stringify(configurationPath)}.`)
+      throw error
+    }
   })
 }
 
@@ -384,6 +391,15 @@ export async function runCLI() {
         }),
       async (args: DiscoverCommandArguments) => {
         await runDiscoverCommand(args.pathOrGlob)
+      },
+    )
+    .command(
+      'template-check',
+      'Check the configured custom route template and rendered TypeScript syntax without writing outputs',
+      { configuration: configurationArgs },
+      async (args: ArgumentsCamelCase<Pick<ConfigArgs, 'configuration'>>) => {
+        const api = await loadCLIAPI()
+        await api.checkTemplateFromArgs({ configuration: args.configuration })
       },
     )
     .command('generate [pathOrGlob]', 'Discover configs and update changed OpenAPI specs and routes', configureAutomaticGenerationCommand, async (args: AutomaticCommandArguments) => {

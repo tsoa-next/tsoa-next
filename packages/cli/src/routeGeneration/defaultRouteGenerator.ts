@@ -70,7 +70,13 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
 
   /** Renders the route template with the current metadata context. */
   public buildContent(middlewareTemplate: string) {
-    handlebars.registerHelper('json', (context: unknown) => {
+    const environment = handlebars.create()
+    environment.registerHelper(handlebars.helpers)
+    environment.registerPartial(handlebars.partials)
+    for (const [name, decorator] of Object.entries(handlebars.decorators)) {
+      environment.registerDecorator(name, decorator)
+    }
+    environment.registerHelper('json', (context: unknown) => {
       return JSON.stringify(context)
     })
     const additionalPropsHelper = (additionalProperties: TsoaRoute.RefObjectModelSchema['additionalProperties']) => {
@@ -87,9 +93,9 @@ export class DefaultRouteGenerator extends AbstractRouteGenerator<ExtendedRoutes
         return assertNever(this.options.noImplicitAdditionalProperties)
       }
     }
-    handlebars.registerHelper('additionalPropsHelper', additionalPropsHelper)
+    environment.registerHelper('additionalPropsHelper', additionalPropsHelper)
 
-    const routesTemplate = handlebars.compile(middlewareTemplate, { noEscape: true })
+    const routesTemplate = environment.compile(middlewareTemplate, { noEscape: true })
 
     return routesTemplate(this.buildContext())
   }

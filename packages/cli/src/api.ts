@@ -1,14 +1,11 @@
-import { parse as parseYAML } from 'yaml'
 import { Config, RoutesConfig, RuntimeSpecConfigSnapshot, SpecConfig, Tsoa } from '@tsoa-next/runtime'
-import * as ts from 'typescript'
-import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
 import { fsExists, fsReadFile, getOutputWriteMode } from './utils/fs'
 import { AbstractRouteGenerator } from './routeGeneration/routeGenerator'
 import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { Options as MulterOptions } from 'multer'
-import type { CompilerOptions } from 'typescript'
+import type { CompilerOptions, Diagnostic } from 'typescript'
 
 const workingDir: string = process.cwd()
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
@@ -138,7 +135,9 @@ type ConfigWithContext = {
 const parseConfigContents = async (configFullPath: string, extension: string, configPath: string): Promise<Config> => {
   if (isYamlExtension(extension)) {
     const configRaw = await fsReadFile(configFullPath)
-    return parseConfigValue(parseYAML(configRaw.toString('utf8')))
+    const configText = configRaw.toString('utf8')
+    const { parse: parseYAML } = require('yaml') as typeof import('yaml')
+    return parseConfigValue(parseYAML(configText))
   }
 
   if (isJsExtension(extension)) {
@@ -198,12 +197,14 @@ const resolveConfig = async (config?: string | Config): Promise<ConfigWithContex
   return getConfig(config)
 }
 
-const formatCompilerOptionsErrors = (context: string, errors: readonly ts.Diagnostic[]) => {
+const formatCompilerOptionsErrors = (context: string, errors: readonly Diagnostic[]) => {
+  const ts = require('typescript') as typeof import('typescript')
   const message = errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine)).join(ts.sys.newLine)
   throw new Error(`${context}: ${message}`)
 }
 
 const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, configBaseDir: string, context: string, validateDiagnostics = true): CompilerOptions => {
+  const ts = require('typescript') as typeof import('typescript')
   const parsed = ts.convertCompilerOptionsFromJson(compilerOptions, configBaseDir)
 
   if (validateDiagnostics && parsed.errors.length > 0) {
@@ -215,6 +216,7 @@ const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, co
 
 const resolveTsconfigPath = (config: Config, configBaseDir: string): string | undefined => {
   if (config.tsconfig === undefined) {
+    const ts = require('typescript') as typeof import('typescript')
     return ts.findConfigFile(configBaseDir, fileName => ts.sys.fileExists(fileName), 'tsconfig.json')
   }
 
@@ -228,6 +230,7 @@ const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): Com
     return {}
   }
 
+  const ts = require('typescript') as typeof import('typescript')
   const readResult = ts.readConfigFile(resolvedTsconfigPath, fileName => ts.sys.readFile(fileName))
   if (readResult.error) {
     formatCompilerOptionsErrors(`Failed to read tsconfig at '${resolvedTsconfigPath}'`, [readResult.error])
@@ -425,7 +428,19 @@ export interface ExtendedRoutesConfig extends RoutesConfig {
 }
 
 /** Validates and enriches the `routes` section of a tsoa config object. */
-export const validateRoutesConfig = async (config: Config): Promise<ExtendedRoutesConfig> => {
+export const validateRoutesConfig = async (config: Config): Promise<ExtendedRoutesConfig> => normalizeRoutesConfig(config, true)
+
+const getRuntimeSpecConfig = async (config: Config): Promise<RuntimeSpecConfigSnapshot | undefined> =>
+  config.spec && config.entryFile
+    ? {
+        compilerOptions: config.compilerOptions,
+        defaultNumberType: config.defaultNumberType,
+        ignore: config.ignore,
+        spec: { ...(await validateSpecConfig(config)) },
+      }
+    : undefined
+
+const normalizeRoutesConfig = async (config: Config, includeRuntimeSpecConfig: boolean): Promise<ExtendedRoutesConfig> => {
   assertEntryPointConfiguration(config)
   await assertExistingEntryFile(config.entryFile, `EntryFile not found: ${config.entryFile} - Please check your tsoa config.`)
   const routes = config.routes
@@ -446,17 +461,7 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   }
 
   const noImplicitAdditionalProperties = determineNoImplicitAdditionalSetting(config.noImplicitAdditionalProperties)
-  const runtimeSpecConfig =
-    config.spec && config.entryFile
-      ? {
-          compilerOptions: config.compilerOptions,
-          defaultNumberType: config.defaultNumberType,
-          ignore: config.ignore,
-          spec: {
-            ...(await validateSpecConfig(config)),
-          },
-        }
-      : undefined
+  const runtimeSpecConfig = includeRuntimeSpecConfig ? await getRuntimeSpecConfig(config) : undefined
 
   const bodyCoercion = routes.bodyCoercion ?? true
 
@@ -520,11 +525,44 @@ export async function generateSpecFromArgs(args: SwaggerArgs) {
 /** Loads config and generates only the route output. */
 export async function generateRoutesFromArgs(args: ConfigArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
+  const { routesConfig, compilerOptions, metadata } = await prepareRoutesConfig(config, configBaseDir, args)
+  await generateRoutes(routesConfig, compilerOptions, config.ignore, metadata)
+}
+
+const prepareRoutesConfig = async (config: Config, configBaseDir: string, args: ConfigArgs) => {
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
-  const routesConfig = await validateRoutesConfig(config)
+  const routesConfig = await normalizeRoutesConfig(config, false)
   applyBasePathArg(routesConfig, args)
 
-  await generateRoutes(routesConfig, compilerOptions, config.ignore)
+  const { MetadataGenerator } = require('./metadataGeneration/metadataGenerator') as typeof import('./metadataGeneration/metadataGenerator')
+  const metadata = new MetadataGenerator(routesConfig.entryFile, compilerOptions, config.ignore, routesConfig.controllerPathGlobs, routesConfig.rootSecurity).Generate()
+  const consumesSpecConfig = metadata.controllers.some(controller => controller.hasSpecPaths === true) || Boolean(routesConfig.middlewareTemplate) || routesConfig.routeGenerator !== undefined
+  if (consumesSpecConfig) {
+    routesConfig.runtimeSpecConfig = await getRuntimeSpecConfig(config)
+  }
+
+  return { routesConfig, compilerOptions, metadata }
+}
+
+/** Checks the selected custom template without writing generated artifacts. CLI-only entry point. */
+export async function checkTemplateFromArgs(args: Pick<ConfigArgs, 'configuration'>) {
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
+  const templatePath = config.routes?.middlewareTemplate
+  if (!templatePath) {
+    throw new Error('Missing routes.middlewareTemplate: configure the custom route template to check.')
+  }
+  const { readRouteTemplate, checkRenderedTemplateSyntax } = await import('./routeGeneration/templateCheck')
+  const template = await readRouteTemplate(templatePath)
+  const { routesConfig, metadata } = await prepareRoutesConfig(config, configBaseDir, args)
+  const { DefaultRouteGenerator } = await import('./routeGeneration/defaultRouteGenerator')
+  let content: string
+  try {
+    content = new DefaultRouteGenerator(metadata, routesConfig).buildContent(template)
+  } catch (cause) {
+    throw new Error(`Cannot render route template ${templatePath}: ${cause instanceof Error ? cause.message : String(cause)}`, { cause })
+  }
+  checkRenderedTemplateSyntax(content, templatePath, resolve(routesConfig.routesDir, routesConfig.routesFileName || 'routes.ts'))
+  console.log(`Template check passed: ${templatePath}`)
 }
 
 /** Loads config and generates both routes and the OpenAPI spec from a shared metadata snapshot. */
@@ -540,7 +578,10 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
   applySwaggerArgs(swaggerConfig, args)
   applyBasePathArg(routesConfig, args)
 
-  metadata ??= new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, swaggerConfig.rootSecurity, config.defaultNumberType, routesConfig.esm).Generate()
+  if (metadata === undefined || metadata === null) {
+    const { MetadataGenerator } = require('./metadataGeneration/metadataGenerator') as typeof import('./metadataGeneration/metadataGenerator')
+    metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, swaggerConfig.rootSecurity, config.defaultNumberType, routesConfig.esm).Generate()
+  }
 
   await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
   return metadata

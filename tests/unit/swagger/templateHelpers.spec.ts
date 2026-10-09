@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
-import { TsoaRoute, FieldErrors, ValidateParam, ValidationService } from '@tsoa-next/runtime'
+import { TsoaRoute, FieldErrors, ValidateParam, ValidationService, ParameterValidationMetadata } from '@tsoa-next/runtime'
 import { TypeAliasDate, TypeAliasDateTime, TypeAliasModel1, TypeAliasModel2 } from 'fixtures/testModel'
 
 describe('ValidationService', () => {
@@ -31,6 +31,146 @@ describe('ValidationService', () => {
 
       expect(result).to.equal(42)
       expect(fieldErrors).to.deep.equal({})
+    })
+  })
+
+  describe('scalar validation extension compatibility', () => {
+    it('retains the public type-check hook for numeric and date helpers', () => {
+      class PermissiveValidationService extends ValidationService {
+        public override hasCorrectJsType(): boolean {
+          return true
+        }
+      }
+      const service = new PermissiveValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false })
+      const errors: FieldErrors = {}
+      expect(service.validateInt('integer', '42', errors, true)).to.equal(42)
+      expect(service.validateFloat('float', '4.2', errors, true)).to.equal(4.2)
+      expect(service.validateDate('date', { toString: () => '2026-10-08' }, errors, true)?.toISOString()).to.equal('2026-10-08T00:00:00.000Z')
+      expect(service.validateDateTime('datetime', { toString: () => '2026-10-08T12:00:00Z' }, errors, true)?.toISOString()).to.equal('2026-10-08T12:00:00.000Z')
+      expect(errors).to.deep.equal({})
+    })
+
+    it('does not read coercion configuration for an already-boolean input', () => {
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          get bodyCoercion(): boolean {
+            throw new Error('Unused coercion configuration was read')
+          },
+        },
+      )
+      const errors: FieldErrors = {}
+      expect(service.validateBool('boolean', true, errors, true)).to.equal(true)
+      expect(service.validateBool('boolean', false, errors, true)).to.equal(false)
+      expect(errors).to.deep.equal({})
+    })
+
+    it('keeps scalar error precedence and raw values at the caller-provided field path', () => {
+      const service = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: false })
+      const errors: FieldErrors = {}
+      service.validateInt('number', '1', errors, false, { minimum: { value: 5 }, exclusiveMinimum: { value: 10 } }, 'payload.')
+      service.validateString('text', 'x', errors, { minLength: { value: 3 }, pattern: { value: '^z$' } }, 'payload.')
+      expect(errors).to.deep.equal({
+        'payload.number': { message: 'min 5', value: '1' },
+        'payload.text': { message: 'minLength 3', value: 'x' },
+      })
+    })
+  })
+
+  describe('object validation dispatch compatibility', () => {
+    it('keeps model child hooks, metadata, defaults, explicit undefined and typed extras on the original object', () => {
+      class RecordingService extends ValidationService {
+        public readonly calls: Array<{ name: string | undefined; parent: string | undefined; metadata: ParameterValidationMetadata | undefined }> = []
+        public override ValidateParam<TValue>(
+          property: TsoaRoute.PropertySchema,
+          value: TValue,
+          name: string | undefined,
+          errors: FieldErrors,
+          isBodyParam: boolean,
+          parent?: string,
+          metadata?: ParameterValidationMetadata,
+        ): TValue {
+          this.calls.push({ name, parent, metadata })
+          return super.ValidateParam(property, value, name, errors, isBodyParam, parent, metadata)
+        }
+      }
+      const service = new RecordingService({}, { noImplicitAdditionalProperties: 'throw-on-extras', bodyCoercion: true })
+      const metadata = { methodName: 'objectMethod', parameterIndex: 0 }
+      const model: TsoaRoute.RefObjectModelSchema = {
+        dataType: 'refObject',
+        properties: {
+          title: { dataType: 'string', default: 'default title' },
+          marker: { dataType: 'undefined', required: true },
+        },
+        additionalProperties: { dataType: 'integer' },
+      }
+      const value: Record<string, unknown> = { extra: '4' }
+      const errors: FieldErrors = {}
+      expect(service.validateModel({ name: 'item', value, modelDefinition: model, fieldErrors: errors, isBodyParam: true, parent: 'payload.', metadata })).to.equal(value)
+      expect(value).to.deep.equal({ extra: 4, title: 'default title', marker: undefined })
+      expect(value).to.have.own.property('marker')
+      expect(service.calls.map(call => call.name)).to.deep.equal(['title', 'marker', 'extra'])
+      for (const call of service.calls) {
+        expect(call.parent).to.equal('payload.item.')
+        expect(call.metadata).to.equal(metadata)
+      }
+      expect(errors).to.deep.equal({})
+    })
+
+    it('keeps both nested-object overloads and removes extras before child validation', () => {
+      class InspectingService extends ValidationService {
+        public readonly values: Array<Record<string, unknown>> = []
+        public override ValidateParam<TValue>(
+          property: TsoaRoute.PropertySchema,
+          value: TValue,
+          name: string | undefined,
+          errors: FieldErrors,
+          isBodyParam: boolean,
+          parent?: string,
+          metadata?: ParameterValidationMetadata,
+        ): TValue {
+          expect(this.values[this.values.length - 1]).not.to.have.own.property('extra')
+          return super.ValidateParam(property, value, name, errors, isBodyParam, parent, metadata)
+        }
+      }
+      const service = new InspectingService({}, { noImplicitAdditionalProperties: 'silently-remove-extras', bodyCoercion: true })
+      const properties = { title: { dataType: 'string', default: 'title' } } as const
+      const errors: FieldErrors = {}
+      const first: Record<string, unknown> = { extra: true }
+      service.values.push(first)
+      expect(
+        service.validateNestedObjectLiteral({ name: 'item', value: first, fieldErrors: errors, isBodyParam: true, nestedProperties: properties, additionalProperties: false, parent: 'payload.' }),
+      ).to.equal(first)
+      const second: Record<string, unknown> = { extra: true }
+      service.values.push(second)
+      expect(service.validateNestedObjectLiteral('item', second, errors, true, properties, false, 'payload.')).to.equal(second)
+      expect(first).to.deep.equal({ title: 'title' })
+      expect(second).to.deep.equal(first)
+      expect(errors).to.deep.equal({})
+    })
+
+    it('rejects invalid objects before reading unused properties or extra-property configuration', () => {
+      const service = new ValidationService(
+        {},
+        {
+          get noImplicitAdditionalProperties(): 'ignore' {
+            throw new Error('Unused config read')
+          },
+          bodyCoercion: true,
+        },
+      )
+      const model: TsoaRoute.RefObjectModelSchema = {
+        dataType: 'refObject',
+        get properties(): Record<string, TsoaRoute.PropertySchema> {
+          throw new Error('Unused properties read')
+        },
+      }
+      const errors: FieldErrors = {}
+      expect(service.validateModel({ name: 'model', value: 1, modelDefinition: model, fieldErrors: errors, isBodyParam: true })).to.be.undefined
+      expect(service.validateNestedObjectLiteral({ name: 'nested', value: 2, fieldErrors: errors, isBodyParam: true, nestedProperties: undefined, additionalProperties: false, parent: '' })).to.be
+        .undefined
+      expect(errors).to.deep.equal({ model: { message: 'invalid object', value: 1 }, nested: { message: 'invalid object', value: 2 } })
     })
   })
 
@@ -1318,6 +1458,68 @@ describe('ValidationService', () => {
   })
 
   describe('Array validate', () => {
+    it('preserves both overloads, element override dispatch, defaults and metadata in iteration order', () => {
+      class RecordingService extends ValidationService {
+        public readonly calls: Array<{ name: string | undefined; parent: string | undefined; metadata: ParameterValidationMetadata | undefined }> = []
+        public override ValidateParam<TValue>(
+          property: TsoaRoute.PropertySchema,
+          value: TValue,
+          name: string | undefined,
+          errors: FieldErrors,
+          isBodyParam: boolean,
+          parent?: string,
+          metadata?: ParameterValidationMetadata,
+        ): TValue {
+          this.calls.push({ name, parent, metadata })
+          return super.ValidateParam(property, value, name, errors, isBodyParam, parent, metadata)
+        }
+      }
+      const service = new RecordingService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const metadata = { methodName: 'arrayMethod', parameterIndex: 0 }
+      const schema: TsoaRoute.PropertySchema = { dataType: 'integer', default: 2 }
+      const value = ['1', undefined]
+      const errors: FieldErrors = {}
+      expect(service.validateArray({ name: 'items', value, fieldErrors: errors, isBodyParam: true, schema, parent: 'payload.', metadata })).to.deep.equal([1, 2])
+      expect(service.validateArray('items', value, errors, true, schema, undefined, 'payload.', metadata)).to.deep.equal([1, 2])
+      expect(service.calls.map(call => call.name)).to.deep.equal(['$0', '$1', '$0', '$1'])
+      for (const call of service.calls) {
+        expect(call.parent).to.equal('payload.items.')
+        expect(call.metadata).to.equal(metadata)
+      }
+      expect(value).to.deep.equal(['1', undefined])
+      expect(errors).to.deep.equal({})
+    })
+
+    it('reports element errors before touching unused array constraints or non-body coercion configuration', () => {
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          get bodyCoercion(): boolean {
+            throw new Error('Unused body coercion read')
+          },
+        },
+      )
+      const errors: FieldErrors = {}
+      const validators = {
+        get minItems(): { value: number } {
+          throw new Error('Unused array constraint read')
+        },
+      }
+      expect(service.validateArray('items', ['bad', '2'], errors, false, { dataType: 'integer' }, validators, 'payload.')).to.be.undefined
+      expect(errors).to.deep.equal({ 'payload.items.$0': { message: 'invalid integer number', value: 'bad' } })
+    })
+
+    it('checks uniqueness after coercion while retaining the original array in errors', () => {
+      const service = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const errors: FieldErrors = {}
+      const value = ['1', 1]
+      expect(service.validateArray('items', value, errors, false, { dataType: 'integer' }, { uniqueItems: {} }, 'payload.')).to.be.undefined
+      expect(errors['payload.items'].message).to.equal('required unique array')
+      expect(errors['payload.items'].value).to.equal(value)
+      expect(value).to.deep.equal(['1', 1])
+    })
+
     it('should array value', () => {
       const value = ['A', 'B', 'C']
       const result = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true }).validateArray('name', value, {}, true, { dataType: 'string' })
@@ -1445,6 +1647,88 @@ describe('ValidationService', () => {
       expect(result).to.be.undefined
       expect(error[name].message).to.equal('invalid buffer value')
       expect(error[name].value).to.equal(value)
+    })
+  })
+
+  describe('combined validation dispatch compatibility', () => {
+    it('uses the first successful union branch without reading unused schemas or summary settings', () => {
+      const service = new ValidationService(
+        {},
+        {
+          noImplicitAdditionalProperties: 'ignore',
+          bodyCoercion: true,
+          get maxValidationErrorSize(): number {
+            throw new Error('Unused summary setting read')
+          },
+        },
+      )
+      const unused: TsoaRoute.PropertySchema = {
+        get dataType(): 'string' {
+          throw new Error('Unused branch read')
+        },
+      }
+      const errors: FieldErrors = {}
+      expect(service.validateUnion<unknown>('item', '42', errors, false, { subSchemas: [{ dataType: 'integer' }, unused] })).to.equal(42)
+      expect(errors).to.deep.equal({})
+    })
+
+    it('preserves union override dispatch, metadata and branch-local clones', () => {
+      class RecordingService extends ValidationService {
+        public readonly branches: unknown[] = []
+        public override ValidateParam<TValue>(
+          property: TsoaRoute.PropertySchema,
+          value: TValue,
+          name: string | undefined,
+          errors: FieldErrors,
+          isBodyParam: boolean,
+          parent?: string,
+          metadata?: ParameterValidationMetadata,
+        ): TValue {
+          if (name === 'item') {
+            this.branches.push(value)
+            expect(parent).to.equal('payload.')
+            expect(metadata).to.equal(context)
+          }
+          return super.ValidateParam(property, value, name, errors, isBodyParam, parent, metadata)
+        }
+      }
+      const context = { methodName: 'unionMethod', parameterIndex: 0 }
+      const service = new RecordingService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const value = { a: 'invalid', b: '2' }
+      const errors: FieldErrors = {}
+      const result = service.validateUnion(
+        'item',
+        value,
+        errors,
+        true,
+        {
+          subSchemas: [
+            { dataType: 'nestedObjectLiteral', nestedProperties: { a: { dataType: 'integer', required: true } }, additionalProperties: true },
+            { dataType: 'nestedObjectLiteral', nestedProperties: { b: { dataType: 'integer', required: true } }, additionalProperties: true },
+          ],
+        },
+        'payload.',
+        context,
+      )
+      expect(result).to.deep.equal({ a: 'invalid', b: 2 })
+      expect(service.branches).to.have.length(2)
+      expect(service.branches[0]).not.to.equal(value)
+      expect(service.branches[1]).not.to.equal(service.branches[0])
+      expect(value).to.deep.equal({ a: 'invalid', b: '2' })
+      expect(errors).to.deep.equal({})
+    })
+
+    it('retains later intersection values while preserving ignored extras and the original input', () => {
+      const service = new ValidationService({}, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const value = { extra: 'preserved' }
+      const errors: FieldErrors = {}
+      const result = service.validateIntersection('item', value, errors, true, [
+        { dataType: 'nestedObjectLiteral', nestedProperties: { count: { dataType: 'integer', default: 1 } }, additionalProperties: false },
+        { dataType: 'nestedObjectLiteral', nestedProperties: { count: { dataType: 'integer', default: 2 } }, additionalProperties: false },
+      ])
+      expect(result).to.deep.equal({ extra: 'preserved', count: 2 })
+      expect(value).to.deep.equal({ extra: 'preserved' })
+      expect(errors).to.deep.equal({})
     })
   })
 

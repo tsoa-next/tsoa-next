@@ -1,8 +1,6 @@
 import * as ts from 'typescript'
 import type { ExtendedRoutesConfig, RouteGeneratorModule } from '../api'
-import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
 import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
-import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
 import { existsSync } from 'node:fs'
@@ -20,7 +18,10 @@ export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   metadata?: Tsoa.Metadata,
   defaultNumberType?: BaseConfig['defaultNumberType'],
 ) {
-  metadata ??= new MetadataGenerator(routesConfig.entryFile, compilerOptions, ignorePaths, routesConfig.controllerPathGlobs, routesConfig.rootSecurity, defaultNumberType).Generate()
+  if (metadata === undefined || metadata === null) {
+    const { MetadataGenerator } = require('../metadataGeneration/metadataGenerator') as typeof import('../metadataGeneration/metadataGenerator')
+    metadata = new MetadataGenerator(routesConfig.entryFile, compilerOptions, ignorePaths, routesConfig.controllerPathGlobs, routesConfig.rootSecurity, defaultNumberType).Generate()
+  }
 
   const routeGenerator = await getRouteGenerator(metadata, routesConfig)
 
@@ -99,5 +100,6 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
     routesConfig.middleware = 'express'
   }
 
+  const { DefaultRouteGenerator } = require('../routeGeneration/defaultRouteGenerator') as typeof import('../routeGeneration/defaultRouteGenerator')
   return new DefaultRouteGenerator(metadata, routesConfig)
 }

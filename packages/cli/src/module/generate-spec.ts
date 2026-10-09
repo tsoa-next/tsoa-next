@@ -1,11 +1,6 @@
 import * as ts from 'typescript'
-import * as YAML from 'yaml'
 import type { ExtendedSpecConfig } from '../api'
-import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
 import { Tsoa, Swagger, Config } from '@tsoa-next/runtime'
-import { SpecGenerator2 } from '../swagger/specGenerator2'
-import { SpecGenerator3 } from '../swagger/specGenerator3'
-import { SpecGenerator31 } from '../swagger/specGenerator31'
 import { fsMkDir, fsWriteFile } from '../utils/fs'
 
 /** Returns the final output path for the generated OpenAPI document. */
@@ -30,7 +25,10 @@ export const generateSpec = async (
   defaultNumberType?: Config['defaultNumberType'],
 ) => {
   const controllerPathGlobs = swaggerConfig.controllerPathGlobs?.length ? swaggerConfig.controllerPathGlobs : undefined
-  metadata ??= new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  if (metadata === undefined || metadata === null) {
+    const { MetadataGenerator } = require('../metadataGeneration/metadataGenerator') as typeof import('../metadataGeneration/metadataGenerator')
+    metadata = new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  }
   const spec = buildSpec(swaggerConfig, compilerOptions, ignorePaths, metadata, defaultNumberType)
 
   await fsMkDir(swaggerConfig.outputDirectory, { recursive: true })
@@ -52,16 +50,25 @@ export const buildSpec = (
   defaultNumberType?: Config['defaultNumberType'],
 ): Swagger.Spec => {
   const controllerPathGlobs = swaggerConfig.controllerPathGlobs?.length ? swaggerConfig.controllerPathGlobs : undefined
-  metadata ??= new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  if (metadata === undefined || metadata === null) {
+    const { MetadataGenerator } = require('../metadataGeneration/metadataGenerator') as typeof import('../metadataGeneration/metadataGenerator')
+    metadata = new MetadataGenerator(swaggerConfig.entryFile, compilerOptions, ignorePaths, controllerPathGlobs, swaggerConfig.rootSecurity, defaultNumberType).Generate()
+  }
   const specVersion = swaggerConfig.specVersion ?? 2
 
   switch (specVersion) {
-    case 2:
+    case 2: {
+      const { SpecGenerator2 } = require('../swagger/specGenerator2') as typeof import('../swagger/specGenerator2')
       return new SpecGenerator2(metadata, swaggerConfig).GetSpec()
-    case 3:
+    }
+    case 3: {
+      const { SpecGenerator3 } = require('../swagger/specGenerator3') as typeof import('../swagger/specGenerator3')
       return new SpecGenerator3(metadata, swaggerConfig).GetSpec()
-    default:
+    }
+    default: {
+      const { SpecGenerator31 } = require('../swagger/specGenerator31') as typeof import('../swagger/specGenerator31')
       return new SpecGenerator31(metadata, swaggerConfig).GetSpec()
+    }
   }
 }
 
@@ -72,5 +79,7 @@ export const serializeSpec = (spec: Swagger.Spec, yaml = false) => {
     return data
   }
 
-  return YAML.stringify(JSON.parse(data))
+  const normalized: unknown = JSON.parse(data)
+  const YAML = require('yaml') as typeof import('yaml')
+  return YAML.stringify(normalized)
 }

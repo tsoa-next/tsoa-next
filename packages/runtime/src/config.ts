@@ -171,7 +171,8 @@ export interface SpecConfig {
 
   /**
    * Object merged into the generated spec.
-   * Generated properties always take precedence over values provided here.
+   * Supplied values override generated properties according to the selected merge mode.
+   * For Swagger 2.0, configured `schemes` are applied after this overlay.
    */
   spec?: unknown
 

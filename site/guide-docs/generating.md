@@ -24,12 +24,17 @@ tsoa generate
 # fail when generated outputs are stale without writing files
 tsoa check
 
+# check a configured custom route template without writing generated files
+tsoa template-check
+
 # discover config files beneath the current directory
 tsoa discover
 
 # discover config files beneath a path or glob
 tsoa discover "packages/*"
 ```
+
+The CLI resolves configuration for the requested output. `tsoa spec` does not require route integrations. `tsoa routes` validates specification settings when selected controllers expose `@SpecPath`, or when a custom template or route generator needs the existing specification context. Built-in routes without specification serving can proceed independently of unused specification output settings. Commands generating both outputs validate both requirements.
 
 ### Options
 
@@ -57,6 +62,22 @@ Options:
   --discover  discover tsoa config files using a path or glob before running the command        [string]
   --basePath  Base API path                                                                     [string]
 ```
+
+#### Custom template validation
+
+Set `routes.middlewareTemplate` to the template you are authoring, then run:
+
+```bash
+tsoa template-check
+tsoa template-check --configuration path/to/tsoa.json
+# -c is an alias for --configuration.
+```
+
+The command reads and parses the selected Handlebars template, renders it with the real selected controller metadata and existing route context, then checks the rendered TypeScript syntax in memory. It uses the usual configuration formats and defaults. It exits successfully when these checks pass and reports the selected template and original cause when they fail. Read and parse failures are reported before controller metadata is constructed.
+
+Template parser locations refer to the template. TypeScript diagnostics explicitly identify the virtual generated output and its line and column; those positions are not template locations. No generated routes or specifications are written, and custom route generators and controller code are not executed.
+
+This checks syntax and rendering for the selected context. It does not type-check generated code against your application, resolve generated imports, validate runtime behavior, or exercise template branches that the selected context does not render. Ordinary route generation continues to support custom templates producing arbitrary output; `template-check` explicitly expects TypeScript output.
 
 #### Config discovery
 

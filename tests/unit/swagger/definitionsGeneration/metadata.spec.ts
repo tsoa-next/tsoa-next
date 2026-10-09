@@ -4,9 +4,99 @@ import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGen
 import { Swagger, Tsoa } from '@tsoa-next/runtime'
 import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'
 import { getDefaultExtendedOptions } from '../../../fixtures/defaultOptions'
+import * as ts from 'typescript'
+import { appendSelectedControllerNodes } from '../../../../packages/cli/src/metadataGeneration/controller-discovery'
 
 describe('Metadata generation', () => {
   const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
+
+  describe('selected controller discovery', () => {
+    it('preserves source filters, top-level order and live controller-node mutation', () => {
+      const declaration = ts.createSourceFile('types.d.ts', 'declare class Skipped {}', ts.ScriptTarget.ES2021, true)
+      const external = ts.createSourceFile('external.ts', 'class Skipped {}', ts.ScriptTarget.ES2021, true)
+      const ignored = ts.createSourceFile('ignored.ts', 'class Skipped {}', ts.ScriptTarget.ES2021, true)
+      for (const source of [declaration, external, ignored]) {
+        Object.defineProperty(source, 'statements', {
+          get() {
+            throw new Error('Unused filtered source traversal')
+          },
+        })
+      }
+      const first = ts.createSourceFile(
+        'first.ts',
+        'import { Route } from "@tsoa-next/runtime"; @Route("a") class First {} namespace Nested { @Route("nested") class Excluded {} }',
+        ts.ScriptTarget.ES2021,
+        true,
+      )
+      const second = ts.createSourceFile('second.ts', 'import { Route } from "@tsoa-next/runtime"; @Route("b") class Second {}', ts.ScriptTarget.ES2021, true)
+      const importDeclaration = first.statements.find(ts.isImportDeclaration)!
+      const binding = importDeclaration.importClause!.namedBindings!
+      if (!ts.isNamedImports(binding)) throw new Error('Expected named import fixture')
+      const decoratorSymbol = { flags: 0, declarations: [binding.elements[0]], getName: () => 'Route' } as unknown as ts.Symbol
+      const checker = { getSymbolAtLocation: () => decoratorSymbol } as unknown as ts.TypeChecker
+      const checkedSources: string[] = []
+      const program = {
+        getSourceFiles: () => [declaration, external, ignored, first, second],
+        isSourceFileFromExternalLibrary: (source: ts.SourceFile) => {
+          checkedSources.push(source.fileName)
+          return source === external
+        },
+      } as unknown as ts.Program
+      const firstController = first.statements.find(ts.isClassDeclaration)!
+      const secondController = second.statements.find(ts.isClassDeclaration)!
+      const nodes: ts.ClassDeclaration[] = []
+      const subsequentNodes: ts.ClassDeclaration[] = []
+      let checkerReads = 0
+      const current = {
+        get typeChecker() {
+          checkerReads++
+          return checker
+        },
+        get controllerNodes() {
+          return nodes.length ? subsequentNodes : nodes
+        },
+      }
+      appendSelectedControllerNodes(program, current, ['ignored.ts'])
+      expect(checkedSources).to.deep.equal(['external.ts', 'ignored.ts', 'first.ts', 'second.ts'])
+      expect(nodes).to.deep.equal([firstController])
+      expect(subsequentNodes).to.deep.equal([secondController])
+      expect(nodes[0]).to.equal(firstController)
+      expect(subsequentNodes[0]).to.equal(secondController)
+      expect(checkerReads).to.equal(2)
+    })
+
+    it('reports reached decorator failures before traversing later source files', () => {
+      const first = ts.createSourceFile('first.ts', '@Route("first") class First {}', ts.ScriptTarget.ES2021, true)
+      const later = ts.createSourceFile('later.ts', 'class Later {}', ts.ScriptTarget.ES2021, true)
+      Object.defineProperty(later, 'statements', {
+        get() {
+          throw new Error('Unused later source traversal')
+        },
+      })
+      const failure = new Error('Required decorator lookup failed')
+      const program = { getSourceFiles: () => [first, later], isSourceFileFromExternalLibrary: () => false } as unknown as ts.Program
+      const nodes: ts.ClassDeclaration[] = []
+      const current = {
+        typeChecker: {
+          getSymbolAtLocation: () => {
+            throw failure
+          },
+        } as unknown as ts.TypeChecker,
+        controllerNodes: nodes,
+      }
+      expect(() => appendSelectedControllerNodes(program, current, undefined)).to.throw(failure)
+      expect(nodes).to.deep.equal([])
+      const unusedChecker = {
+        get typeChecker(): ts.TypeChecker {
+          throw new Error('Unused checker read')
+        },
+        controllerNodes: nodes,
+      }
+      const emptySource = ts.createSourceFile('empty.ts', 'const value = 1', ts.ScriptTarget.ES2021, true)
+      const emptyProgram = { getSourceFiles: () => [emptySource], isSourceFileFromExternalLibrary: () => false } as unknown as ts.Program
+      expect(() => appendSelectedControllerNodes(emptyProgram, unusedChecker, undefined)).to.not.throw()
+    })
+  })
 
   describe('ControllerGenerator', () => {
     it('should generate one controller', () => {

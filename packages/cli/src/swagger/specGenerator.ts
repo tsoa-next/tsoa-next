@@ -1,7 +1,16 @@
+import { merge as deepMerge } from 'ts-deepmerge'
+import { recursiveMerge } from '../utils/specMerge'
+import { UnspecifiedObject } from '../utils/unspecifiedObject'
 import type { ExtendedSpecConfig } from '../api'
 import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
-import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
+import { getPropertySchemaType, hasUndefined, isRequiredWithoutDefault, projectSchemaValidators } from './schema-metadata'
+
+const specMergeStrategies: { [key: string]: (spec: UnspecifiedObject, overlay: UnspecifiedObject) => UnspecifiedObject } = {
+  immediate: Object.assign,
+  recursive: recursiveMerge,
+  deepmerge: (spec, overlay) => deepMerge(spec, overlay),
+}
 
 const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
   if (value === null || value instanceof Date) {
@@ -32,6 +41,15 @@ export abstract class SpecGenerator {
     protected readonly metadata: Tsoa.Metadata,
     protected readonly config: ExtendedSpecConfig,
   ) {}
+
+  protected applyConfiguredSpecMerge<TSpec extends Swagger.Spec>(spec: TSpec): TSpec {
+    if (!this.config.spec) {
+      return spec
+    }
+
+    this.config.specMerging = this.config.specMerging || 'immediate'
+    return specMergeStrategies[this.config.specMerging](spec as unknown as UnspecifiedObject, this.config.spec as UnspecifiedObject) as unknown as TSpec
+  }
 
   protected buildAdditionalProperties(type: Tsoa.Type) {
     return this.getSwaggerType(type)
@@ -145,23 +163,7 @@ export abstract class SpecGenerator {
   ): { [propertyName: string]: Swagger.Schema2 } | { [propertyName: string]: Swagger.Schema3 } | { [propertyName: string]: Swagger.Schema31 }
 
   protected getPropertySchemaType(type: Tsoa.Type): Tsoa.Type {
-    const unwrapBrandedAlias = (current: Tsoa.Type): Tsoa.Type => {
-      if (current.dataType === 'refAlias') {
-        const next = current.type
-        if (next.dataType === 'intersection' && next.types.length === 1) {
-          return unwrapBrandedAlias(next.types[0])
-        }
-        return current
-      }
-
-      if (current.dataType === 'intersection' && current.types.length === 1) {
-        return unwrapBrandedAlias(current.types[0])
-      }
-
-      return current
-    }
-
-    return unwrapBrandedAlias(type)
+    return getPropertySchemaType(type)
   }
 
   public getSwaggerTypeForObjectLiteral(objectLiteral: Tsoa.NestedObjectLiteralType, title?: string): Swagger.BaseSchema {
@@ -269,7 +271,7 @@ export abstract class SpecGenerator {
   protected abstract getSwaggerTypeForEnumType(enumType: Tsoa.EnumType, title?: string): Swagger.Schema2 | Swagger.Schema3
 
   protected hasUndefined(property: Tsoa.Property): boolean {
-    return property.type.dataType === 'undefined' || (property.type.dataType === 'union' && property.type.types.some(type => type.dataType === 'undefined'))
+    return hasUndefined(property)
   }
 
   protected queriesPropertyToQueryParameter(property: Tsoa.Property): Tsoa.Parameter {
@@ -294,19 +296,11 @@ export abstract class SpecGenerator {
   }
 
   protected isRequiredWithoutDefault(prop: Tsoa.Property | Tsoa.Parameter): boolean | undefined {
-    return prop.required && prop.default == null
+    return isRequiredWithoutDefault(prop)
   }
 
   protected getSchemaValidators(validators: Tsoa.Validators): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
-    const schemaValidators = Object.keys(validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .reduce(
-        (acc, key) => {
-          acc[key] = validators[key]!.value
-          return acc
-        },
-        {} as Partial<Record<Tsoa.SchemaValidatorKey, unknown>>,
-      )
+    const schemaValidators = projectSchemaValidators(validators)
 
     return this.transformSchemaValidators(schemaValidators)
   }

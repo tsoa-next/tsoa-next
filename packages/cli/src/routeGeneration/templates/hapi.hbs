@@ -268,7 +268,7 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
 
     function fileUploadMiddleware(fieldname: string, multiple: boolean = false) {
       return (request: Request, h: any) => {
-        if (!request.payload[fieldname]) {
+        if (!(request.payload as Record<string, any>)[fieldname]) {
           return h.response(`${fieldname} is a required file(s).`).code(400);
         }
 
@@ -293,17 +293,17 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
         });
 
         if (!multiple) {
-          return calculateFileInfo(request.payload[fieldname])
+          return calculateFileInfo((request.payload as Record<string, any>)[fieldname])
             .then(fileMetadata => {
-              request.payload[fieldname] = fileMetadata;
+              (request.payload as Record<string, any>)[fieldname] = fileMetadata;
               return h.continue;
             })
             .catch(err => h.response(err.toString()).code(500));
         } else {
-          const promises = request.payload[fieldname].map((reqFile: any) => calculateFileInfo(reqFile));
+          const promises = (request.payload as Record<string, any>)[fieldname].map((reqFile: any) => calculateFileInfo(reqFile));
           return Promise.all(promises)
             .then(filesMetadata => {
-              request.payload[fieldname] = filesMetadata;
+              (request.payload as Record<string, any>)[fieldname] = filesMetadata;
               return h.continue;
             })
             .catch(err => h.response(err.toString()).code(500));
