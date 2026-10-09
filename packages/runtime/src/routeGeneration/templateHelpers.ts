@@ -1,12 +1,13 @@
 import equals from 'validator/lib/equals'
+import { validateUnion, validateIntersection } from './combinedValidation'
+import { validateModel, validateNestedObjectLiteral, type ValidateNestedObjectLiteralOptions } from './objectValidation'
 import { validateArray, type ValidateArrayOptions } from './arrayValidation'
 import { validateInt, validateFloat, validateDate, validateDateTime, validateString, validateBool } from './primitiveValidation'
 import { getParameterExternalValidatorMetadata } from '../decorators/validate'
 import { Tsoa } from '../metadataGeneration/tsoa'
-import { assertNever } from '../utils/assertNever'
 import { AdditionalProps } from './additionalProps'
 import { validateExternalSchema } from './externalValidation'
-import { TsoaRoute, isDefaultForAdditionalPropertiesAllowed } from './tsoa-route'
+import { TsoaRoute } from './tsoa-route'
 import ValidatorKey = Tsoa.ValidatorKey
 
 /** Metadata about the parameter currently being validated. */
@@ -14,17 +15,6 @@ export interface ParameterValidationMetadata {
   controllerClass?: object
   methodName?: string
   parameterIndex?: number
-}
-
-type ValidateNestedObjectLiteralOptions = {
-  name: string
-  value: unknown
-  fieldErrors: FieldErrors
-  isBodyParam: boolean
-  nestedProperties: { [name: string]: TsoaRoute.PropertySchema } | undefined
-  additionalProperties: TsoaRoute.PropertySchema | boolean | undefined
-  parent: string
-  metadata?: ParameterValidationMetadata
 }
 
 type ValidateNestedObjectLiteralTupleArgs = [
@@ -39,8 +29,6 @@ type ValidateNestedObjectLiteralTupleArgs = [
 ]
 
 type ValidateArrayTupleArgs = [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema?, ArrayValidator?, string?, ParameterValidationMetadata?]
-
-const objectHasOwn = (value: object, key: PropertyKey): boolean => Object.getOwnPropertyDescriptor(value, key) !== undefined
 
 type ValidateParamOptions<TValue> = {
   property: TsoaRoute.PropertySchema
@@ -84,15 +72,6 @@ export class ValidationService {
     private readonly models: TsoaRoute.Models,
     private readonly config: AdditionalProps,
   ) {}
-
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-  }
-
-  private buildChildPath(parent: string, name: string): string {
-    const fieldPath = parent + name
-    return fieldPath ? `${fieldPath}.` : ''
-  }
 
   public ValidateParam<TValue>(
     property: TsoaRoute.PropertySchema,
@@ -348,71 +327,7 @@ export class ValidationService {
    */
   public validateNestedObjectLiteral(...args: ValidateNestedObjectLiteralTupleArgs): unknown
   public validateNestedObjectLiteral(...args: [ValidateNestedObjectLiteralOptions] | ValidateNestedObjectLiteralTupleArgs) {
-    const { name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent, metadata } = this.normalizeValidateNestedObjectLiteralArgs(args)
-    if (!this.isRecord(value)) {
-      fieldErrors[parent + name] = {
-        message: `invalid object`,
-        value,
-      }
-      return
-    }
-
-    const previousErrors = Object.keys(fieldErrors).length
-
-    if (!nestedProperties) {
-      throw new Error(
-        'internal tsoa error: ' +
-          'the metadata that was generated should have had nested property schemas since it’s for a nested object,' +
-          'however it did not. ' +
-          'Please file an issue with tsoa at https://github.com/tsoa-next/tsoa-next/issues',
-      )
-    }
-
-    const propHandling = this.config.noImplicitAdditionalProperties
-    if (propHandling !== 'ignore') {
-      const excessProps = this.getExcessPropertiesFor({ dataType: 'refObject', properties: nestedProperties, additionalProperties }, Object.keys(value))
-      if (excessProps.length > 0) {
-        if (propHandling === 'silently-remove-extras') {
-          excessProps.forEach(excessProp => {
-            delete value[excessProp]
-          })
-        }
-        if (propHandling === 'throw-on-extras') {
-          fieldErrors[parent + name] = {
-            message: `"${excessProps.join(',')}" is an excess property and therefore is not allowed`,
-            value: excessProps.reduce<Record<string, unknown>>((acc, propName) => ({ [propName]: value[propName], ...acc }), {}),
-          }
-        }
-      }
-    }
-
-    const childPath = this.buildChildPath(parent, name)
-
-    Object.keys(nestedProperties).forEach(key => {
-      const validatedProp = this.ValidateParam(nestedProperties[key], value[key], key, fieldErrors, isBodyParam, childPath, metadata)
-
-      // Add value from validator if it's not undefined or if value is required and unfedined is valid type
-      if (validatedProp !== undefined || (nestedProperties[key].dataType === 'undefined' && nestedProperties[key].required)) {
-        value[key] = validatedProp
-      }
-    })
-
-    if (typeof additionalProperties === 'object') {
-      const keys = Object.keys(value).filter(key => nestedProperties[key] === undefined)
-      keys.forEach(key => {
-        const validatedProp = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
-        // Add value from validator if it's not undefined or if value is required and unfedined is valid type
-        if (validatedProp !== undefined || (additionalProperties.dataType === 'undefined' && additionalProperties.required)) {
-          value[key] = validatedProp
-        }
-      })
-    }
-
-    if (Object.keys(fieldErrors).length > previousErrors) {
-      return
-    }
-
-    return value
+    return validateNestedObjectLiteral(this.normalizeValidateNestedObjectLiteralArgs(args), this, this.config)
   }
 
   private normalizeValidateNestedObjectLiteralArgs(args: [ValidateNestedObjectLiteralOptions] | ValidateNestedObjectLiteralTupleArgs): ValidateNestedObjectLiteralOptions {
@@ -536,32 +451,7 @@ export class ValidationService {
     metadata?: ParameterValidationMetadata,
   ): TValue
   public validateUnion(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent = '', metadata?: ParameterValidationMetadata): unknown {
-    if (!property.subSchemas) {
-      throw new Error(
-        'internal tsoa error: ' +
-          'the metadata that was generated should have had sub schemas since it’s for a union, however it did not. ' +
-          'Please file an issue with tsoa at https://github.com/tsoa-next/tsoa-next/issues',
-      )
-    }
-
-    const subFieldErrors: FieldErrors[] = []
-
-    for (const subSchema of property.subSchemas) {
-      const subFieldError: FieldErrors = {}
-
-      // Clean value if it's not undefined or use undefined directly if it's undefined.
-      // Value can be undefined if undefined is allowed datatype of the union
-      const validateableValue = value === undefined ? value : this.deepClone(value)
-      const cleanValue = this.ValidateParam({ ...subSchema, validators: { ...property.validators, ...subSchema.validators } }, validateableValue, name, subFieldError, isBodyParam, parent, metadata)
-      subFieldErrors.push(subFieldError)
-
-      if (Object.keys(subFieldError).length === 0) {
-        return cleanValue
-      }
-    }
-
-    this.addSummarizedError(fieldErrors, parent + name, 'Could not match the union against any of the items. Issues: ', subFieldErrors, value)
-    return undefined
+    return validateUnion({ name, value, fieldErrors, isBodyParam, property, parent, metadata }, this, this.config)
   }
 
   public validateIntersection<TValue>(
@@ -582,178 +472,7 @@ export class ValidationService {
     parent = '',
     metadata?: ParameterValidationMetadata,
   ): unknown {
-    if (!subSchemas) {
-      throw new Error(
-        'internal tsoa error: ' +
-          'the metadata that was generated should have had sub schemas since it’s for a intersection, however it did not. ' +
-          'Please file an issue with tsoa at https://github.com/tsoa-next/tsoa-next/issues',
-      )
-    }
-
-    const subFieldErrors: FieldErrors[] = []
-    let cleanValues: Record<string, unknown> = {}
-
-    subSchemas.forEach(subSchema => {
-      const subFieldError: FieldErrors = {}
-      const cleanValue = this.createChildValidationService({
-        noImplicitAdditionalProperties: 'silently-remove-extras',
-      }).ValidateParam(subSchema, this.deepClone(value), name, subFieldError, isBodyParam, parent, metadata)
-      if (this.isRecord(cleanValue)) {
-        cleanValues = {
-          ...cleanValues,
-          ...cleanValue,
-        }
-      }
-      subFieldErrors.push(subFieldError)
-    })
-
-    const filtered = subFieldErrors.filter(subFieldError => Object.keys(subFieldError).length !== 0)
-
-    if (filtered.length > 0) {
-      this.addSummarizedError(fieldErrors, parent + name, 'Could not match the intersection against every type. Issues: ', filtered, value)
-      return
-    }
-
-    const schemas = this.selfIntersectionCombinations(subSchemas.map(subSchema => this.toModelLike(subSchema)))
-
-    const getRequiredPropError = (schema: TsoaRoute.ModelSchema) => {
-      const requiredPropError = {}
-      this.createChildValidationService({
-        noImplicitAdditionalProperties: 'ignore',
-      }).validateModel({
-        name,
-        value: this.deepClone(value),
-        modelDefinition: schema,
-        fieldErrors: requiredPropError,
-        isBodyParam,
-        metadata,
-      })
-      return requiredPropError
-    }
-
-    const schemasWithRequiredProps = schemas.filter(schema => Object.keys(getRequiredPropError(schema)).length === 0)
-
-    if (this.config.noImplicitAdditionalProperties === 'ignore') {
-      return this.isRecord(value) ? { ...value, ...cleanValues } : cleanValues
-    }
-
-    if (this.config.noImplicitAdditionalProperties === 'silently-remove-extras') {
-      if (schemasWithRequiredProps.length > 0) {
-        return cleanValues
-      }
-
-      fieldErrors[parent + name] = {
-        message: `Could not match intersection against any of the possible combinations: ${JSON.stringify(schemas.map(s => Object.keys(s.properties)))}`,
-        value,
-      }
-      return
-    }
-
-    if (this.isRecord(value) && schemasWithRequiredProps.some(schema => this.getExcessPropertiesFor(schema, Object.keys(value)).length === 0)) {
-      return cleanValues
-    }
-
-    fieldErrors[parent + name] = {
-      message: `Could not match intersection against any of the possible combinations: ${JSON.stringify(schemas.map(s => Object.keys(s.properties)))}`,
-      value,
-    }
-    return undefined
-  }
-
-  private toModelLike(schema: TsoaRoute.PropertySchema): TsoaRoute.RefObjectModelSchema[] {
-    if (schema.ref) {
-      const model = this.models[schema.ref]
-      if (model.dataType === 'refObject') {
-        return [model]
-      } else if (model.dataType === 'refAlias') {
-        return [...this.toModelLike(model.type)]
-      } else if (model.dataType === 'refEnum') {
-        throw new Error(`Can't transform an enum into a model like structure because it does not have properties.`)
-      } else {
-        return assertNever(model)
-      }
-    } else if (schema.nestedProperties) {
-      return [{ dataType: 'refObject', properties: schema.nestedProperties, additionalProperties: schema.additionalProperties }]
-    } else if (schema.subSchemas && schema.dataType === 'intersection') {
-      const modelss: TsoaRoute.RefObjectModelSchema[][] = schema.subSchemas.map(subSchema => this.toModelLike(subSchema))
-
-      return this.selfIntersectionCombinations(modelss)
-    }
-
-    if (schema.subSchemas && schema.dataType === 'union') {
-      return schema.subSchemas.flatMap(subSchema => this.toModelLike(subSchema))
-    }
-
-    // There are no properties to check for excess here.
-    return [{ dataType: 'refObject', properties: {}, additionalProperties: false }]
-  }
-
-  /**
-   * combine all schemas once, ignoring order ie
-   * input: [[value1], [value2]] should be [[value1, value2]]
-   * not [[value1, value2],[value2, value1]]
-   * and
-   * input: [[value1, value2], [value3, value4], [value5, value6]] should be [
-   *   [value1, value3, value5],
-   *   [value1, value3, value6],
-   *   [value1, value4, value5],
-   *   [value1, value4, value6],
-   *   [value2, value3, value5],
-   *   [value2, value3, value6],
-   *   [value2, value4, value5],
-   *   [value2, value4, value6],
-   * ]
-   * @param modelSchemass
-   */
-  private selfIntersectionCombinations(modelSchemass: TsoaRoute.RefObjectModelSchema[][]): TsoaRoute.RefObjectModelSchema[] {
-    const res: TsoaRoute.RefObjectModelSchema[] = []
-    // Picks one schema from each sub-array
-    const combinations = this.getAllCombinations(modelSchemass)
-
-    for (const combination of combinations) {
-      // Combine all schemas of this combination
-      let currentCollector = { ...combination[0] }
-      for (let subSchemaIdx = 1; subSchemaIdx < combination.length; subSchemaIdx++) {
-        currentCollector = { ...this.combineProperties(currentCollector, combination[subSchemaIdx]) }
-      }
-      res.push(currentCollector)
-    }
-    return res
-  }
-
-  private getAllCombinations<T>(arrays: T[][]): T[][] {
-    function combine(current: T[], index: number) {
-      if (index === arrays.length) {
-        result.push(current.slice())
-        return
-      }
-
-      for (const item of arrays[index]) {
-        current.push(item)
-        combine(current, index + 1)
-        current.pop()
-      }
-    }
-
-    const result: T[][] = []
-    combine([], 0)
-    return result
-  }
-
-  private combineProperties(a: TsoaRoute.RefObjectModelSchema, b: TsoaRoute.RefObjectModelSchema): TsoaRoute.RefObjectModelSchema {
-    return { dataType: 'refObject', properties: { ...a.properties, ...b.properties }, additionalProperties: a.additionalProperties || b.additionalProperties || false }
-  }
-
-  private getExcessPropertiesFor(modelDefinition: TsoaRoute.RefObjectModelSchema, properties: string[]): string[] {
-    const modelProperties = new Set(Object.keys(modelDefinition.properties))
-
-    if (modelDefinition.additionalProperties) {
-      return []
-    } else if (this.config.noImplicitAdditionalProperties === 'ignore') {
-      return []
-    } else {
-      return [...properties].filter(property => !modelProperties.has(property))
-    }
+    return validateIntersection({ name, value, fieldErrors, isBodyParam, subSchemas, parent, metadata }, this.models, this.config, ValidationService)
   }
 
   public validateModel<TValue>(input: {
@@ -774,224 +493,7 @@ export class ValidationService {
     parent?: string
     metadata?: ParameterValidationMetadata
   }): unknown {
-    const { name, value, modelDefinition, fieldErrors, isBodyParam, parent = '', metadata } = input
-    const previousErrors = Object.keys(fieldErrors).length
-
-    if (modelDefinition) {
-      if (modelDefinition.dataType === 'refEnum') {
-        return this.validateEnum(name, value, fieldErrors, modelDefinition.enums, parent)
-      }
-
-      if (modelDefinition.dataType === 'refAlias') {
-        return this.ValidateParam(modelDefinition.type, value, name, fieldErrors, isBodyParam, parent, metadata)
-      }
-
-      const fieldPath = parent + name
-      const childPath = this.buildChildPath(parent, name)
-
-      if (!this.isRecord(value)) {
-        fieldErrors[fieldPath] = {
-          message: `invalid object`,
-          value,
-        }
-        return
-      }
-
-      const properties = modelDefinition.properties || {}
-      const keysOnPropertiesModelDefinition = new Set(Object.keys(properties))
-      const allPropertiesOnData = new Set(Object.keys(value))
-
-      Object.entries(properties).forEach(([key, property]) => {
-        const validatedParam = this.ValidateParam(property, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
-
-        // Add value from validator if it's not undefined or if value is required and unfedined is valid type
-        if (validatedParam !== undefined || (property.dataType === 'undefined' && property.required)) {
-          value[key] = validatedParam
-        }
-      })
-
-      const isAnExcessProperty = (objectKeyThatMightBeExcess: string) => {
-        return allPropertiesOnData.has(objectKeyThatMightBeExcess) && !keysOnPropertiesModelDefinition.has(objectKeyThatMightBeExcess)
-      }
-
-      const additionalProperties = modelDefinition.additionalProperties
-
-      if (additionalProperties === true || isDefaultForAdditionalPropertiesAllowed(additionalProperties)) {
-        // then don't validate any of the additional properties
-      } else if (additionalProperties === false) {
-        Object.keys(value).forEach((key: string) => {
-          if (isAnExcessProperty(key)) {
-            if (this.config.noImplicitAdditionalProperties === 'throw-on-extras') {
-              fieldErrors[`${childPath}${key}`] = {
-                message: `"${key}" is an excess property and therefore is not allowed`,
-                value: key,
-              }
-            } else if (this.config.noImplicitAdditionalProperties === 'silently-remove-extras') {
-              delete value[key]
-            } else if (this.config.noImplicitAdditionalProperties === 'ignore') {
-              // then it's okay to have additionalProperties
-            } else {
-              assertNever(this.config.noImplicitAdditionalProperties)
-            }
-          }
-        })
-      } else {
-        Object.keys(value).forEach((key: string) => {
-          if (isAnExcessProperty(key)) {
-            const validatedValue = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
-            // Add value from validator if it's not undefined or if value is required and unfedined is valid type
-            if (validatedValue !== undefined || (additionalProperties.dataType === 'undefined' && additionalProperties.required)) {
-              value[key] = validatedValue
-            } else {
-              fieldErrors[`${childPath}${key}`] = {
-                message: `No matching model found in additionalProperties to validate ${key}`,
-                value: key,
-              }
-            }
-          }
-        })
-      }
-    }
-
-    if (Object.keys(fieldErrors).length > previousErrors) {
-      return
-    }
-
-    return value
-  }
-
-  /**
-   * Creates a new ValidationService instance with specific configuration
-   * @param overrides Configuration overrides
-   * @returns New ValidationService instance
-   */
-  private createChildValidationService(overrides: Partial<AdditionalProps> = {}): ValidationService {
-    return new ValidationService(this.models, {
-      ...this.config,
-      ...overrides,
-    })
-  }
-
-  /**
-   * Deep clones an object without using JSON.stringify/parse to avoid:
-   * 1. Loss of undefined values
-   * 2. Loss of functions
-   * 3. Conversion of dates to strings
-   * 4. Exponential escaping issues with nested objects
-   */
-  private deepClone<T>(obj: T): T {
-    // Fast path for primitives
-    if (obj === null || obj === undefined) {
-      return obj
-    }
-
-    const type = typeof obj
-    if (type !== 'object') {
-      return obj
-    }
-
-    // Handle built-in object types
-    if (obj instanceof Date) {
-      return new Date(obj) as T
-    }
-
-    if (obj instanceof RegExp) {
-      // Preserve the existing instance instead of reconstructing a pattern from untrusted data.
-      return obj
-    }
-
-    if (Array.isArray(obj)) {
-      const arrayValues = obj as unknown[]
-      const clonedArray: unknown = arrayValues.map(value => this.deepClone(value))
-      return clonedArray as T
-    }
-
-    if (obj instanceof Buffer) {
-      return Buffer.from(obj) as T
-    }
-
-    // Handle plain objects
-    const cloneObj: Record<string, unknown> = {}
-    for (const key in obj) {
-      if (objectHasOwn(obj, key)) {
-        cloneObj[key] = this.deepClone((obj as Record<string, unknown>)[key])
-      }
-    }
-    return cloneObj as T
-  }
-
-  /**
-   * Adds a summarized error to the fieldErrors object
-   * @param fieldErrors The errors object to add to
-   * @param errorKey The key for the error
-   * @param prefix The error message prefix
-   * @param subErrors Array of sub-errors to summarize
-   * @param value The value that failed validation
-   */
-  private addSummarizedError(fieldErrors: FieldErrors, errorKey: string, prefix: string, subErrors: FieldErrors[], value: unknown): void {
-    const maxErrorLength = this.config.maxValidationErrorSize ? this.config.maxValidationErrorSize - prefix.length : undefined
-
-    fieldErrors[errorKey] = {
-      message: `${prefix}${this.summarizeValidationErrors(subErrors, maxErrorLength)}`,
-      value,
-    }
-  }
-
-  /**
-   * Summarizes validation errors to prevent extremely large error messages
-   * @param errors Array of field errors from union/intersection validation
-   * @param maxLength Maximum length of the summarized message
-   * @returns Summarized error message
-   */
-  private summarizeValidationErrors(errors: FieldErrors[], maxLength?: number): string {
-    const effectiveMaxLength = maxLength || this.config.maxValidationErrorSize || 1000
-
-    // If there are no errors, return empty
-    if (errors.length === 0) {
-      return '[]'
-    }
-
-    // Start with a count of total errors
-    const errorCount = errors.length
-    const summary: string[] = []
-
-    // Try to include first few errors
-    let currentLength = 0
-    let includedErrors = 0
-
-    // Calculate the size of the suffix if we need to truncate
-    const truncatedSuffix = `,...and ${errorCount} more errors]`
-    const reservedSpace = truncatedSuffix.length + 10 // +10 for safety margin
-
-    for (const error of errors) {
-      const errorStr = JSON.stringify(error)
-      const projectedLength = currentLength + errorStr.length + (summary.length > 0 ? 1 : 0) + 2 // +1 for comma if not first, +2 for brackets
-
-      if (projectedLength + reservedSpace < effectiveMaxLength && includedErrors < 3) {
-        summary.push(errorStr)
-        currentLength = projectedLength
-        includedErrors++
-      } else {
-        break
-      }
-    }
-
-    // Build final message
-    if (includedErrors < errorCount) {
-      const result = `[${summary.join(',')},...and ${errorCount - includedErrors} more errors]`
-      // Make sure we don't exceed the limit
-      if (result.length > effectiveMaxLength) {
-        // If still too long, remove the last error and try again
-        if (summary.length > 0) {
-          summary.pop()
-          includedErrors--
-          return `[${summary.join(',')},...and ${errorCount - includedErrors} more errors]`
-        }
-      }
-      return result
-    }
-
-    return `[${summary.join(',')}]`
+    return validateModel(input, this, this.config)
   }
 }
 

@@ -4,10 +4,12 @@ import 'mocha'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import * as ts from 'typescript'
+import type { Tsoa } from '@tsoa-next/runtime'
+import { resolveTupleTypeNode } from '../../../packages/cli/src/metadataGeneration/structural-type'
 import { MetadataGenerator } from '../../../packages/cli/src/metadataGeneration/metadataGenerator'
 import { GenerateMetadataError } from '../../../packages/cli/src/metadataGeneration/exceptions'
 import { formatDefaultString } from '../../../packages/cli/src/metadataGeneration/default-value'
-import { TypeResolver } from '../../../packages/cli/src/metadataGeneration/typeResolver'
+import { TypeResolver, type Context } from '../../../packages/cli/src/metadataGeneration/typeResolver'
 
 describe('TypeResolver', () => {
   const resolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
@@ -38,6 +40,49 @@ describe('TypeResolver', () => {
 
   it('should normalize indexed access segments after parenthesized types', () => {
     expect(getRefTypeName('(A|B)[K]')).to.equal('_40_A-or-B_41_-at-K')
+  })
+
+  describe('structural resolution boundaries', () => {
+    it('retains tuple child order, owning elements, context identity and rest unwrapping', () => {
+      const current = { defaultNumberType: 'double' } as MetadataGenerator
+      const context: Context = {}
+      const calls: Array<{ node: ts.TypeNode; parent: ts.Node | undefined }> = []
+      class ChildResolver extends TypeResolver {
+        constructor(
+          private readonly node: ts.TypeNode,
+          owner: MetadataGenerator,
+          parent?: ts.Node,
+          childContext: Context = {},
+        ) {
+          super(node, owner, parent, childContext)
+          expect(owner).to.equal(current)
+          expect(childContext).to.equal(context)
+          calls.push({ node, parent })
+        }
+        public override resolve(): Tsoa.Type {
+          return ts.isArrayTypeNode(this.node) ? { dataType: 'array', elementType: { dataType: 'string' } } : { dataType: 'double' }
+        }
+      }
+      const first = ts.factory.createNamedTupleMember(undefined, ts.factory.createIdentifier('count'), undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword))
+      const rest = ts.factory.createRestTypeNode(ts.factory.createArrayTypeNode(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)))
+      const tuple = ts.factory.createTupleTypeNode([first, rest])
+      expect(resolveTupleTypeNode(tuple, current, context, ChildResolver)).to.deep.equal({ dataType: 'tuple', types: [{ dataType: 'double' }], restType: { dataType: 'string' } })
+      expect(calls.map(call => call.node)).to.deep.equal([first.type, rest.type])
+      expect(calls[0].parent).to.equal(first)
+      expect(calls[1].parent).to.equal(rest)
+    })
+
+    it('reports the first unsupported union child without resolving a later child', () => {
+      const source = ts.createSourceFile('structural.ts', 'type Selection = symbol | string', ts.ScriptTarget.ES2021, true)
+      const declaration = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!declaration || !ts.isUnionTypeNode(declaration.type)) throw new Error('Expected union fixture')
+      Object.defineProperty(declaration.type.types[1], 'kind', {
+        get: () => {
+          throw new Error('Unused union child inspected')
+        },
+      })
+      expect(() => new TypeResolver(declaration.type, { defaultNumberType: 'double' } as MetadataGenerator).resolve()).to.throw(GenerateMetadataError, 'Unknown type: SymbolKeyword')
+    })
   })
 
   describe('direct helper coverage', () => {

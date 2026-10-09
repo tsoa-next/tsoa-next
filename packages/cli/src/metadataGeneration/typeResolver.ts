@@ -9,6 +9,7 @@ import { GenerateMetadataError, GenerateMetaDataWarning } from './exceptions'
 import { getExtensions, getExtensionsFromJSDocComments } from './extension'
 import { getInitializerValue } from './initializer-value'
 import { getDefaultValue } from './default-value'
+import { resolveArrayTypeNode, resolveRestTypeNode, resolveUnionTypeNode, resolveTupleTypeNode, resolveLiteralTypeNode, resolveIntersectionTypes, getLiteralValue } from './structural-type'
 import { MetadataGenerator } from './metadataGenerator'
 
 import { PrimitiveTransformer } from './transformer/primitiveTransformer'
@@ -269,33 +270,15 @@ export class TypeResolver {
   }
 
   private resolveArrayTypeNode(): Tsoa.Type | undefined {
-    if (!ts.isArrayTypeNode(this.typeNode)) {
-      return undefined
-    }
-
-    return {
-      dataType: 'array',
-      elementType: new TypeResolver(this.typeNode.elementType, this.current, this.parentNode, this.context).resolve(),
-    }
+    return resolveArrayTypeNode(this.typeNode, this.current, this.parentNode, this.context, TypeResolver)
   }
 
   private resolveRestTypeNode(): Tsoa.Type | undefined {
-    if (!ts.isRestTypeNode(this.typeNode)) {
-      return undefined
-    }
-
-    return new TypeResolver(this.typeNode.type, this.current, this.parentNode, this.context).resolve()
+    return resolveRestTypeNode(this.typeNode, this.current, this.parentNode, this.context, TypeResolver)
   }
 
   private resolveUnionTypeNode(): Tsoa.Type | undefined {
-    if (!ts.isUnionTypeNode(this.typeNode)) {
-      return undefined
-    }
-
-    return {
-      dataType: 'union',
-      types: this.typeNode.types.map(type => new TypeResolver(type, this.current, this.parentNode, this.context).resolve()),
-    }
+    return resolveUnionTypeNode(this.typeNode, this.current, this.parentNode, this.context, TypeResolver)
   }
 
   private resolveIntersectionTypeNode(): Tsoa.Type | undefined {
@@ -305,38 +288,18 @@ export class TypeResolver {
 
     return {
       dataType: 'intersection',
-      types: this.typeNode.types.filter(type => !this.isIoTsBrandMarker(type, this.current.typeChecker)).map(type => new TypeResolver(type, this.current, this.parentNode, this.context).resolve()),
+      types: resolveIntersectionTypes(
+        this.typeNode.types.filter(type => !this.isIoTsBrandMarker(type, this.current.typeChecker)),
+        this.current,
+        this.parentNode,
+        this.context,
+        TypeResolver,
+      ),
     }
   }
 
   private resolveTupleTypeNode(): Tsoa.Type | undefined {
-    if (!ts.isTupleTypeNode(this.typeNode)) {
-      return undefined
-    }
-
-    const elementTypes: Tsoa.Type[] = []
-    let restType: Tsoa.Type | undefined
-
-    for (const element of this.typeNode.elements) {
-      if (ts.isRestTypeNode(element)) {
-        restType = this.resolveTupleRestTypeNode(element)
-        continue
-      }
-
-      const typeNode = ts.isNamedTupleMember(element) ? element.type : element
-      elementTypes.push(new TypeResolver(typeNode, this.current, element, this.context).resolve())
-    }
-
-    return {
-      dataType: 'tuple',
-      types: elementTypes,
-      ...(restType ? { restType } : {}),
-    }
-  }
-
-  private resolveTupleRestTypeNode(element: ts.RestTypeNode): Tsoa.Type {
-    const resolvedRest = new TypeResolver(element.type, this.current, element, this.context).resolve()
-    return resolvedRest.dataType === 'array' ? resolvedRest.elementType : resolvedRest
+    return resolveTupleTypeNode(this.typeNode, this.current, this.context, TypeResolver)
   }
 
   private resolveAnyOrUnknownTypeNode(): Tsoa.Type | undefined {
@@ -348,14 +311,7 @@ export class TypeResolver {
   }
 
   private resolveLiteralTypeNode(): Tsoa.Type | undefined {
-    if (!ts.isLiteralTypeNode(this.typeNode)) {
-      return undefined
-    }
-
-    return {
-      dataType: 'enum',
-      enums: [this.getLiteralValue(this.typeNode)],
-    }
+    return resolveLiteralTypeNode(this.typeNode)
   }
 
   private resolveTypeLiteralNode(): Tsoa.Type | undefined {
@@ -1101,28 +1057,6 @@ export class TypeResolver {
     return aliasedSymbol !== symbol && this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
   }
 
-  private getLiteralValue(typeNode: ts.LiteralTypeNode): string | number | boolean | null {
-    switch (typeNode.literal.kind) {
-      case ts.SyntaxKind.TrueKeyword:
-        return true
-      case ts.SyntaxKind.FalseKeyword:
-        return false
-      case ts.SyntaxKind.StringLiteral:
-        return typeNode.literal.text
-      case ts.SyntaxKind.NumericLiteral:
-        return Number.parseFloat(typeNode.literal.text)
-      case ts.SyntaxKind.PrefixUnaryExpression:
-        // make sure to only handle the MinusToken here
-        throwUnless((typeNode.literal as ts.PrefixUnaryExpression).operator === ts.SyntaxKind.MinusToken, new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
-        return Number.parseFloat(typeNode.literal.getText())
-      case ts.SyntaxKind.NullKeyword:
-        return null
-      default:
-        throwUnless(objectHasOwn(typeNode.literal, 'text'), new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
-        return typeNode.literal.text
-    }
-  }
-
   private getDesignatedModels<T extends ts.Node>(nodes: T[], typeName: string): T[] {
     /**
      * Model is marked with '@tsoaModel', indicating that it should be the 'canonical' model used
@@ -1324,7 +1258,7 @@ export class TypeResolver {
       return undefined
     }
 
-    const literalValue = this.getLiteralValue(arg)
+    const literalValue = getLiteralValue(arg)
     if (typeof literalValue === 'string') {
       return `'${literalValue}'`
     }
