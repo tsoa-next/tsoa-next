@@ -1,12 +1,14 @@
 import { assertNever, Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
-import { safeFromJson } from '../utils/jsonUtils'
-import { getDecorators, getNodeFirstDecoratorValue, isDecorator } from './../utils/decoratorUtils'
-import { getJSDocComment, getJSDocComments, getJSDocTagNames, isExistJSDocTag, symbolDisplayPartsToString } from './../utils/jsDocUtils'
+import { getDecorators, isDecorator } from './../utils/decoratorUtils'
+import { getJSDocTagNames, isExistJSDocTag, symbolDisplayPartsToString } from './../utils/jsDocUtils'
 import { getPropertyValidators } from './../utils/validatorUtils'
 import { throwUnless } from '../utils/flowUtils'
 import { GenerateMetadataError, GenerateMetaDataWarning } from './exceptions'
-import { getExtensions, getExtensionsFromJSDocComments } from './extension'
+import { resolveIndexedAccessKeywordType, resolveIndexedAccessLiteralType, matchesKeyedIndexedAccess, resolveKeyedIndexedAccessType } from './indexed-access-type'
+import { resolveKeyOfTypeOperator } from './key-of-type'
+import { resolveMappedType } from './mapped-type'
+import { getNodeDescription, getNodeFormat, getNodeTitle, getNodeExample, getNodeExtension } from './declaration-annotations'
 import { getInitializerValue } from './initializer-value'
 import { getDefaultValue } from './default-value'
 import { resolveArrayTypeNode, resolveRestTypeNode, resolveUnionTypeNode, resolveTupleTypeNode, resolveLiteralTypeNode, resolveIntersectionTypes, getLiteralValue } from './structural-type'
@@ -48,9 +50,6 @@ type ResolvedContextualTypeArgument = {
 const symbolModuleOriginCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, Map<string, boolean>>>()
 const ioTsUtilityTypeCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, IoTsUtilityType | false>>()
 
-const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
-const objectHasOwn = (value: object, key: PropertyKey): boolean => Object.getOwnPropertyDescriptor(value, key) !== undefined
-
 const getSymbolModuleOriginCache = (typeChecker: ts.TypeChecker): WeakMap<ts.Symbol, Map<string, boolean>> => {
   let cache = symbolModuleOriginCache.get(typeChecker)
   if (!cache) {
@@ -69,11 +68,6 @@ const getIoTsUtilityTypeCache = (typeChecker: ts.TypeChecker): WeakMap<ts.Symbol
   }
 
   return cache
-}
-
-const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
-  const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
-  return symbolWithLinks.links?.syntheticOrigin
 }
 
 const isAsciiLetter = (char: string | undefined): boolean => {
@@ -369,134 +363,7 @@ export class TypeResolver {
       return undefined
     }
 
-    return this.resolveMappedType(this.getReferencer(), this.typeNode)
-  }
-
-  private getOriginalMappedDeclaration(prop: ts.Symbol): ts.Declaration | undefined {
-    const declaration = prop.declarations?.[0]
-    if (declaration) {
-      return declaration
-    }
-
-    const syntheticOrigin = getSyntheticOrigin(prop)
-    if (syntheticOrigin?.name === prop.name) {
-      // Otherwise loses jsDoc like in intellisense.
-      return syntheticOrigin.declarations?.[0]
-    }
-
-    return undefined
-  }
-
-  private isIgnoredMappedProperty(prop: ts.Symbol): boolean {
-    const declaration = this.getOriginalMappedDeclaration(prop)
-    if (!declaration) {
-      return false
-    }
-
-    const ignoredTargets = !ts.isPropertyDeclaration(declaration) && !ts.isPropertySignature(declaration) && !ts.isParameter(declaration)
-    return getJSDocTagNames(declaration).includes('ignore') || ignoredTargets
-  }
-
-  private resolveMappedType(type: ts.Type, mappedTypeNode: ts.MappedTypeNode): Tsoa.Type {
-    if (this.hasFlag(type, ts.TypeFlags.Union)) {
-      return {
-        dataType: 'union',
-        types: (type as ts.UnionType).types.map(unionType => this.resolveMappedType(unionType, mappedTypeNode)),
-      }
-    }
-
-    if (this.hasFlag(type, ts.TypeFlags.Undefined)) {
-      return { dataType: 'undefined' }
-    }
-
-    if (this.hasFlag(type, ts.TypeFlags.Null)) {
-      return {
-        dataType: 'enum',
-        enums: [null],
-      }
-    }
-
-    if (this.hasFlag(type, ts.TypeFlags.Object)) {
-      return this.resolveMappedObjectType(type, mappedTypeNode)
-    }
-
-    // Known issues & easy to implement: Partial<string>, Partial<never>, ...
-    throw new GenerateMetadataError(`Unhandled mapped type has found, flags: ${type.flags}`, this.typeNode)
-  }
-
-  private resolveMappedObjectType(type: ts.Type, mappedTypeNode: ts.MappedTypeNode): Tsoa.NestedObjectLiteralType {
-    const properties = type
-      .getProperties()
-      .filter(property => !this.isIgnoredMappedProperty(property))
-      .map(property => this.resolveMappedProperty(property))
-
-    const objectLiteral: Tsoa.NestedObjectLiteralType = {
-      dataType: 'nestedObjectLiteral',
-      properties,
-    }
-
-    const indexTypes = this.resolveMappedIndexTypes(type, mappedTypeNode)
-    if (indexTypes.length === 1) {
-      objectLiteral.additionalProperties = indexTypes[0]
-    } else if (indexTypes.length > 1) {
-      objectLiteral.additionalProperties = {
-        dataType: 'union',
-        types: indexTypes,
-      }
-    }
-
-    return objectLiteral
-  }
-
-  private resolveMappedProperty(property: ts.Symbol): Tsoa.Property {
-    const propertyType = this.current.typeChecker.getTypeOfSymbolAtLocation(property, this.typeNode)
-    const typeNode = this.current.typeChecker.typeToTypeNode(propertyType, undefined, ts.NodeBuilderFlags.NoTruncation)!
-    const parent = this.getOriginalMappedDeclaration(property)
-    const comments = property.getDocumentationComment(this.current.typeChecker)
-
-    return {
-      name: property.getName(),
-      required: !this.hasFlag(property, ts.SymbolFlags.Optional),
-      deprecated: this.isDeprecatedMappedProperty(parent),
-      type: new TypeResolver(typeNode, this.current, parent, this.context, propertyType).resolve(),
-      default: this.getMappedPropertyDefault(parent),
-      validators: (parent ? getPropertyValidators(parent) : {}) || {},
-      description: symbolDisplayPartsToString(comments),
-      format: parent ? this.getNodeFormat(parent) : undefined,
-      example: parent ? this.getNodeExample(parent) : undefined,
-      extensions: parent ? this.getNodeExtension(parent) : undefined,
-    }
-  }
-
-  private isDeprecatedMappedProperty(parent: ts.Declaration | undefined): boolean {
-    if (!parent) {
-      return false
-    }
-
-    return isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
-  }
-
-  private getMappedPropertyDefault(parent: ts.Declaration | undefined): unknown {
-    if (!parent) {
-      return undefined
-    }
-
-    if (hasInitializer(parent)) {
-      return getInitializerValue(parent.initializer, this.current.typeChecker)
-    }
-
-    return TypeResolver.getDefault(parent)
-  }
-
-  private resolveMappedIndexTypes(type: ts.Type, mappedTypeNode: ts.MappedTypeNode): Tsoa.Type[] {
-    return this.current.typeChecker.getIndexInfosOfType(type).flatMap(indexInfo => {
-      const typeNode = this.current.typeChecker.typeToTypeNode(indexInfo.type, undefined, ts.NodeBuilderFlags.NoTruncation)!
-      if (typeNode.kind === ts.SyntaxKind.NeverKeyword) {
-        return []
-      }
-
-      return [new TypeResolver(typeNode, this.current, mappedTypeNode, this.context, indexInfo.type).resolve()]
-    })
+    return resolveMappedType(this.getReferencer(), this.typeNode, this.typeNode, this.current, this.context, this, TypeResolver)
   }
 
   private resolveConditionalTypeNode(): Tsoa.Type | undefined {
@@ -564,161 +431,18 @@ export class TypeResolver {
   }
 
   private resolveKeyOfTypeOperator(typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type {
-    const type = typeChecker.getTypeFromTypeNode(typeNode)
-    const indexedType = this.resolveKeyOfIndexType(type, typeNode, current, context, parentNode)
-    if (indexedType) {
-      return indexedType
-    }
-
-    if (type.isUnion()) {
-      return this.resolveKeyOfUnionType(type, typeNode, typeChecker)
-    }
-
-    if (type.isLiteral()) {
-      return this.resolveKeyOfLiteralType(type, typeNode, typeChecker)
-    }
-
-    return this.resolveFallbackKeyOfType(type, typeNode, typeChecker)
-  }
-
-  private resolveKeyOfIndexType(type: ts.Type, typeNode: ts.TypeOperatorNode, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type | undefined {
-    if (!type.isIndexType()) {
-      return undefined
-    }
-
-    const symbol = type.type.getSymbol()
-    if (!symbol || !this.hasFlag(type.type, ts.TypeFlags.TypeParameter)) {
-      return undefined
-    }
-
-    const typeName = symbol.getEscapedName()
-    throwUnless(typeof typeName === 'string', new GenerateMetadataError(`typeName is not string, but ${typeof typeName}`, typeNode))
-    const contextualType = context[typeName]
-    if (!contextualType) {
-      return undefined
-    }
-
-    const subResult = new TypeResolver(contextualType.type, current, parentNode, context, contextualType.resolvedType).resolve()
-    if (subResult.dataType === 'any') {
-      return this.createStringAndNumberUnion()
-    }
-
-    const properties = (subResult as Tsoa.RefObjectType).properties?.map(property => property.name)
-    throwUnless(properties, new GenerateMetadataError(`TypeOperator 'keyof' on node which have no properties`, contextualType.type))
-
-    return {
-      dataType: 'enum',
-      enums: properties,
-    }
-  }
-
-  private resolveKeyOfUnionType(type: ts.UnionType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    const literals = type.types.filter((member): member is ts.LiteralType => member.isLiteral())
-    if (!literals.length) {
-      return this.resolveNonLiteralKeyOfUnionType(type, typeNode, typeChecker)
-    }
-
-    this.warnOnSkippedNonLiteralKeyTypes(type, typeNode, typeChecker)
-    return this.createLiteralKeyOfUnionType(literals, typeNode, typeChecker)
-  }
-
-  private resolveNonLiteralKeyOfUnionType(type: ts.UnionType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    const typeFlags = new Set(type.types.map(member => member.flags))
-    const includesString = typeFlags.has(ts.TypeFlags.String)
-    const includesNumber = typeFlags.has(ts.TypeFlags.Number)
-    const includesSymbol = typeFlags.has(ts.TypeFlags.ESSymbol)
-
-    if (includesString && includesNumber && (type.types.length === 2 || (type.types.length === 3 && includesSymbol))) {
-      return this.createStringAndNumberUnion()
-    }
-
-    this.warnOnSkippedNonLiteralKeyTypes(type, typeNode, typeChecker)
-    return { dataType: 'enum', enums: [] }
-  }
-
-  private warnOnSkippedNonLiteralKeyTypes(type: ts.UnionType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker) {
-    const nonLiteralTypes = type.types.filter(member => !member.isLiteral())
-    if (!nonLiteralTypes.length) {
-      return
-    }
-
-    const problems = nonLiteralTypes.map(member => typeChecker.typeToString(member))
-    console.warn(new GenerateMetaDataWarning(`Skipped non-literal type(s) ${problems.join(', ')}`, typeNode).toString())
-  }
-
-  private createLiteralKeyOfUnionType(literals: ts.LiteralType[], typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    const literalValues = literals.map(literal => this.getKeyLiteralValue(literal, typeNode, typeChecker))
-    const stringMembers = literalValues.filter((value): value is string => typeof value === 'string')
-    const numberMembers = literalValues.filter((value): value is number => typeof value === 'number')
-
-    if (stringMembers.length && numberMembers.length) {
-      return {
-        dataType: 'union',
-        types: [
-          { dataType: 'enum', enums: stringMembers },
-          { dataType: 'enum', enums: numberMembers },
-        ],
-      }
-    }
-
-    return {
-      dataType: 'enum',
-      enums: literalValues,
-    }
-  }
-
-  private getKeyLiteralValue(literal: ts.LiteralType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): string | number {
-    throwUnless(
-      typeof literal.value === 'number' || typeof literal.value === 'string',
-      new GenerateMetadataError(`Not handled key Type, maybe ts.PseudoBigInt ${typeChecker.typeToString(literal)}`, typeNode),
-    )
-
-    return literal.value
-  }
-
-  private resolveKeyOfLiteralType(type: ts.LiteralType, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    throwUnless(typeof type.value === 'number' || typeof type.value === 'string', new GenerateMetadataError(`Not handled indexType, maybe ts.PseudoBigInt ${typeChecker.typeToString(type)}`, typeNode))
-
-    return {
-      dataType: 'enum',
-      enums: [type.value],
-    }
-  }
-
-  private resolveFallbackKeyOfType(type: ts.Type, typeNode: ts.TypeOperatorNode, typeChecker: ts.TypeChecker): Tsoa.Type {
-    if (this.hasFlag(type, ts.TypeFlags.Never)) {
-      throw new GenerateMetadataError(`TypeOperator 'keyof' on node produced a never type`, typeNode)
-    }
-
-    if (this.hasFlag(type, ts.TypeFlags.TemplateLiteral)) {
-      console.warn(new GenerateMetaDataWarning(`Template literals are assumed as strings`, typeNode).toString())
-      return { dataType: 'string' }
-    }
-
-    if (this.hasFlag(type, ts.TypeFlags.Number)) {
-      return { dataType: 'double' }
-    }
-
-    const indexedTypeName = typeChecker.typeToString(typeChecker.getTypeFromTypeNode(typeNode.type))
-    throw new GenerateMetadataError(`Could not determine the keys on ${indexedTypeName}`, typeNode)
-  }
-
-  private createStringAndNumberUnion(): Tsoa.UnionType {
-    return {
-      dataType: 'union',
-      types: [{ dataType: 'string' }, { dataType: 'double' }],
-    }
+    return resolveKeyOfTypeOperator(typeNode, typeChecker, current, context, parentNode, TypeResolver)
   }
 
   private resolveIndexedAccessTypeNode(typeNode: ts.IndexedAccessTypeNode, typeChecker: ts.TypeChecker, current: MetadataGenerator, context: Context): Tsoa.Type {
     const { indexType, objectType } = typeNode
 
     if ([ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.StringKeyword].includes(indexType.kind)) {
-      return this.resolveIndexedAccessKeywordType(typeNode, typeChecker, current, context, objectType, indexType)
+      return resolveIndexedAccessKeywordType(typeNode, typeChecker, current, context, objectType, indexType, TypeResolver)
     }
 
     if (ts.isLiteralTypeNode(indexType) && (ts.isStringLiteral(indexType.literal) || ts.isNumericLiteral(indexType.literal))) {
-      return this.resolveIndexedAccessLiteralType(typeNode, typeChecker, current, context, objectType, indexType)
+      return resolveIndexedAccessLiteralType(typeNode, typeChecker, current, context, objectType, indexType, TypeResolver)
     }
 
     if (ts.isTypeOperatorNode(indexType) && indexType.operator === ts.SyntaxKind.KeyOfKeyword) {
@@ -731,77 +455,6 @@ export class TypeResolver {
     throw new GenerateMetadataError(`Unknown type: ${ts.SyntaxKind[typeNode.kind]}`, typeNode)
   }
 
-  private resolveIndexedAccessKeywordType(
-    typeNode: ts.IndexedAccessTypeNode,
-    typeChecker: ts.TypeChecker,
-    current: MetadataGenerator,
-    context: Context,
-    objectType: ts.TypeNode,
-    indexType: ts.TypeNode,
-  ): Tsoa.Type {
-    const isNumberIndexType = indexType.kind === ts.SyntaxKind.NumberKeyword
-    const typeOfObjectType = typeChecker.getTypeFromTypeNode(objectType)
-    const indexedType = isNumberIndexType ? typeOfObjectType.getNumberIndexType() : typeOfObjectType.getStringIndexType()
-    throwUnless(indexedType, new GenerateMetadataError(`Could not determine ${isNumberIndexType ? 'number' : 'string'} index on ${typeChecker.typeToString(typeOfObjectType)}`, typeNode))
-
-    return new TypeResolver(typeChecker.typeToTypeNode(indexedType, objectType, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
-  }
-
-  private resolveIndexedAccessLiteralType(
-    typeNode: ts.IndexedAccessTypeNode,
-    typeChecker: ts.TypeChecker,
-    current: MetadataGenerator,
-    context: Context,
-    objectType: ts.TypeNode,
-    indexType: ts.LiteralTypeNode,
-  ): Tsoa.Type {
-    const propertyName = ts.isStringLiteral(indexType.literal) || ts.isNumericLiteral(indexType.literal) ? indexType.literal.text : indexType.literal.getText()
-    const { type: resolvedObjectType, typeNode: resolvedObjectTypeNode } = this.resolveContextualIndexedAccessObjectType(objectType, typeChecker, context)
-    const symbol = typeChecker.getPropertyOfType(resolvedObjectType, propertyName)
-    throwUnless(symbol, new GenerateMetadataError(`Could not determine the keys on ${typeChecker.typeToString(resolvedObjectType)}`, typeNode))
-
-    if (this.symbolHasTypeDeclaration(symbol.valueDeclaration)) {
-      return new TypeResolver(symbol.valueDeclaration.type, current, typeNode, context).resolve()
-    }
-
-    const declarationType = typeChecker.getTypeOfSymbolAtLocation(symbol, resolvedObjectTypeNode)
-    try {
-      return new TypeResolver(typeChecker.typeToTypeNode(declarationType, resolvedObjectTypeNode, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
-    } catch {
-      const typeNodeForError = typeChecker.typeToTypeNode(declarationType, undefined, ts.NodeBuilderFlags.NoTruncation)!
-      const typeName = typeChecker.typeToString(typeChecker.getTypeFromTypeNode(typeNodeForError))
-      throw new GenerateMetadataError(`Could not determine the keys on ${typeName}`, typeNode)
-    }
-  }
-
-  private resolveContextualIndexedAccessObjectType(objectType: ts.TypeNode, typeChecker: ts.TypeChecker, context: Context): { type: ts.Type; typeNode: ts.TypeNode } {
-    const contextualTypeNode = this.getContextualIndexedAccessObjectTypeNode(objectType, context)
-    const resolvedTypeNode = contextualTypeNode ?? objectType
-
-    const contextualType = contextualTypeNode && ts.isTypeReferenceNode(objectType) && ts.isIdentifier(objectType.typeName) ? context[objectType.typeName.text] : undefined
-
-    return {
-      type: contextualType?.resolvedType ?? typeChecker.getTypeFromTypeNode(resolvedTypeNode),
-      typeNode: resolvedTypeNode,
-    }
-  }
-
-  private getContextualIndexedAccessObjectTypeNode(objectType: ts.TypeNode, context: Context): ts.TypeNode | undefined {
-    if (ts.isParenthesizedTypeNode(objectType)) {
-      return this.getContextualIndexedAccessObjectTypeNode(objectType.type, context)
-    }
-
-    if (!ts.isTypeReferenceNode(objectType) || !ts.isIdentifier(objectType.typeName)) {
-      return undefined
-    }
-
-    return context[objectType.typeName.text]?.type
-  }
-
-  private symbolHasTypeDeclaration(node: ts.Node | undefined): node is ts.HasType & { type: ts.TypeNode } {
-    return node !== undefined && objectHasOwn(node, 'type') && (node as ts.HasType).type !== undefined
-  }
-
   private resolveKeyedIndexedAccessType(
     typeNode: ts.IndexedAccessTypeNode,
     typeChecker: ts.TypeChecker,
@@ -810,18 +463,12 @@ export class TypeResolver {
     objectType: ts.TypeNode,
     indexType: ts.TypeOperatorNode,
   ): Tsoa.Type | undefined {
-    const typeOfObjectType = ts.isParenthesizedTypeNode(objectType) ? objectType.type : objectType
-    const typeOfIndexType = indexType.type
-    const isSameTypeQuery = ts.isTypeQueryNode(typeOfObjectType) && ts.isTypeQueryNode(typeOfIndexType) && typeOfObjectType.exprName.getText() === typeOfIndexType.exprName.getText()
-    const isSameTypeReference = ts.isTypeReferenceNode(typeOfObjectType) && ts.isTypeReferenceNode(typeOfIndexType) && typeOfObjectType.typeName.getText() === typeOfIndexType.typeName.getText()
-
-    if (!isSameTypeQuery && !isSameTypeReference) {
+    if (!matchesKeyedIndexedAccess(objectType, indexType)) {
       return undefined
     }
 
     const type = this.getReferencer()
-    const node = typeChecker.typeToTypeNode(type, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)!
-    return new TypeResolver(node, current, typeNode, context, this.referencer).resolve()
+    return resolveKeyedIndexedAccessType(type, typeChecker, current, context, typeNode, this.referencer, TypeResolver)
   }
 
   private resolveTypeReferenceNode(typeNode: ts.TypeReferenceNode, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type {
@@ -1927,29 +1574,15 @@ export class TypeResolver {
       return undefined
     }
 
-    /**
-     * Workaround for a TypeScript compiler quirk tracked for follow-up investigation.
-     * See https://github.com/tsoa-next/tsoa-next/issues for related metadata parsing context.
-     */
-    if (node.kind === ts.SyntaxKind.Parameter) {
-      // TypeScript won't parse jsdoc if the flag is 4, i.e. 'Property'
-      symbol.flags = 0
-    }
-
-    const comments = symbol.getDocumentationComment(this.current.typeChecker)
-    if (comments.length) {
-      return symbolDisplayPartsToString(comments)
-    }
-
-    return undefined
+    return getNodeDescription(node, symbol, this.current)
   }
 
   public getNodeFormat(node: ts.Node) {
-    return getJSDocComment(node, 'format')
+    return getNodeFormat(node)
   }
 
   public getNodeTitle(node: ts.Node) {
-    return getJSDocComment(node, 'title')
+    return getNodeTitle(node)
   }
 
   public getPropertyName(prop: ts.PropertySignature | ts.PropertyDeclaration | ts.ParameterDeclaration): string {
@@ -1965,22 +1598,12 @@ export class TypeResolver {
   }
 
   public getNodeExample(node: ts.Node) {
-    const exampleJSDoc = getJSDocComment(node, 'example')
-    if (exampleJSDoc) {
-      return safeFromJson(exampleJSDoc)
-    }
-
-    return getNodeFirstDecoratorValue(node, this.current.typeChecker, (dec, canonicalName) => canonicalName === 'Example')
+    return getNodeExample(node, this.current)
   }
 
   public getNodeExtension(node: ts.Node) {
     const decorators = this.getDecoratorsByIdentifier(node, 'Extension')
-    const extensionDecorator = getExtensions(decorators, this.current)
-
-    const extensionComments = getJSDocComments(node, 'extension')
-    const extensionJSDoc = extensionComments ? getExtensionsFromJSDocComments(extensionComments) : []
-
-    return extensionDecorator.concat(extensionJSDoc)
+    return getNodeExtension(node, decorators, this.current)
   }
 
   private getDecoratorsByIdentifier(node: ts.Node, id: string) {

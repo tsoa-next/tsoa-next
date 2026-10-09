@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import * as ts from 'typescript'
 import type { Tsoa } from '@tsoa-next/runtime'
+import { resolveKeyOfTypeOperator, resolveKeyOfIndexType, resolveFallbackKeyOfType } from '../../../packages/cli/src/metadataGeneration/key-of-type'
+import { resolveMappedType } from '../../../packages/cli/src/metadataGeneration/mapped-type'
 import { resolveTupleTypeNode } from '../../../packages/cli/src/metadataGeneration/structural-type'
 import { MetadataGenerator } from '../../../packages/cli/src/metadataGeneration/metadataGenerator'
 import { GenerateMetadataError } from '../../../packages/cli/src/metadataGeneration/exceptions'
@@ -82,6 +84,363 @@ describe('TypeResolver', () => {
         },
       })
       expect(() => new TypeResolver(declaration.type, { defaultNumberType: 'double' } as MetadataGenerator).resolve()).to.throw(GenerateMetadataError, 'Unknown type: SymbolKeyword')
+    })
+  })
+
+  describe('declaration annotation compatibility', () => {
+    it('uses JSDoc annotations without reading an unused decorator checker', () => {
+      const source = ts.createSourceFile(
+        'annotations.ts',
+        `interface Model {
+        /**
+         * @example {"value":42}
+         * @format custom-format
+         * @title Custom title
+         */
+        value: string
+      }`,
+        ts.ScriptTarget.ES2021,
+        true,
+      )
+      const declaration = source.statements.find(ts.isInterfaceDeclaration)
+      if (!declaration || !ts.isPropertySignature(declaration.members[0])) throw new Error('Expected annotated property')
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          throw new Error('Unused decorator checker read')
+        },
+      } as MetadataGenerator
+      const annotationResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current)
+      const property = declaration.members[0]
+      expect(annotationResolver.getNodeExample(property)).to.deep.equal({ value: 42 })
+      expect(annotationResolver.getNodeFormat(property)).to.equal('custom-format')
+      expect(annotationResolver.getNodeTitle(property)).to.equal('Custom title')
+    })
+
+    it('does not read documentation checker when declaration lookup has no symbol', () => {
+      let checkerReads = 0
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          if (++checkerReads > 1) throw new Error('Unused documentation checker read')
+          return { getSymbolAtLocation: () => undefined } as unknown as ts.TypeChecker
+        },
+      } as MetadataGenerator
+      const annotationResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current)
+      const property = ts.factory.createPropertySignature(undefined, 'missing', undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      expect(annotationResolver.getNodeDescription(property)).to.be.undefined
+      expect(checkerReads).to.equal(1)
+    })
+
+    it('clears parameter symbol flags before reading its documentation checker', () => {
+      let checkerReads = 0
+      const symbol = {
+        flags: ts.SymbolFlags.Property,
+        getDocumentationComment: () => [{ text: 'Parameter description', kind: 'text' }],
+      } as unknown as ts.Symbol
+      const checker = { getSymbolAtLocation: () => symbol } as unknown as ts.TypeChecker
+      const current = {
+        get typeChecker(): ts.TypeChecker {
+          if (++checkerReads > 1) expect(symbol.flags).to.equal(0)
+          return checker
+        },
+      } as MetadataGenerator
+      const annotationResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), current)
+      const parameter = ts.factory.createParameterDeclaration(undefined, undefined, 'value', undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      expect(annotationResolver.getNodeDescription(parameter)).to.equal('Parameter description')
+      expect(symbol.flags).to.equal(0)
+      expect(checkerReads).to.equal(2)
+    })
+
+    it('retains public annotation override dispatch for reached properties', () => {
+      class AnnotatedResolver extends TypeResolver {
+        public override getNodeDescription() {
+          return 'Override description'
+        }
+        public override getNodeFormat() {
+          return 'override-format'
+        }
+        public override getNodeTitle() {
+          return 'Override title'
+        }
+        public override getNodeExample() {
+          return { value: 'override' }
+        }
+        public override getNodeExtension() {
+          return [{ key: 'x-override' as const, value: true }]
+        }
+      }
+      const property = ts.factory.createPropertySignature(undefined, 'value', undefined, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+      const type = new AnnotatedResolver(ts.factory.createTypeLiteralNode([property]), {} as MetadataGenerator).resolve()
+      if (type.dataType !== 'nestedObjectLiteral') throw new Error('Expected nested object')
+      expect(type.properties[0]).to.include({ description: 'Override description', format: 'override-format', title: 'Override title' })
+      expect(type.properties[0].example).to.deep.equal({ value: 'override' })
+      expect(type.properties[0].extensions).to.deep.equal([{ key: 'x-override', value: true }])
+    })
+  })
+
+  describe('mapped resolution boundaries', () => {
+    function mappedFixture() {
+      const source = ts.createSourceFile(
+        'mapped.ts',
+        `interface Original {
+        /** @default "initial"
+         * @deprecated
+         */
+        value?: string
+        /** @ignore */
+        hidden: string
+      }
+      type Mapped = { [P in keyof Original]: Original[P] }`,
+        ts.ScriptTarget.ES2021,
+        true,
+      )
+      const original = source.statements.find(ts.isInterfaceDeclaration)
+      const alias = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!original || !alias || !ts.isMappedTypeNode(alias.type)) throw new Error('Expected mapped fixture')
+      return { property: original.members[0], ignored: original.members[1], mapped: alias.type }
+    }
+
+    it('retains synthetic declaration metadata, public hook receiver, child context and index order', () => {
+      const { property, ignored, mapped } = mappedFixture()
+      const context: Context = {}
+      const events: string[] = []
+      const propertyType = { flags: ts.TypeFlags.String } as ts.Type
+      const numberIndex = { flags: ts.TypeFlags.Number } as ts.Type
+      const neverIndex = { flags: ts.TypeFlags.Never } as ts.Type
+      const origin = { name: 'value', declarations: [property] } as unknown as ts.Symbol
+      const valueSymbol = {
+        flags: ts.SymbolFlags.Optional,
+        name: 'value',
+        links: { syntheticOrigin: origin },
+        get declarations() {
+          events.push('filter-value')
+          return undefined
+        },
+        getName: () => 'value',
+        getDocumentationComment: () => [{ text: 'Original description', kind: 'text' }],
+      } as unknown as ts.Symbol
+      const ignoredSymbol = {
+        get declarations() {
+          events.push('filter-hidden')
+          return [ignored]
+        },
+      } as unknown as ts.Symbol
+      const type = { flags: ts.TypeFlags.Object, getProperties: () => [valueSymbol, ignoredSymbol] } as unknown as ts.Type
+      const current = {
+        typeChecker: {
+          getTypeOfSymbolAtLocation: (symbol: ts.Symbol, node: ts.Node) => {
+            expect(symbol).to.equal(valueSymbol)
+            expect(node).to.equal(mapped)
+            expect(events.slice(0, 2)).to.deep.equal(['filter-value', 'filter-hidden'])
+            events.push('property')
+            return propertyType
+          },
+          typeToTypeNode: (type: ts.Type) =>
+            ts.factory.createKeywordTypeNode(type === neverIndex ? ts.SyntaxKind.NeverKeyword : type === numberIndex ? ts.SyntaxKind.NumberKeyword : ts.SyntaxKind.StringKeyword),
+          getIndexInfosOfType: () => {
+            events.push('indices')
+            return [{ type: neverIndex }, { type: numberIndex }, { type: propertyType }]
+          },
+        },
+      } as unknown as MetadataGenerator
+      class ChildResolver extends TypeResolver {
+        constructor(
+          node: ts.TypeNode,
+          owner: MetadataGenerator,
+          parent?: ts.Node,
+          childContext: Context = {},
+          private readonly childType?: ts.Type,
+        ) {
+          super(node, owner, parent, childContext, childType)
+          expect(owner).to.equal(current)
+          expect(childContext).to.equal(context)
+          expect(parent).to.equal(events.includes('indices') ? mapped : property)
+        }
+        public override resolve(): Tsoa.Type {
+          events.push(this.childType === numberIndex ? 'number' : 'string')
+          return this.childType === numberIndex ? { dataType: 'double' } : { dataType: 'string' }
+        }
+      }
+      class AnnotationResolver extends TypeResolver {
+        public override getNodeFormat(node: ts.Node) {
+          expect(this).to.equal(annotations)
+          expect(node).to.equal(property)
+          return 'custom-format'
+        }
+        public override getNodeExample(node: ts.Node) {
+          expect(this).to.equal(annotations)
+          expect(node).to.equal(property)
+          return 'example'
+        }
+        public override getNodeExtension(node: ts.Node) {
+          expect(this).to.equal(annotations)
+          expect(node).to.equal(property)
+          return [{ key: 'x-custom' as const, value: true }]
+        }
+      }
+      const annotations = new AnnotationResolver(mapped, current)
+      const result = resolveMappedType(type, mapped, mapped, current, context, annotations, ChildResolver)
+      if (result.dataType !== 'nestedObjectLiteral') throw new Error('Expected mapped object')
+      expect(result.properties).to.have.length(1)
+      expect(result.properties[0]).to.include({
+        name: 'value',
+        required: false,
+        deprecated: true,
+        default: 'initial',
+        description: 'Original description',
+        format: 'custom-format',
+        example: 'example',
+      })
+      expect(result.properties[0].extensions).to.deep.equal([{ key: 'x-custom', value: true }])
+      expect(result.additionalProperties).to.deep.equal({ dataType: 'union', types: [{ dataType: 'double' }, { dataType: 'string' }] })
+      expect(events.slice(-3)).to.deep.equal(['indices', 'number', 'string'])
+    })
+
+    it('reports a reached property failure without resolving later properties or indices', () => {
+      const { mapped } = mappedFixture()
+      const first = { flags: 0, name: 'first' } as ts.Symbol
+      const unused = { flags: 0, name: 'unused' } as ts.Symbol
+      const failure = new Error('Property type unavailable')
+      const current = {
+        typeChecker: {
+          getTypeOfSymbolAtLocation: (symbol: ts.Symbol) => {
+            expect(symbol).to.equal(first)
+            throw failure
+          },
+          getIndexInfosOfType: () => {
+            throw new Error('Unused indices reached')
+          },
+        },
+      } as unknown as MetadataGenerator
+      const type = { flags: ts.TypeFlags.Object, getProperties: () => [first, unused] } as unknown as ts.Type
+      expect(() => resolveMappedType(type, mapped, mapped, current, {}, new TypeResolver(mapped, current), TypeResolver)).to.throw(failure)
+    })
+  })
+
+  describe('key-of resolution boundaries', () => {
+    function keyOfFixture() {
+      const source = ts.createSourceFile('keys.ts', 'type Keys = keyof Model', ts.ScriptTarget.ES2021, true)
+      const declaration = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!declaration || !ts.isTypeOperatorNode(declaration.type)) throw new Error('Expected key-of fixture')
+      return declaration.type
+    }
+
+    it('reports a required contextual child failure before unused key fallback paths', () => {
+      const node = keyOfFixture()
+      const indexedType = {
+        isIndexType: () => true,
+        type: { flags: ts.TypeFlags.TypeParameter, getSymbol: () => ({ getEscapedName: () => 'T' }) },
+        isUnion: () => {
+          throw new Error('Unused union fallback reached')
+        },
+        isLiteral: () => {
+          throw new Error('Unused literal fallback reached')
+        },
+      } as unknown as ts.Type
+      const checker = { getTypeFromTypeNode: () => indexedType } as unknown as ts.TypeChecker
+      const current = { defaultNumberType: 'double', typeChecker: checker } as MetadataGenerator
+      const context: Context = { T: { name: 'T', type: ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword) } }
+      expect(() => resolveKeyOfTypeOperator(node, checker, current, context, undefined, TypeResolver)).to.throw(GenerateMetadataError, 'Unknown type: SymbolKeyword')
+    })
+
+    it('preserves mixed key order and skipped-member warning source', () => {
+      const node = keyOfFixture()
+      const literal = (value: string | number) => ({ value, isLiteral: () => true }) as unknown as ts.LiteralType
+      const symbol = { flags: ts.TypeFlags.ESSymbol, isLiteral: () => false } as ts.Type
+      const type = { isIndexType: () => false, isUnion: () => true, types: [literal(2), literal('b'), symbol, literal(1), literal('a')] } as unknown as ts.Type
+      const checker = {
+        getTypeFromTypeNode: () => type,
+        typeToString: (member: ts.Type) => (member === symbol ? 'symbol' : String((member as ts.LiteralType).value)),
+      } as unknown as ts.TypeChecker
+      const warnings: unknown[] = []
+      const previousWarn = console.warn
+      console.warn = warning => warnings.push(warning)
+      try {
+        expect(resolveKeyOfTypeOperator(node, checker, {} as MetadataGenerator, {}, undefined, TypeResolver)).to.deep.equal({
+          dataType: 'union',
+          types: [
+            { dataType: 'enum', enums: ['b', 'a'] },
+            { dataType: 'enum', enums: [2, 1] },
+          ],
+        })
+      } finally {
+        console.warn = previousWarn
+      }
+      expect(warnings).to.have.length(1)
+      expect(warnings[0]).to.include('Skipped non-literal type(s) symbol')
+      expect(warnings[0]).to.include('At: keys.ts:1:1.')
+      expect(warnings[0]).to.include("This was caused by 'type Keys = keyof Model'")
+    })
+  })
+
+  describe('indexed-access resolution boundaries', () => {
+    function indexedFixture(expression: string) {
+      const source = ts.createSourceFile('indexed.ts', `type Selected = ${expression}`, ts.ScriptTarget.ES2021, true)
+      const declaration = source.statements.find(ts.isTypeAliasDeclaration)
+      if (!declaration || !ts.isIndexedAccessTypeNode(declaration.type)) throw new Error('Expected indexed-access fixture')
+      return declaration.type
+    }
+
+    it('uses the selected contextual type and preserves an optional property value', () => {
+      const node = indexedFixture("T['value']")
+      const selectedType = { flags: ts.TypeFlags.Object } as ts.Type
+      const propertyType = ts.factory.createUnionTypeNode([ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword)])
+      const declaration = ts.factory.createPropertySignature(undefined, 'value', ts.factory.createToken(ts.SyntaxKind.QuestionToken), propertyType)
+      const checker = {
+        getPropertyOfType: (type: ts.Type, name: string) => {
+          expect(type).to.equal(selectedType)
+          expect(name).to.equal('value')
+          return { valueDeclaration: declaration }
+        },
+        typeToString: () => 'SelectedModel',
+        getTypeFromTypeNode: () => {
+          throw new Error('Unused contextual type lookup')
+        },
+        getTypeOfSymbolAtLocation: () => {
+          throw new Error('Unused inferred property lookup')
+        },
+      } as unknown as ts.TypeChecker
+      const current = { typeChecker: checker } as MetadataGenerator
+      const context: Context = {
+        T: { name: 'T', type: ts.factory.createTypeLiteralNode([]), resolvedType: selectedType },
+        get Unused(): Context[string] {
+          throw new Error('Unused generic context read')
+        },
+      }
+      expect(new TypeResolver(node, current, undefined, context).resolve()).to.deep.equal({ dataType: 'union', types: [{ dataType: 'string' }, { dataType: 'undefined' }] })
+    })
+
+    it('reports a missing selected property before attempting to build its type', () => {
+      const node = indexedFixture("T['missing']")
+      const selectedType = { flags: ts.TypeFlags.Object } as ts.Type
+      const checker = {
+        getPropertyOfType: (type: ts.Type, name: string) => {
+          expect(type).to.equal(selectedType)
+          expect(name).to.equal('missing')
+          return undefined
+        },
+        typeToString: () => 'SelectedModel',
+        typeToTypeNode: () => {
+          throw new Error('Unused property builder reached')
+        },
+      } as unknown as ts.TypeChecker
+      const context: Context = { T: { name: 'T', type: ts.factory.createTypeLiteralNode([]), resolvedType: selectedType } }
+      expect(() => new TypeResolver(node, { typeChecker: checker } as MetadataGenerator, undefined, context).resolve()).to.throw(
+        GenerateMetadataError,
+        'Could not determine the keys on SelectedModel\nAt: indexed.ts:1:1.',
+      )
+    })
+
+    it('does not resolve a referencer for unmatched keyed object and index types', () => {
+      const node = indexedFixture('Model[keyof Other]')
+      const checker = {
+        getTypeFromTypeNode: () => {
+          throw new Error('Unused referencer reached')
+        },
+        typeToTypeNode: () => {
+          throw new Error('Unused indexed builder reached')
+        },
+      } as unknown as ts.TypeChecker
+      expect(() => new TypeResolver(node, { typeChecker: checker } as MetadataGenerator).resolve()).to.throw(GenerateMetadataError, 'Unknown type: IndexedAccessType')
     })
   })
 
@@ -189,18 +548,17 @@ describe('TypeResolver', () => {
       } as any)
       const keyOfNode = ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
 
-      expect((keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.TemplateLiteral } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({
+      expect(resolveFallbackKeyOfType({ flags: ts.TypeFlags.TemplateLiteral } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({
         dataType: 'string',
       })
-      expect((keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.Number } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({ dataType: 'double' })
-      expect(() => (keyOfResolver as any).resolveFallbackKeyOfType({ flags: ts.TypeFlags.Never } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.throw(
+      expect(resolveFallbackKeyOfType({ flags: ts.TypeFlags.Number } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.deep.equal({ dataType: 'double' })
+      expect(() => resolveFallbackKeyOfType({ flags: ts.TypeFlags.Never } as ts.Type, keyOfNode, (keyOfResolver as any).current.typeChecker)).to.throw(
         GenerateMetadataError,
         "TypeOperator 'keyof' on node produced a never type",
       )
     })
 
     it('ignores keyof index types whose target is not a type parameter', () => {
-      const keyOfResolver = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
       const keyOfNode = ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
       const indexedType = {
         isIndexType: () => true,
@@ -210,7 +568,7 @@ describe('TypeResolver', () => {
         },
       } as unknown as ts.Type
 
-      expect((keyOfResolver as any).resolveKeyOfIndexType(indexedType, keyOfNode, {}, {}, undefined)).to.be.undefined
+      expect(resolveKeyOfIndexType(indexedType, keyOfNode, {} as MetadataGenerator, {}, undefined, TypeResolver)).to.be.undefined
     })
 
     it('fails clearly when TypeScript cannot represent an inferred toJSON return type', () => {
