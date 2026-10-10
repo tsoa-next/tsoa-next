@@ -1,5 +1,29 @@
 # @tsoa-next/runtime
 
+## 8.3.4
+
+### Patch Changes
+
+- Protect recursive validation reuse and exception recovery with two permanent functional regressions, and run existing coverage, Sonar analysis and the build matrix for test-only changes. Production code, public interfaces, quality thresholds and publication decisions remain unchanged.
+
+  The following performance rollup describes the cumulative rearchitecture already included in 8.3.3, relative to original commit `65b3fafa`; these are not performance gains introduced by this test-only patch.
+
+  The rearchitecture substantially reduces startup work by loading generation dependencies when an operation first needs them. Failures are reported when execution reaches the affected operation, without an upfront load-and-validate-everything phase.
+
+  Compared with the original implementation:
+
+  - **Entry-point loading is approximately 98–99% faster.** API, specification and routes loading fell from approximately 202–222 ms to 2.5–4.2 ms.
+  - **Memory immediately after loading is approximately 66–67% lower**, with JavaScript heap usage approximately 86–87% lower. API loading used approximately 46 MiB of process memory instead of 138 MiB.
+  - **Repeated generation had lower median times across all three measured fixtures:** GET decreased from 298 to 273 ms, POST from 324 to 276 ms, and the complex fixture from 399 to 275 ms—approximately 8%, 15% and 31% reductions.
+  - **First-use generation results were mixed.** POST decreased from 285 to 260 ms and the complex fixture from 449 to 373 ms. GET increased from 568 to 849 ms. Lazy loading moves some work into the operation that first needs it, and GET measurements varied widely.
+  - **Validation performance remained broadly unchanged.** Valid inputs measured 24.26 versus 22.90 microseconds per input; invalid inputs measured 23.54 versus 23.64 microseconds.
+  - **Peak memory during the complete benchmark remained approximately 402 MiB.** Median duration decreased from 6.06 to 5.42 seconds, although measurement ranges overlapped.
+  - **Lightweight CLI commands used approximately 7% less peak memory.** Help decreased from 58.2 to 54.0 MiB; version reporting decreased from 57.1 to 52.9 MiB. Their measured execution times remained approximately 60–70 ms.
+
+  Two permanent regression tests protect recursive validation when a service is reused: valid–invalid–valid calls must match fresh-service results, and a call that encounters a model-lookup exception must recover on retry. Public interfaces and validation behavior remain unchanged. Test-only changes now run the existing tests, coverage, Sonar analysis and build matrix without changing quality thresholds or publication decisions.
+
+  Measurement scope: original pre-rearchitecture commit `65b3fafa` versus finished production code, matching dependencies and fixtures under Node 24.19.0 on macOS ARM64. Medians come from three alternating, sequential fresh processes per revision. Full-run memory includes the existing benchmark harness. Measurements establish substantial startup savings; they do not establish a general generation or validation speedup and do not measure HTTP throughput.
+
 ## 8.3.3
 
 ### Patch Changes
