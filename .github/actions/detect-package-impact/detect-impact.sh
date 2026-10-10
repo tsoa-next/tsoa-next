@@ -88,6 +88,7 @@ file_has_impact() {
     eslint.config.ts) return 0 ;;
     package-lock.json) return 0 ;;
     package.json) return 0 ;;
+    tests/*) return 0 ;;
     turbo.json) return 0 ;;
     packages/*/README.MD) return 0 ;;
     packages/*/package.json) return 0 ;;

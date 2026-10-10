@@ -2233,6 +2233,73 @@ describe('ValidationService', () => {
   })
 
   describe('Circular reference handling', () => {
+    it('validates valid, invalid and valid recursive values independently when reusing a service', () => {
+      const models: TsoaRoute.Models = {
+        Node: {
+          dataType: 'refObject',
+          properties: {
+            id: { dataType: 'string', required: true },
+            value: { dataType: 'integer', required: true },
+            children: { dataType: 'array', array: { ref: 'Node' } },
+          },
+        },
+      }
+      const config = { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true } as const
+      const service = new ValidationService(models, config)
+      const valid = () => ({ id: 'root', value: '42', children: [{ id: 'child', value: '7', children: [] }] })
+      const invalid = () => ({ id: 'root', value: '42', children: [{ value: 'bad', children: [] }] })
+      const validate = (validator: ValidationService, value: unknown) => {
+        const fieldErrors: FieldErrors = {}
+        const result = validator.ValidateParam({ ref: 'Node' }, value, 'node', fieldErrors, true, 'payload.')
+        return { result, fieldErrors }
+      }
+
+      const outcomes = [valid, invalid, valid].map(input => {
+        const outcome = validate(service, input())
+        expect(outcome).to.deep.equal(validate(new ValidationService(models, config), input()))
+        return outcome
+      })
+
+      expect(outcomes[0].result).to.deep.equal({ id: 'root', value: 42, children: [{ id: 'child', value: 7, children: [] }] })
+      expect(outcomes[0].fieldErrors).to.deep.equal({})
+      expect(outcomes[1].result).to.be.undefined
+      expect(outcomes[1].fieldErrors).to.have.all.keys('payload.node.children.$0.id', 'payload.node.children.$0.value')
+      expect(outcomes[2]).to.deep.equal(outcomes[0])
+    })
+
+    it('cleans up a reached reference lookup failure before retrying the same reference path', () => {
+      const definition: TsoaRoute.RefObjectModelSchema = {
+        dataType: 'refObject',
+        properties: { value: { dataType: 'integer', required: true } },
+      }
+      const failure = new Error('Reached model lookup failed')
+      let failLookup = true
+      const models: TsoaRoute.Models = {
+        get Node(): TsoaRoute.ModelSchema {
+          if (failLookup) {
+            throw failure
+          }
+          return definition
+        },
+      }
+      const service = new ValidationService(models, { noImplicitAdditionalProperties: 'ignore', bodyCoercion: true })
+      const failedErrors: FieldErrors = {}
+      let caught: unknown
+      try {
+        service.ValidateParam({ ref: 'Node' }, { value: '42' }, 'node', failedErrors, true, 'payload.')
+      } catch (error) {
+        caught = error
+      }
+      expect(caught).to.equal(failure)
+      expect(failedErrors).to.deep.equal({})
+
+      failLookup = false
+      const fieldErrors: FieldErrors = {}
+      const result = service.ValidateParam<unknown>({ ref: 'Node' }, { value: '42' }, 'node', fieldErrors, true, 'payload.')
+      expect(result).to.deep.equal({ value: 42 })
+      expect(fieldErrors).to.deep.equal({})
+    })
+
     it('should handle self-referencing refAlias without stack overflow', () => {
       const models: TsoaRoute.Models = {
         RecursiveType: {
