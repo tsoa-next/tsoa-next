@@ -1,12 +1,12 @@
 # @tsoa-next/runtime
 
-## 8.3.4
+## 8.4.0
 
-### Patch Changes
+### Minor Changes
 
-- Protect recursive validation reuse and exception recovery with two permanent functional regressions, and run existing coverage, Sonar analysis and the build matrix for test-only changes. Production code, public interfaces, quality thresholds and publication decisions remain unchanged.
+- This cumulative minor release brings together the demand-driven rearchitecture and public `tsoa template-check` command already included in 8.3.3, two permanent functional regressions for recursive validation reuse and exception recovery, and existing coverage, Sonar analysis and build-matrix checks for test-only changes. Production source is unchanged from 8.3.3; public interfaces, quality thresholds and publication decisions remain unchanged.
 
-  The following performance rollup describes the cumulative rearchitecture already included in 8.3.3, relative to original commit `65b3fafa`; these are not performance gains introduced by this test-only patch.
+  The following performance rollup describes that cumulative rearchitecture relative to original commit `65b3fafa`; these are not performance gains introduced by the regression tests or CI repair.
 
   The rearchitecture substantially reduces startup work by loading generation dependencies when an operation first needs them. Failures are reported when execution reaches the affected operation, without an upfront load-and-validate-everything phase.
 
