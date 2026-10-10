@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { expect } from 'chai'
 import 'mocha'
 
@@ -29,7 +29,7 @@ describe('detect-package-impact', function () {
     }).trim()
   }
 
-  function setupRepositoryFixture() {
+  function setupRepositoryFixture(changedFile = '.changeset/fixture.md', shallowHead = true) {
     const workspace = createTempDir('tsoa-detect-impact-')
     const sourceRepo = join(workspace, 'source')
     const originRepo = join(workspace, 'origin.git')
@@ -46,10 +46,11 @@ describe('detect-package-impact', function () {
       const baseSha = git(sourceRepo, ['rev-parse', 'HEAD'])
 
       git(sourceRepo, ['checkout', '-b', 'feature/dev-build'])
-      const changesetPath = join(sourceRepo, '.changeset')
-      mkdirSync(changesetPath, { recursive: true })
-      writeFileSync(join(changesetPath, 'fixture.md'), "---\n'tsoa-next': patch\n---\n\nFixture change.\n")
-      git(sourceRepo, ['add', '.changeset/fixture.md'])
+      const changedPath = join(sourceRepo, changedFile)
+      mkdirSync(dirname(changedPath), { recursive: true })
+      const content = changedFile.startsWith('.changeset/') ? "---\n'tsoa-next': patch\n---\n\nFixture change.\n" : '// Functional regression fixture.\n'
+      writeFileSync(changedPath, content)
+      git(sourceRepo, ['add', changedFile])
       git(sourceRepo, ['commit', '-m', 'feature'])
       const headSha = git(sourceRepo, ['rev-parse', 'HEAD'])
 
@@ -63,7 +64,9 @@ describe('detect-package-impact', function () {
       git(runnerRepo, ['remote', 'add', 'origin', originRepo])
       git(runnerRepo, ['fetch', '--no-tags', '--prune', '--no-recurse-submodules', 'origin', '+refs/heads/*:refs/remotes/origin/*', '+refs/tags/*:refs/tags/*'])
       git(runnerRepo, ['checkout', '--progress', '--force', mergeSha])
-      git(runnerRepo, ['fetch', '--no-tags', '--depth=1', 'origin', headSha])
+      if (shallowHead) {
+        git(runnerRepo, ['fetch', '--no-tags', '--depth=1', 'origin', headSha])
+      }
 
       return { baseSha, headSha, mergeSha, runnerRepo, workspace }
     } catch (error) {
@@ -101,6 +104,47 @@ describe('detect-package-impact', function () {
       expect(output).to.include('has-changeset=true')
       expect(output).to.include('should-publish-dev-build=true')
       expect(output).to.include('has-impact=true')
+    } finally {
+      rmSync(workspace, { force: true, recursive: true })
+    }
+  })
+
+  it('runs required checks for a test-only diff without selecting dev publication', () => {
+    const changedFile = 'tests/unit/swagger/templateHelpers.spec.ts'
+    const { baseSha, headSha, mergeSha, runnerRepo, workspace } = setupRepositoryFixture(changedFile, false)
+
+    try {
+      for (const headRef of ['feature/test-recovery', 'changeset-release/main']) {
+        const outputName = headRef.startsWith('changeset-release/') ? 'release' : 'feature'
+        for (const merged of ['false', 'true']) {
+          const outputFile = join(workspace, `${outputName}-${merged}-output.txt`)
+          execFileSync('bash', [scriptPath], {
+            cwd: runnerRepo,
+            env: {
+              ...process.env,
+              BASE_SHA: baseSha,
+              DEFAULT_BRANCH: 'main',
+              EVENT_NAME: 'pull_request',
+              GITHUB_OUTPUT: outputFile,
+              GITHUB_STEP_SUMMARY: '',
+              HEAD_SHA: mergeSha,
+              PR_HEAD_REF: headRef,
+              PR_HEAD_SHA: headSha,
+              PR_MERGED: merged,
+            },
+            encoding: 'utf8',
+            stdio: 'pipe',
+          })
+
+          const output = readFileSync(outputFile, 'utf8')
+          expect(output).to.include('has-impact=true')
+          expect(output).to.include('has-changeset=false')
+          expect(output).to.include('should-publish-dev-build=false')
+          expect(output).to.include(`is-release-pr=${headRef.startsWith('changeset-release/')}`)
+          expect(output).to.include(`changed-files<<__EOF__\n${changedFile}\n__EOF__`)
+          expect(output).to.include(`impactful-files<<__EOF__\n${changedFile}\n__EOF__`)
+        }
+      }
     } finally {
       rmSync(workspace, { force: true, recursive: true })
     }
