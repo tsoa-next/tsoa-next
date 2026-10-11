@@ -143,7 +143,7 @@ describe('Configuration', () => {
 
       const configResult = await withCliModuleForPackageJson({}, (reloadedValidateSpecConfig: typeof validateSpecConfig) => reloadedValidateSpecConfig(config))
 
-      expect(configResult.license).to.equal(undefined)
+      expect(configResult.license).to.be.undefined
     })
 
     it('should use package.json license when available', async () => {

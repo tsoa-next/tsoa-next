@@ -685,50 +685,52 @@ describe('Schema details generation', () => {
   })
 
   describe('Extensions schema generation', () => {
-    const metadata = new MetadataGenerator('./fixtures/controllers/methodController.ts').Generate()
-    const spec = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec()
+    it('appends extension properties with their configured values', () => {
+      const metadata = new MetadataGenerator('./fixtures/controllers/methodController.ts').Generate()
+      const spec = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec()
 
-    if (!spec.paths) {
-      throw new Error('No spec info.')
-    }
+      if (!spec.paths) {
+        throw new Error('No spec info.')
+      }
 
-    const extensionPath = spec.paths['/MethodTest/Extension'].get
+      const extensionPath = spec.paths['/MethodTest/Extension'].get
 
-    if (!extensionPath) {
-      throw new Error('extension method was not rendered')
-    }
+      if (!extensionPath) {
+        throw new Error('extension method was not rendered')
+      }
 
-    // Verify that extensions are appended to the path
-    expect(extensionPath).to.have.property('x-attKey')
-    expect(extensionPath).to.have.property('x-attKey1')
-    expect(extensionPath).to.have.property('x-attKey2')
-    expect(extensionPath).to.have.property('x-attKey3')
-    expect(extensionPath).to.have.property('x-attKey4')
-    expect(extensionPath).to.have.property('x-attKey5')
-    expect(extensionPath).to.have.property('x-attKey6')
-    expect(extensionPath).to.have.property('x-attKey7')
-    expect(extensionPath).to.have.property('x-attKey8')
-    expect(extensionPath).to.have.property('x-attKey10')
-    expect(extensionPath).to.have.property('x-attKey11')
-    expect(extensionPath).to.have.property('x-attKey12')
-    expect(extensionPath).to.have.property('x-attKey13')
-    expect(extensionPath).to.have.property('x-attKey14')
+      // Verify that extensions are appended to the path
+      expect(extensionPath).to.have.property('x-attKey')
+      expect(extensionPath).to.have.property('x-attKey1')
+      expect(extensionPath).to.have.property('x-attKey2')
+      expect(extensionPath).to.have.property('x-attKey3')
+      expect(extensionPath).to.have.property('x-attKey4')
+      expect(extensionPath).to.have.property('x-attKey5')
+      expect(extensionPath).to.have.property('x-attKey6')
+      expect(extensionPath).to.have.property('x-attKey7')
+      expect(extensionPath).to.have.property('x-attKey8')
+      expect(extensionPath).to.have.property('x-attKey10')
+      expect(extensionPath).to.have.property('x-attKey11')
+      expect(extensionPath).to.have.property('x-attKey12')
+      expect(extensionPath).to.have.property('x-attKey13')
+      expect(extensionPath).to.have.property('x-attKey14')
 
-    // Verify that extensions have correct values
-    expect(extensionPath['x-attKey']).to.deep.equal('attValue')
-    expect(extensionPath['x-attKey1']).to.deep.equal(123)
-    expect(extensionPath['x-attKey2']).to.deep.equal(true)
-    expect(extensionPath['x-attKey3']).to.deep.equal(null)
-    expect(extensionPath['x-attKey4']).to.deep.equal({ test: 'testVal' })
-    expect(extensionPath['x-attKey5']).to.deep.equal(['y0', 'y1', 123, true, null])
-    expect(extensionPath['x-attKey6']).to.deep.equal([{ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null }, { y2: 'yt2' }])
-    expect(extensionPath['x-attKey7']).to.deep.equal({ test: ['testVal', 123, true, null] })
-    expect(extensionPath['x-attKey8']).to.deep.equal({ test: { testArray: ['testVal1', true, null, ['testVal2', 'testVal3', 123, true, null]] } })
-    expect(extensionPath['x-attKey10']).to.deep.equal(['testVal1', 'testVal2', 123, true, null])
-    expect(extensionPath['x-attKey11']).to.deep.equal(['testVal1', 'v', 'a', 'l'])
-    expect(extensionPath['x-attKey12']).to.deep.equal({ '0': 1, '1': 2, '2': 3, '3': 4 })
-    expect(extensionPath['x-attKey13']).to.deep.equal({ '0': 'testVal1', '1': 123, '2': true, '3': null })
-    expect(extensionPath['x-attKey14']).to.deep.equal({ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null })
+      // Verify that extensions have correct values
+      expect(extensionPath['x-attKey']).to.deep.equal('attValue')
+      expect(extensionPath['x-attKey1']).to.deep.equal(123)
+      expect(extensionPath['x-attKey2']).to.deep.equal(true)
+      expect(extensionPath['x-attKey3']).to.be.null
+      expect(extensionPath['x-attKey4']).to.deep.equal({ test: 'testVal' })
+      expect(extensionPath['x-attKey5']).to.deep.equal(['y0', 'y1', 123, true, null])
+      expect(extensionPath['x-attKey6']).to.deep.equal([{ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null }, { y2: 'yt2' }])
+      expect(extensionPath['x-attKey7']).to.deep.equal({ test: ['testVal', 123, true, null] })
+      expect(extensionPath['x-attKey8']).to.deep.equal({ test: { testArray: ['testVal1', true, null, ['testVal2', 'testVal3', 123, true, null]] } })
+      expect(extensionPath['x-attKey10']).to.deep.equal(['testVal1', 'testVal2', 123, true, null])
+      expect(extensionPath['x-attKey11']).to.deep.equal(['testVal1', 'v', 'a', 'l'])
+      expect(extensionPath['x-attKey12']).to.deep.equal({ '0': 1, '1': 2, '2': 3, '3': 4 })
+      expect(extensionPath['x-attKey13']).to.deep.equal({ '0': 'testVal1', '1': 123, '2': true, '3': null })
+      expect(extensionPath['x-attKey14']).to.deep.equal({ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null })
+    })
   })
 
   describe('@Res responses', () => {

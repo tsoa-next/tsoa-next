@@ -663,7 +663,7 @@ describe('Template services', () => {
         headers: { ignored: '1' },
         data: 'ignored',
       })
-      expect(cachedResult).to.equal(undefined)
+      expect(cachedResult).to.be.undefined
 
       class ConflictController {
         public submit() {

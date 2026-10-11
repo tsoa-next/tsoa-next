@@ -45,14 +45,14 @@ it('treats chunked transfer encoding as body presence for explicit empty objects
 it('returns undefined for absent bodies without transfer encoding or content length', () => {
   const service = new TestTemplateService()
 
-  expect(service.exposedNormalizeRequestBody({}, {})).to.equal(undefined)
+  expect(service.exposedNormalizeRequestBody({}, {})).to.be.undefined
 })
 
 it('only reads body properties from normalized object payloads', () => {
   const service = new TestTemplateService()
 
   expect(service.exposedGetBodyProperty({ name: 'value' }, { 'transfer-encoding': 'chunked' }, 'name')).to.equal('value')
-  expect(service.exposedGetBodyProperty(['value'], { 'transfer-encoding': 'chunked' }, '0')).to.equal(undefined)
+  expect(service.exposedGetBodyProperty(['value'], { 'transfer-encoding': 'chunked' }, '0')).to.be.undefined
 })
 
 it('ValidateError should be an instanceof ValidateError', () => {
@@ -324,7 +324,7 @@ it('should throw if the data has additionalProperties (on a nested Object) if no
       value: { removed: '123' },
     },
   })
-  expect(result).to.eql(undefined)
+  expect(result).to.be.undefined
 })
 
 it('should not throw if the data has additionalProperties (on a intersection) if noImplicitAdditionalProperties is set to silently-remove-extras', () => {
@@ -652,7 +652,7 @@ it('should throw if properties on nOl are missing', () => {
 
   v.validateNestedObjectLiteral('nested', {}, errors, true, schema, true, 'Model.')
 
-  expect(Object.keys(errors).length).to.equal(2)
+  expect(Object.keys(errors)).to.have.lengthOf(2)
 
   expect(errors).to.deep.eq({
     'Model.nested.country': { message: "'country' is required", value: undefined },

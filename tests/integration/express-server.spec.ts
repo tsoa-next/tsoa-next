@@ -64,7 +64,7 @@ describe('Express Server', () => {
   it('can handle get request with collection return value', () => {
     return verifyGetRequest(app, basePath + '/GetTest/Multi', (_err, res) => {
       const models = res.body as TestModel[]
-      expect(models.length).to.equal(3)
+      expect(models).to.have.lengthOf(3)
       models.forEach(m => {
         expect(m.id).to.equal(1)
       })
@@ -651,7 +651,7 @@ describe('Express Server', () => {
         basePath + `/Controller/customHeaderUndefined`,
         (_err, res) => {
           expect(res.status).to.equal(204)
-          expect(res.header.hero).to.equal(undefined)
+          expect(res.header.hero).to.be.undefined
           expect(res.header.name).to.equal('Tony Stark')
         },
         204,
@@ -1062,7 +1062,7 @@ describe('Express Server', () => {
           expect(body.nestedObject.intersection).to.deep.equal(bodyModel.nestedObject.intersection)
           expect(body.typeAliases).to.deep.equal(bodyModel.typeAliases)
 
-          expect(body.nullableTypes.numberOrNull).to.equal(null)
+          expect(body.nullableTypes.numberOrNull).to.be.null
           expect(body.nullableTypes.wordOrNull).to.equal(bodyModel.nullableTypes.wordOrNull)
           expect(body.nullableTypes.maybeString).to.equal(bodyModel.nullableTypes.maybeString)
           expect(body.nullableTypes.justNull).to.equal(bodyModel.nullableTypes.justNull)

@@ -179,8 +179,8 @@ describe('CLI API', () => {
     expect(swaggerConfig.host).to.equal('api.example.com')
     expect(swaggerConfig.yaml).to.equal(false)
     expect(compilerOptions).to.deep.equal({})
-    expect(ignore).to.equal(undefined)
-    expect(metadata).to.equal(undefined)
+    expect(ignore).to.be.undefined
+    expect(metadata).to.be.undefined
   })
 
   it('loads JS config files for programmatic route generation', async () => {
@@ -236,7 +236,7 @@ describe('CLI API', () => {
 
     expect(routesConfig.basePath).to.equal('/routes')
     expect(compilerOptions).to.deep.equal({})
-    expect(ignore).to.equal(undefined)
+    expect(ignore).to.be.undefined
     expect(metadata).to.deep.equal({ controllers: [], referenceTypeMap: {} })
   })
 
@@ -277,7 +277,7 @@ describe('CLI API', () => {
 
     const [routesConfig] = call
     expect(routesConfig.basePath).to.equal('/routes-only')
-    expect(routesConfig.rootSecurity).to.equal(undefined)
+    expect(routesConfig.rootSecurity).to.be.undefined
   })
 
   it('generates spec and routes from a config object without loading CLI parsing dependencies', async () => {
