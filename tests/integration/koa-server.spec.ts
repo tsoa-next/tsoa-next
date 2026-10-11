@@ -1651,7 +1651,7 @@ describe('Koa Server', () => {
         formData,
         (_err, res) => {
           expect(res.status).to.equal(500)
-          expect(res.text).to.equal('Unexpected field')
+          expect(res.text).to.equal('Unexpected file field')
         },
         500,
       )
