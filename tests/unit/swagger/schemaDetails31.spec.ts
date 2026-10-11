@@ -1378,7 +1378,7 @@ describe('Definition generation for OpenAPI 3.1.0', () => {
             const schema = getComponentSchema('EnumNumberValue', currentSpec)
             expect(schema.type).to.eq('number')
             expect(schema.enum).to.eql([0, 2, 5])
-            expect(schema['x-enum-varnames']).to.eq(undefined)
+            expect(schema['x-enum-varnames']).to.be.undefined
           },
           enumStringNumberValue: (propertyName, propertySchema) => {
             expect(propertySchema.type).to.eq(undefined, `for property ${propertyName}.type`)
@@ -1389,7 +1389,7 @@ describe('Definition generation for OpenAPI 3.1.0', () => {
             const schema = getComponentSchema('EnumStringNumberValue', currentSpec)
             expect(schema.type).to.eq('string')
             expect(schema.enum).to.eql(['0', '2', '5'])
-            expect(schema['x-enum-varnames']).to.eq(undefined)
+            expect(schema['x-enum-varnames']).to.be.undefined
           },
           enumStringNumberArray: (propertyName, propertySchema) => {
             expect(propertySchema.type).to.eq('array', `for property ${propertyName}.type`)
@@ -1422,7 +1422,7 @@ describe('Definition generation for OpenAPI 3.1.0', () => {
             expect(schema.description).to.eql('EnumStringValue.')
             expect(schema.enum).to.eql(['', 'VALUE_1', 'VALUE_2'])
             expect(schema.example).to.eql('VALUE_1')
-            expect(schema['x-enum-varnames']).to.eq(undefined)
+            expect(schema['x-enum-varnames']).to.be.undefined
           },
           enumStringProperty: (propertyName, propertySchema) => {
             expect(propertySchema.$ref).to.eq('#/components/schemas/EnumStringValue.VALUE_1')
@@ -4664,40 +4664,42 @@ describe('Definition generation for OpenAPI 3.1.0', () => {
   })
 
   describe('Extensions schema generation', () => {
-    const metadata = new MetadataGenerator('./fixtures/controllers/methodController').Generate()
-    const spec = new SpecGenerator31(metadata, getDefaultExtendedOptions()).GetSpec()
+    it('appends extension properties with their configured values', () => {
+      const metadata = new MetadataGenerator('./fixtures/controllers/methodController').Generate()
+      const spec = new SpecGenerator31(metadata, getDefaultExtendedOptions()).GetSpec()
 
-    if (!spec.paths) {
-      throw new Error('No spec info.')
-    }
+      if (!spec.paths) {
+        throw new Error('No spec info.')
+      }
 
-    const extensionPath = spec.paths['/MethodTest/Extension'].get
+      const extensionPath = spec.paths['/MethodTest/Extension'].get
 
-    if (!extensionPath) {
-      throw new Error('extension method was not rendered')
-    }
+      if (!extensionPath) {
+        throw new Error('extension method was not rendered')
+      }
 
-    // Verify that extensions are appended to the path
-    expect(extensionPath).to.have.property('x-attKey')
-    expect(extensionPath).to.have.property('x-attKey1')
-    expect(extensionPath).to.have.property('x-attKey2')
-    expect(extensionPath).to.have.property('x-attKey3')
-    expect(extensionPath).to.have.property('x-attKey4')
-    expect(extensionPath).to.have.property('x-attKey5')
-    expect(extensionPath).to.have.property('x-attKey6')
-    expect(extensionPath).to.have.property('x-attKey7')
-    expect(extensionPath).to.have.property('x-attKey8')
+      // Verify that extensions are appended to the path
+      expect(extensionPath).to.have.property('x-attKey')
+      expect(extensionPath).to.have.property('x-attKey1')
+      expect(extensionPath).to.have.property('x-attKey2')
+      expect(extensionPath).to.have.property('x-attKey3')
+      expect(extensionPath).to.have.property('x-attKey4')
+      expect(extensionPath).to.have.property('x-attKey5')
+      expect(extensionPath).to.have.property('x-attKey6')
+      expect(extensionPath).to.have.property('x-attKey7')
+      expect(extensionPath).to.have.property('x-attKey8')
 
-    // Verify that extensions have correct values
-    expect(extensionPath['x-attKey']).to.deep.equal('attValue')
-    expect(extensionPath['x-attKey1']).to.deep.equal(123)
-    expect(extensionPath['x-attKey2']).to.deep.equal(true)
-    expect(extensionPath['x-attKey3']).to.deep.equal(null)
-    expect(extensionPath['x-attKey4']).to.deep.equal({ test: 'testVal' })
-    expect(extensionPath['x-attKey5']).to.deep.equal(['y0', 'y1', 123, true, null])
-    expect(extensionPath['x-attKey6']).to.deep.equal([{ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null }, { y2: 'yt2' }])
-    expect(extensionPath['x-attKey7']).to.deep.equal({ test: ['testVal', 123, true, null] })
-    expect(extensionPath['x-attKey8']).to.deep.equal({ test: { testArray: ['testVal1', true, null, ['testVal2', 'testVal3', 123, true, null]] } })
+      // Verify that extensions have correct values
+      expect(extensionPath['x-attKey']).to.deep.equal('attValue')
+      expect(extensionPath['x-attKey1']).to.deep.equal(123)
+      expect(extensionPath['x-attKey2']).to.deep.equal(true)
+      expect(extensionPath['x-attKey3']).to.be.null
+      expect(extensionPath['x-attKey4']).to.deep.equal({ test: 'testVal' })
+      expect(extensionPath['x-attKey5']).to.deep.equal(['y0', 'y1', 123, true, null])
+      expect(extensionPath['x-attKey6']).to.deep.equal([{ y0: 'yt0', y1: 'yt1', y2: 123, y3: true, y4: null }, { y2: 'yt2' }])
+      expect(extensionPath['x-attKey7']).to.deep.equal({ test: ['testVal', 123, true, null] })
+      expect(extensionPath['x-attKey8']).to.deep.equal({ test: { testArray: ['testVal1', true, null, ['testVal2', 'testVal3', 123, true, null]] } })
+    })
   })
 
   describe('Inner interface', () => {
@@ -4829,8 +4831,8 @@ describe('Definition generation for OpenAPI 3.1.0', () => {
 
     it('should not generate title tag for request', () => {
       const currentSpec = new SpecGenerator31(metadata, { ...getDefaultExtendedOptions(), useTitleTagsForInlineObjects: false }).GetSpec()
-      expect(currentSpec.paths['/ParameterTest/Inline1'].post?.responses['200'].content?.['application/json'].schema?.title).to.equal(undefined)
-      expect(currentSpec.paths['/ParameterTest/Inline1'].post?.requestBody?.content['application/json'].schema?.title).to.equal(undefined)
+      expect(currentSpec.paths['/ParameterTest/Inline1'].post?.responses['200'].content?.['application/json'].schema?.title).to.be.undefined
+      expect(currentSpec.paths['/ParameterTest/Inline1'].post?.requestBody?.content['application/json'].schema?.title).to.be.undefined
     })
   })
 

@@ -127,7 +127,7 @@ describe('Definition generation', () => {
       })
     })
 
-    it('should generate a member of type object for union type', () => {
+    it('generates the string enum union for Result.value', () => {
       allSpecs.forEach(currentSpec => {
         const definition = getValidatedDefinition('Result', currentSpec)
         if (!definition.properties) {
@@ -148,7 +148,7 @@ describe('Definition generation', () => {
       })
     })
 
-    it('should generate a member of type object for union type', () => {
+    it('generates an object schema for the TestModel.or union', () => {
       allSpecs.forEach(currentSpec => {
         const definition = getValidatedDefinition('TestModel', currentSpec)
         if (!definition.properties) {
@@ -380,7 +380,7 @@ describe('Definition generation', () => {
             const expectedEnumValues = ['', 'VALUE_1', 'VALUE_2']
             expect(validatedDefinition.enum).to.eql(expectedEnumValues, `for property ${propertyName}[enum]`)
             expect(validatedDefinition.example).to.eql('VALUE_1')
-            expect(validatedDefinition['x-enum-varnames']).to.eq(undefined)
+            expect(validatedDefinition['x-enum-varnames']).to.be.undefined
           },
           enumStringProperty: (propertyName, propertySchema) => {
             expect(propertySchema.$ref).to.eq('#/definitions/EnumStringValue.VALUE_1')

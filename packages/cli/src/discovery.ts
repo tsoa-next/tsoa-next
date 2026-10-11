@@ -169,16 +169,16 @@ const scanDirectoryTree = async (rootPath: string, displayBasePath: string, accu
       continue
     }
 
-    const currentRealPath = await realpath(currentDirectory.path)
+    const currentRealPath = await realpath(currentDirectory.path) // NOSONAR: resolve each directory before checking the shared visited set for aliases and cycles.
     if (accumulator.seenDirectoryRealPaths.has(currentRealPath)) {
       continue
     }
 
     accumulator.seenDirectoryRealPaths.add(currentRealPath)
 
-    const directoryEntries = await readdir(currentDirectory.path, { withFileTypes: true })
+    const directoryEntries = await readdir(currentDirectory.path, { withFileTypes: true }) // NOSONAR: enumerate only the current unvisited directory and surface its failure before continuing.
     for (const entry of directoryEntries) {
-      await processDirectoryEntry(entry, currentDirectory.path, displayBasePath, pendingDirectories, accumulator)
+      await processDirectoryEntry(entry, currentDirectory.path, displayBasePath, pendingDirectories, accumulator) // NOSONAR: preserve entry order while updating the shared traversal queue and deduplication sets.
     }
   }
 }
@@ -247,7 +247,7 @@ const discoverFromGlob = async (input: string): Promise<DiscoveryResult> => {
   const displayBasePath = process.cwd()
 
   for (const expandedPath of expandedPaths) {
-    await processGlobMatch(expandedPath, displayBasePath, accumulator)
+    await processGlobMatch(expandedPath, displayBasePath, accumulator) // NOSONAR: process overlapping matches in order so aliases share one accumulator and failures stop discovery immediately.
   }
 
   sortDiscoveredConfigs(accumulator.results)

@@ -397,7 +397,7 @@ describe('RouteGenerator inherited routes', () => {
         throw new Error("Expected inherited string-literal method 'getConfig' to be included.")
       }
 
-      expect(inheritedMethod.resolvedMethodType).to.not.equal(undefined)
+      expect(inheritedMethod.resolvedMethodType).to.not.be.undefined
     })
   })
 

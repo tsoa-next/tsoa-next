@@ -81,7 +81,7 @@ describe('specMergins', () => {
       const merged = recursiveMerge({}, pollutedSource as unknown as Record<string, unknown>)
 
       expect(Object.prototype.hasOwnProperty.call(merged, '__proto__')).to.equal(false)
-      expect(({} as { polluted?: string }).polluted).to.equal(undefined)
+      expect(({} as { polluted?: string }).polluted).to.be.undefined
     })
   })
 

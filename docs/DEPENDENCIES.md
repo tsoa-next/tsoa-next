@@ -4,15 +4,11 @@ This document records how repository dependencies are selected, audited, and int
 
 ## Current audit snapshot
 
-The July 21, 2026 dependency refresh used the npm registry, `npm audit`, GitHub Dependabot, GitHub code scanning, and GitHub secret scanning as independent inputs.
+The October 11, 2026 security repair reviewed 37 open GitHub Dependabot alerts across 14 packages. The repaired lockfile selects patched versions for the 36 alerts with published compatible fixes; GitHub will recalculate default-branch alerts after merge. The remaining reviewed alert is `sprintf-js` (#144).
 
-- GitHub reported 19 open Dependabot alerts on `main` before the refresh. The upgraded lockfile selects patched versions for those alerts; GitHub will recalculate their state after the change reaches the default branch.
-- GitHub code scanning and secret scanning reported no open alerts at the time of review.
-- GitHub Actions dependencies were checked against their upstream releases and upgraded, including the Node 24 action-runtime lines for Checkout, Setup Node, Pages, Dependabot metadata, stale-item handling, GitHub App tokens, and GitHub Script.
-- The first upgraded lockfile reported nine npm audit findings: two low, three moderate, and four high.
-- Direct upgrades and npm's supported transitive resolutions removed eight of those nine findings.
-- One high-severity audit finding remains accepted and is described below.
-- The root manifest went from seven top-level override entries to one. No dependency is copied, forked, patched in place, or hidden behind a repository-owned vendor wrapper.
+A fresh npm audit also identified `qs` and `braces` advisories outside that reviewed alert inventory. Ordinary compatible resolution selects patched `qs@6.16.0`. `braces` has no patched release and remains separately documented below. The final audit reports 22 affected dependency nodes (16 high, six moderate), propagated from two direct advisories: `braces` and `sprintf-js`. These counts are not 22 independent vulnerabilities.
+
+No dependency is copied, forked, patched in place, or hidden behind a repository-owned vendor wrapper. The only root override remains the existing compatible Vite pin.
 
 Reproduce the repository audit with:
 
@@ -47,11 +43,25 @@ Optional peer ranges are compatibility contracts, not requests to install one ex
 
 The only root override is `vite@6.4.3`. VitePress 1.6.4 accepts Vite 5 or 6 but otherwise resolves a vulnerable Vite release. Pinning the patched compatible Vite 6 release also selects a patched esbuild without overriding esbuild directly. Remove this override when VitePress's own dependency floor selects a patched release.
 
-## Accepted upstream audit finding
+## Remaining upstream-blocked advisories
 
-`aws-cdk-lib@2.261.0` bundles `brace-expansion@5.0.6`, which is covered by [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp). Because the dependency is bundled into the published AWS CDK artifact, npm cannot replace it through normal resolution, a root override, or `npm audit fix`. The latest AWS CDK release available during this review still contains that bundled copy.
+### sprintf-js
 
-AWS CDK is a development dependency used only to compile a custom route-generator fixture. It is absent from the dependency trees and packed contents of `@tsoa-next/cli`, `@tsoa-next/runtime`, and `tsoa-next`. The finding will be removed when AWS publishes a release with the patched bundled dependency. Replacing or patching AWS CDK locally would create an unmaintained vendor boundary and is intentionally out of scope.
+Dependabot [alert #144](https://github.com/tsoa-next/tsoa-next/security/dependabot/144), [GHSA-hp3w-g68c-fv3c](https://github.com/advisories/GHSA-hp3w-g68c-fv3c), affects `sprintf-js` through 1.1.3; no patched release is available. Installed paths include `gray-matter -> js-yaml 3 -> argparse 1 -> sprintf-js` and Changesets' `@manypkg/get-packages -> read-yaml-file -> js-yaml 3 -> argparse 1 -> sprintf-js`. The compatible YAML 3 update fixes YAML's own advisories but retains this dependency.
+
+### braces
+
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) affects `braces` through its latest release, 3.0.3; no patched release is available. Installed paths reach `micromatch -> braces` through Changesets' config/git modules and through `globby -> fast-glob` in Changesets' older workspace discovery and the Nolebase documentation changelog plugin.
+
+Both dependencies belong to development/documentation tooling and are absent from the published packages' runtime dependency paths. This review did not establish attacker-controlled input reaching either vulnerable operation; that does not establish immunity. Keep the advisories visible until a compatible upstream fix is available. Replacing their tooling parents requires a separate qualified migration; incompatible overrides, vendoring and removal of documentation features are not repairs.
+
+### Resolved AWS CDK exception
+
+`aws-cdk-lib@2.273.0` contains bundled `brace-expansion@5.0.12`, verified in the installed published archive. The previous exception for CDK 2.261.0's bundled 5.0.6 is removed. Existing custom/serverless route generation and type checking pass with the updated package.
+
+## Consumer updates
+
+This repair preserves consumer Node requirements, TypeScript 5.9, supported framework majors and all optional peer ranges, including Joi 17/18. It requires no application, framework or compiler migration. Consumers with existing lockfiles may need to refresh their lockfile to select compatible patched transitive versions. Repository overrides do not propagate to consumers; fresh consumer installation must independently select patched shipped dependencies.
 
 ## Update policy
 
