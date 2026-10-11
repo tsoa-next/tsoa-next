@@ -11,12 +11,12 @@ import { Swagger } from '../swagger/swagger'
 /** Snapshot of spec-generation settings embedded into generated routes for {@link SpecPath}. */
 export interface RuntimeSpecConfigSnapshot {
   compilerOptions?: Record<string, unknown>
-  defaultNumberType?: Config['defaultNumberType']
+  defaultNumberType?: Config['defaultNumberType'] // NOSONAR: preserve both omission and explicit undefined assignments under exactOptionalPropertyTypes.
   ignore?: string[]
   metadata?: Tsoa.Metadata
   spec: SpecConfig & {
     entryFile: Config['entryFile']
-    controllerPathGlobs?: Config['controllerPathGlobs']
+    controllerPathGlobs?: Config['controllerPathGlobs'] // NOSONAR: preserve omitted globs and explicit undefined assignments under exactOptionalPropertyTypes.
     noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
   }
 }
@@ -282,7 +282,7 @@ async function readPeerFile(packageName: string, candidates: string[]): Promise<
     const packageRoot = dirname(packageJsonPath)
     for (const candidate of candidates) {
       try {
-        return await readFile(join(packageRoot, candidate), 'utf8')
+        return await readFile(join(packageRoot, candidate), 'utf8') // NOSONAR: stop at the first readable candidate without loading later fallback assets.
       } catch {
         continue
       }
@@ -316,7 +316,7 @@ async function readSwaggerDistAsset(runtime: SpecRuntime, assetName: 'swagger-ui
   const directCandidates = runtime === 'koa' ? [join('static', assetName)] : []
   for (const candidate of directCandidates) {
     try {
-      return await readFile(join(directPackageRoot, candidate), 'utf8')
+      return await readFile(join(directPackageRoot, candidate), 'utf8') // NOSONAR: prefer the first readable direct asset before resolving the distribution-package fallback.
     } catch {
       continue
     }
